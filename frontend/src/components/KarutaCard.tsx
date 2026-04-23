@@ -12,7 +12,7 @@ export function KarutaCard({ card, isClaimed, claimedBy, onGrab }: KarutaCardPro
   return (
     <motion.div layout
       initial={{ opacity: 0, scale: 0.85, y: 8 }}
-      animate={{ opacity: isClaimed ? 0.1 : 1, scale: 1, y: 0 }}
+      animate={{ opacity: isClaimed ? 0.55 : 1, scale: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.15, y: -40,
         rotate: Math.random() > 0.5 ? 12 : -12,
         transition: { duration: 0.35, ease: 'backIn' } }}
@@ -39,7 +39,7 @@ export function KarutaCard({ card, isClaimed, claimedBy, onGrab }: KarutaCardPro
       {/* 被抢走遮罩 */}
       {isClaimed && (
         <div className="absolute inset-0 flex items-center justify-center rounded-lg"
-          style={{ background: 'rgba(10,3,8,0.65)' }}>
+          style={{ background: 'rgba(10,3,8,0.25)' }}>
           {claimedBy && claimedBy !== '无人' && (
             <span className="text-gold/50 font-serif text-center px-2 leading-tight"
               style={{ fontSize: 'clamp(0.5rem, 1.2vw, 0.7rem)' }}>
