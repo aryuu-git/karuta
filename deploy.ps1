@@ -1,6 +1,6 @@
 # ========== 修改这里 ==========
 $SERVER = "root@your-server"   # 替换为你的服务器 IP
-$LOCAL  = "D:\aryuu_workspace\karuta"
+$LOCAL  = $PSScriptRoot
 # ==============================
 
 Write-Host "🌸 开始部署..." -ForegroundColor Magenta

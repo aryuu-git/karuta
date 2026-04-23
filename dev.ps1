@@ -1,5 +1,5 @@
 $ErrorActionPreference = "Stop"
-$ROOT = "D:\aryuu_workspace\karuta"
+$ROOT = $PSScriptRoot
 
 function WaitKey {
     Write-Host ""
