@@ -19,7 +19,7 @@ export function ReadingPanel({ hintText, audioUrl, intervalSec: _intervalSec, is
   const [audioError, setAudioError] = useState(false)
   const [progress, setProgress] = useState(0)
 
-  // 音频加载和播放
+  // 音频加载和播放（含重试机制）
   useEffect(() => {
     const audio = audioRef.current
     if (!audio || !audioUrl) return
@@ -29,12 +29,27 @@ export function ReadingPanel({ hintText, audioUrl, intervalSec: _intervalSec, is
     audio.currentTime = 0
     audio.src = audioUrl
     audio.load()
-    const play = () => audio.play().catch(() => setAudioError(true))
+
+    let retryCount = 0
+    let retryTimer: ReturnType<typeof setTimeout>
+
+    const tryPlay = () => {
+      audio.play().catch(() => {
+        retryCount++
+        if (retryCount < 3) {
+          retryTimer = setTimeout(tryPlay, 1000)
+        } else {
+          setAudioError(true)
+        }
+      })
+    }
+
     const ended = () => onAudioEnded?.()
-    audio.addEventListener('canplaythrough', play, { once: true })
+    audio.addEventListener('canplaythrough', tryPlay, { once: true })
     audio.addEventListener('ended', ended)
     return () => {
-      audio.removeEventListener('canplaythrough', play)
+      clearTimeout(retryTimer)
+      audio.removeEventListener('canplaythrough', tryPlay)
       audio.removeEventListener('ended', ended)
       audio.pause()
     }

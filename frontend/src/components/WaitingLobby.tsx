@@ -8,6 +8,7 @@ interface WaitingLobbyProps {
   players: RoomPlayer[]
   currentUserId: number
   onRoleChange?: (isSpectator: boolean) => void
+  preloadProgress?: { loaded: number; total: number } | null
 }
 
 interface Particle {
@@ -79,7 +80,7 @@ function useAmbientParticles(canvasRef: RefObject<HTMLCanvasElement>) {
   }, [canvasRef])
 }
 
-export function WaitingLobby({ room, players, currentUserId, onRoleChange }: WaitingLobbyProps) {
+export function WaitingLobby({ room, players, currentUserId, onRoleChange, preloadProgress }: WaitingLobbyProps) {
   const [copied, setCopied] = useState(false)
   const [starting, setStarting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -89,6 +90,11 @@ export function WaitingLobby({ room, players, currentUserId, onRoleChange }: Wai
   useAmbientParticles(canvasRef)
 
   const isHost = room.host_id === currentUserId
+
+  const preloadPercent = preloadProgress
+    ? Math.round((preloadProgress.loaded / preloadProgress.total) * 100)
+    : 0
+  const preloadDone = preloadProgress && preloadProgress.loaded >= preloadProgress.total
 
   const toggleSpectate = async () => {
     setTogglingRole(true)
@@ -110,6 +116,20 @@ export function WaitingLobby({ room, players, currentUserId, onRoleChange }: Wai
   const handleStart = async () => {
     setStarting(true)
     setError(null)
+
+    // 解锁音频：满足浏览器自动播放策略
+    try {
+      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)()
+      if (ctx.state === 'suspended') await ctx.resume()
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      gain.gain.value = 0.01
+      osc.connect(gain)
+      gain.connect(ctx.destination)
+      osc.start(0)
+      osc.stop(0.05)
+    } catch { /* ignore */ }
+
     try {
       await api.rooms.start(room.id)
       // 不直接切换 UI，等待 WS room_state 事件（status=reading）触发切换
@@ -208,6 +228,34 @@ export function WaitingLobby({ room, players, currentUserId, onRoleChange }: Wai
             ))}
           </div>
         </div>
+
+        {/* 预加载进度条 */}
+        {preloadProgress && !preloadDone && (
+          <div className="w-full">
+            <div className="flex items-center justify-between text-xs text-muted mb-1.5">
+              <span>🎵 加载牌组资源中…</span>
+              <span>{preloadProgress.loaded} / {preloadProgress.total}</span>
+            </div>
+            <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
+              <motion.div
+                className="h-full rounded-full"
+                style={{ background: 'linear-gradient(90deg, #e8a4b8, #c9a84c)' }}
+                initial={{ width: 0 }}
+                animate={{ width: `${preloadPercent}%` }}
+                transition={{ duration: 0.3, ease: 'easeOut' }}
+              />
+            </div>
+          </div>
+        )}
+        {preloadDone && (
+          <motion.p
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-xs text-green-400/70 tracking-widest"
+          >
+            ✓ 全资源加载完成，可以开战了！(ﾉ◕ヮ◕)ﾉ
+          </motion.p>
+        )}
 
         {/* Error */}
         {error && (

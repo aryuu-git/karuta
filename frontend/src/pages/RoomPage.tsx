@@ -128,6 +128,8 @@ export function RoomPage() {
   const intervalTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const [isJudgeWaiting, setIsJudgeWaiting] = useState(false)
   const [isSpectator, setIsSpectator] = useState(false)
+  const [preloadProgress, setPreloadProgress] = useState<{ loaded: number; total: number } | null>(null)
+  const preloadStartedRef = useRef(false)
 
   // 聊天室
   interface ChatMsg { id: number; user_id: number; username: string; role: string; text: string; isEgg?: boolean; fromName?: string; targetName?: string }
@@ -221,6 +223,43 @@ export function RoomPage() {
       .catch((e) => setError(e instanceof Error ? e.message : '加载失败'))
       .finally(() => setLoading(false))
   }, [roomId])
+
+  // 等待大厅阶段预加载所有封面图和音频
+  useEffect(() => {
+    if (!cards.length || gameStatus !== 'waiting' || preloadStartedRef.current) return
+    preloadStartedRef.current = true
+
+    const items: { type: 'image' | 'audio'; url: string }[] = []
+    cards.forEach(card => {
+      if (card.cover_url) items.push({ type: 'image', url: card.cover_url })
+      if (card.audio_url) items.push({ type: 'audio', url: card.audio_url })
+    })
+    if (!items.length) return
+
+    setPreloadProgress({ loaded: 0, total: items.length })
+
+    let loaded = 0
+    const tick = () => {
+      loaded++
+      setPreloadProgress({ loaded, total: items.length })
+    }
+
+    items.forEach(item => {
+      if (item.type === 'image') {
+        const img = new Image()
+        img.onload = tick
+        img.onerror = tick
+        img.src = item.url
+      } else {
+        const audio = new Audio()
+        audio.addEventListener('canplaythrough', tick, { once: true })
+        audio.addEventListener('error', tick, { once: true })
+        audio.preload = 'auto'
+        audio.src = item.url
+        audio.load()
+      }
+    })
+  }, [cards, gameStatus])
 
   const handleEvent = useCallback((event: WSEvent) => {
     switch (event.type) {
@@ -557,6 +596,7 @@ export function RoomPage() {
           players={players}
           currentUserId={user?.id ?? 0}
           onRoleChange={setIsSpectator}
+          preloadProgress={preloadProgress}
         />
         <ChatRoom messages={chatMessages} players={players} currentUserId={user?.id ?? 0}
           isSpectator={isSpectator} onSend={handleChatSend} onEgg={handleEgg} />
