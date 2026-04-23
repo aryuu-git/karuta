@@ -1,0 +1,36 @@
+# 编译产物
+*.exe
+*.exe~
+
+# 运行时数据库
+*.db
+*.db-shm
+*.db-wal
+
+# 前端构建输出
+frontend/dist/
+
+# npm 依赖
+frontend/node_modules/
+
+# 用户上传文件
+frontend/uploads/
+
+# Claude Code 本地配置
+.claude/
+
+# 环境变量 / 密钥
+.env
+.env.local
+.env.*
+
+# IDE 配置
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# 系统文件
+.DS_Store
+Thumbs.db
