@@ -99,6 +99,7 @@ func main() {
 	// Static file serving for uploads
 	uploadsFS := http.StripPrefix("/uploads/", http.FileServer(http.Dir(cfg.UploadDir)))
 	r.Get("/uploads/*", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
 		uploadsFS.ServeHTTP(w, r)
 	})
 
