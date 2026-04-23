@@ -301,9 +301,9 @@ func (h *RoomHandler) GetRoom(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// 游戏进行中返回牌组（供刷新页面的玩家初始化棋盘）
+	// 返回牌组（供刷新页面恢复棋盘、等待大厅预加载等）
 	var cardList interface{}
-	if room.Status == "reading" || room.Status == "paused" {
+	{
 		cards, err := h.store.Cards.ListByDeck(room.DeckID)
 		if err == nil {
 			list := make([]map[string]interface{}, 0, len(cards))
