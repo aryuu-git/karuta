@@ -230,11 +230,15 @@ export function WaitingLobby({ room, players, currentUserId, onRoleChange, prelo
         </div>
 
         {/* 预加载进度条 */}
-        {preloadProgress && !preloadDone && (
+        {preloadProgress && (
           <div className="w-full">
-            <div className="flex items-center justify-between text-xs text-muted mb-1.5">
-              <span>🎵 加载牌组资源中…</span>
-              <span>{preloadProgress.loaded} / {preloadProgress.total}</span>
+            <div className="flex items-center justify-between text-xs mb-1.5">
+              {preloadDone ? (
+                <span className="text-green-400/70 tracking-widest">✓ 全资源加载完成，可以开战了！(ﾉ◕ヮ◕)ﾉ</span>
+              ) : (
+                <span className="text-muted">🎵 加载牌组资源中…</span>
+              )}
+              <span className="text-muted">{preloadProgress.loaded} / {preloadProgress.total}</span>
             </div>
             <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
               <motion.div
@@ -246,15 +250,6 @@ export function WaitingLobby({ room, players, currentUserId, onRoleChange, prelo
               />
             </div>
           </div>
-        )}
-        {preloadDone && (
-          <motion.p
-            initial={{ opacity: 0, y: -4 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-xs text-green-400/70 tracking-widest"
-          >
-            ✓ 全资源加载完成，可以开战了！(ﾉ◕ヮ◕)ﾉ
-          </motion.p>
         )}
 
         {/* Error */}
