@@ -34,3 +34,6 @@ frontend/uploads/
 # 系统文件
 .DS_Store
 Thumbs.db
+
+# 本地服务器目录
+karuta-server/
