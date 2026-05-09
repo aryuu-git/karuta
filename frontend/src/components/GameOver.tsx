@@ -190,7 +190,7 @@ export function GameOver({ results, currentUserId, lastCardWinnerId }: GameOverP
         className="relative z-10 bg-ink-deep/95 border border-gold/30 rounded-2xl p-6 sm:p-8 max-w-lg w-full mx-4 shadow-gold-lg overflow-y-auto"
         style={{
           maxHeight: '90vh',
-          boxShadow: '0 0 60px rgba(232,164,184,0.2), 0 20px 40px rgba(0,0,0,0.6)',
+          boxShadow: '0 0 60px rgba(var(--accent-primary),0.2), 0 20px 40px rgba(0,0,0,0.6)',
         }}
       >
         {/* Title */}
@@ -200,10 +200,15 @@ export function GameOver({ results, currentUserId, lastCardWinnerId }: GameOverP
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4, duration: 0.5 }}
             className="font-serif text-4xl sm:text-5xl font-bold text-gold-shimmer mb-2"
+            style={{ textShadow: '0 0 40px rgba(var(--accent-primary),0.4)' }}
           >
-            🌸 对局结束！精彩绝伦！
+            🌸 战局终焉！华丽落幕！
           </motion.h1>
-          <p className="text-muted text-sm mb-3">大家都拼尽全力了！(*´▽`*) 辛苦啦～</p>
+          <motion.p
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }}
+            className="text-pink-300/50 text-sm mb-3 font-serif italic">
+            群雄争锋已毕，英姿永铭于此 ✧ (*´▽`*)
+          </motion.p>
           <div className="h-px bg-gradient-to-r from-transparent via-gold/50 to-transparent" />
         </div>
 
@@ -243,7 +248,7 @@ export function GameOver({ results, currentUserId, lastCardWinnerId }: GameOverP
                       initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }}
                       transition={{ delay: 0.8 + ti * 0.1 }}
                       className="inline-block text-xs mr-1 px-1.5 py-0.5 rounded-full font-sans font-normal mt-0.5"
-                      style={{ background: 'rgba(232,164,184,0.12)', border: '1px solid rgba(232,164,184,0.25)', color: '#e8a4b8' }}>
+                      style={{ background: 'rgba(var(--accent-primary),0.12)', border: '1px solid rgba(var(--accent-primary),0.25)', color: 'var(--color-gold)' }}>
                       {title}
                     </motion.span>
                   ))}
@@ -285,7 +290,7 @@ export function GameOver({ results, currentUserId, lastCardWinnerId }: GameOverP
                     animate={{ scale: 1, opacity: 1 }}
                     transition={{ delay: 0.9 + myCards.indexOf(card) * 0.05, ease: 'backOut' }}
                     className="relative rounded-lg overflow-hidden"
-                    style={{ aspectRatio: '3/4', background: '#3d1525', border: '1px solid rgba(232,164,184,0.2)' }}
+                    style={{ aspectRatio: '3/4', background: 'var(--color-surface)', border: '1px solid rgba(var(--accent-primary),0.2)' }}
                     title={card.display_text || card.hint_text || ''}
                   >
                     {card.cover_url ? (
@@ -297,7 +302,7 @@ export function GameOver({ results, currentUserId, lastCardWinnerId }: GameOverP
                     )}
                     {(card.display_text || card.hint_text) && (
                       <div className="absolute bottom-0 left-0 right-0 px-1 py-0.5 text-center"
-                        style={{ background: 'linear-gradient(to top, rgba(20,5,15,0.95), transparent)' }}>
+                        style={{ background: 'linear-gradient(to top, rgba(var(--accent-bg-mid),0.95), transparent)' }}>
                         <p className="text-white/70 leading-tight" style={{ fontSize: '0.45rem' }}>
                           {card.display_text !== '—' ? card.display_text : card.hint_text}
                         </p>
@@ -319,15 +324,15 @@ export function GameOver({ results, currentUserId, lastCardWinnerId }: GameOverP
         >
           <button
             onClick={() => navigate('/rooms/new')}
-            className="btn-gold flex-1 text-center transition-all duration-200 hover:scale-[1.03]"
+            className="btn-gold flex-1 text-center transition-all duration-200 hover:scale-[1.03] shadow-lg shadow-gold/20 font-serif"
           >
-            再战一次！ヽ(°〇°)ﾉ
+            「再战一次！」ヽ(°〇°)ﾉ
           </button>
           <button
             onClick={() => navigate('/')}
             className="btn-outline flex-1 text-center transition-all duration-200 hover:scale-[1.03]"
           >
-            回家休息一下 (－ω－ ) zzZ
+            凯旋归营 (－ω－ ) zzZ
           </button>
         </motion.div>
       </motion.div>

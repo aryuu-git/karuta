@@ -55,7 +55,7 @@ export function EggAnimation({ event }: EggAnimationProps) {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
               className="text-center px-6 py-3 rounded-2xl"
-              style={{ background: 'rgba(20,5,15,0.9)', border: '1px solid rgba(255,165,0,0.4)' }}
+              style={{ background: 'rgba(var(--accent-bg-mid),0.9)', border: '1px solid rgba(255,165,0,0.4)' }}
             >
               {event.isMe ? (
                 <p className="text-base font-serif" style={{ color: 'rgba(255,200,100,0.95)' }}>

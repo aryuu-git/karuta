@@ -3,96 +3,153 @@ package ws
 import (
 	"encoding/json"
 	"math/rand"
-	"path/filepath"
 	"sync"
 	"time"
 
+	"karuta/internal/mask"
 	"karuta/internal/model"
+	"karuta/internal/storage"
 	"karuta/internal/store"
 )
 
+// PlayItem represents a single round in the game (one audio to play).
+type PlayItem struct {
+	Index       int
+	CardID      int64
+	AudioPath   string
+	HintText    string
+	CardAudioID int64
+}
+
+type judgePlayRequest struct {
+	CardID      int64
+	CardAudioID int64
+}
+
 // GameSession manages the lifecycle of a single karuta game.
 type GameSession struct {
-	hub            *RoomHub
-	room           *model.Room
-	cards          []*model.Card // shuffled order (auto) or original order (judge)
-	currentIdx     int
-	grabbedCards   map[int64]int64    // card_id -> winner_user_id
-	grabWindow     map[int64]time.Time // card_id -> window open time
-	wrongUsers     map[int64]bool     // 本首抢错过的用户，禁止继续抢
-	penaltyCount   map[int64]int      // 全局抢错次数统计
-	lastCardWinner int64              // 最后一张牌的抢牌者
-	cardGrabbedCh  chan struct{}       // 抢到牌时发信号，提前结束 waitInterval
-	audioEndedCh   chan struct{}       // 客户端报告音频播放完毕
-	skipCh         chan struct{}       // 房主跳过当前牌
-	mu             sync.Mutex
-	paused         bool
-	pauseCh        chan struct{}
-	resumeCh       chan struct{}
-	stopCh         chan struct{}
-	store          *store.Store
+	hub  *RoomHub
+	room *model.Room
+
+	cards              []*model.Card
+	playItems          []*PlayItem
+	currentIdx         int
+	cardRemainingCount map[int64]int
+	roundResults       map[int]int64
+
+	grabWindow   map[int]time.Time
+	wrongUsers   map[int64]bool
+	penaltyCount map[int64]int
+	lastCardWinner int64
+
+	cardGrabbedCh chan struct{}
+	audioEndedCh  chan struct{}
+	skipCh        chan struct{}
+	mu            sync.Mutex
+	paused        bool
+	pauseCh       chan struct{}
+	resumeCh      chan struct{}
+	stopCh        chan struct{}
+	store         *store.Store
 
 	// judge mode
-	judgeMode       bool
-	judgeUserID     int64        // 裁判的 userID（裁判不能抢牌）
-	judgePlayCh     chan int64   // 裁判选牌信号
-	judgeEndCh      chan struct{} // 裁判结束游戏
-	judgeOfflineCh  chan struct{} // 裁判断线信号
+	judgeMode      bool
+	judgeUserID    int64
+	judgePlayCh    chan judgePlayRequest
+	judgeEndCh     chan struct{}
+	judgeOfflineCh chan struct{}
+}
+
+func expandToPlayItems(cards []*model.Card) []*PlayItem {
+	var items []*PlayItem
+	for _, card := range cards {
+		if len(card.Audios) > 0 {
+			for _, audio := range card.Audios {
+				items = append(items, &PlayItem{
+					CardID:      card.ID,
+					AudioPath:   audio.AudioPath,
+					HintText:    audio.HintText,
+					CardAudioID: audio.ID,
+				})
+			}
+		} else if card.AudioPath != "" {
+			items = append(items, &PlayItem{
+				CardID:    card.ID,
+				AudioPath: card.AudioPath,
+				HintText:  card.HintText,
+			})
+		}
+	}
+	return items
 }
 
 func newGameSession(hub *RoomHub, room *model.Room, cards []*model.Card, s *store.Store) *GameSession {
 	isJudge := room.Mode == "judge"
 
-	var orderedCards []*model.Card
-	if isJudge {
-		// 裁判模式保持原始顺序，不打乱
-		orderedCards = make([]*model.Card, len(cards))
-		copy(orderedCards, cards)
-	} else {
-		shuffled := make([]*model.Card, len(cards))
-		copy(shuffled, cards)
-		rand.Shuffle(len(shuffled), func(i, j int) {
-			shuffled[i], shuffled[j] = shuffled[j], shuffled[i]
+	// Load audios for each card and filter out cards with no audio
+	validCards := make([]*model.Card, 0, len(cards))
+	for _, card := range cards {
+		card.Audios = s.CardAudios.GetAudiosForCard(card)
+		card.AudioCount = len(card.Audios)
+		if card.AudioCount == 0 && card.AudioPath != "" {
+			card.AudioCount = 1
+		}
+		if card.AudioCount > 0 {
+			validCards = append(validCards, card)
+		}
+	}
+	cards = validCards
+
+	playItems := expandToPlayItems(cards)
+
+	if !isJudge {
+		rand.Shuffle(len(playItems), func(i, j int) {
+			playItems[i], playItems[j] = playItems[j], playItems[i]
 		})
-		orderedCards = shuffled
+	}
+	for i := range playItems {
+		playItems[i].Index = i
+	}
+
+	remaining := make(map[int64]int)
+	for _, card := range cards {
+		remaining[card.ID] = card.AudioCount
 	}
 
 	gs := &GameSession{
-		hub:           hub,
-		room:          room,
-		cards:         orderedCards,
-		grabbedCards:  make(map[int64]int64),
-		grabWindow:    make(map[int64]time.Time),
-		wrongUsers:    make(map[int64]bool),
-		penaltyCount:  make(map[int64]int),
-		cardGrabbedCh: make(chan struct{}, 1),
-		skipCh:        make(chan struct{}, 1),
-		audioEndedCh:  make(chan struct{}, 1),
-		pauseCh:       make(chan struct{}, 8),
-		resumeCh:      make(chan struct{}, 8),
-		stopCh:        make(chan struct{}),
-		store:         s,
-		judgeMode:     isJudge,
-		judgeUserID:   room.HostID, // 裁判模式下房主是裁判
+		hub:                hub,
+		room:               room,
+		cards:              cards,
+		playItems:          playItems,
+		cardRemainingCount: remaining,
+		roundResults:       make(map[int]int64),
+		grabWindow:         make(map[int]time.Time),
+		wrongUsers:         make(map[int64]bool),
+		penaltyCount:       make(map[int64]int),
+		cardGrabbedCh:      make(chan struct{}, 1),
+		skipCh:             make(chan struct{}, 1),
+		audioEndedCh:       make(chan struct{}, 1),
+		pauseCh:            make(chan struct{}, 8),
+		resumeCh:           make(chan struct{}, 8),
+		stopCh:             make(chan struct{}),
+		store:              s,
+		judgeMode:          isJudge,
+		judgeUserID:        room.HostID,
 	}
 	if isJudge {
-		gs.judgePlayCh = make(chan int64, 1)
+		gs.judgePlayCh = make(chan judgePlayRequest, 1)
 		gs.judgeEndCh = make(chan struct{}, 1)
 		gs.judgeOfflineCh = make(chan struct{}, 1)
 	}
 	return gs
 }
 
-// wsEvent is the standard outgoing WebSocket event envelope.
 type wsEvent struct {
 	Type string      `json:"type"`
 	Data interface{} `json:"data"`
 }
 
-// Run is the main game loop. It iterates over the shuffled cards and
-// manages timing, grab windows, scoring, and final persistence.
 func (gs *GameSession) Run() {
-	// 1. 游戏开始时广播全量 room_state，让所有客户端切换到游戏界面
 	gs.broadcastRoomState()
 
 	if gs.judgeMode {
@@ -102,9 +159,7 @@ func (gs *GameSession) Run() {
 	}
 }
 
-// runAutoMode is the original auto-play loop.
 func (gs *GameSession) runAutoMode() {
-	// 广播倒计时 3,2,1
 	for i := 3; i >= 1; i-- {
 		gs.hub.BroadcastJSON(map[string]interface{}{
 			"type":  "countdown",
@@ -117,16 +172,14 @@ func (gs *GameSession) runAutoMode() {
 		"count": 0,
 	})
 
-	for gs.currentIdx < len(gs.cards) {
-		card := gs.cards[gs.currentIdx]
+	for gs.currentIdx < len(gs.playItems) {
+		item := gs.playItems[gs.currentIdx]
 
-		// 每首开始前 drain 掉残余的 pause/resume 信号，防止旧信号污染新一首
 		for len(gs.pauseCh) > 0 { <-gs.pauseCh }
 		for len(gs.resumeCh) > 0 { <-gs.resumeCh }
 		for len(gs.audioEndedCh) > 0 { <-gs.audioEndedCh }
 		for len(gs.cardGrabbedCh) > 0 { <-gs.cardGrabbedCh }
 
-		// 如果当前是暂停状态，等 resume 后再开始本首
 		gs.mu.Lock()
 		paused := gs.paused
 		gs.mu.Unlock()
@@ -141,30 +194,33 @@ func (gs *GameSession) runAutoMode() {
 			}
 		}
 
-		// Open grab window
 		gs.mu.Lock()
-		gs.grabWindow[card.ID] = time.Now()
-		gs.mu.Unlock()
-
-		// 每首新牌开始，重置抢错记录
-		gs.mu.Lock()
+		gs.grabWindow[item.Index] = time.Now()
 		gs.wrongUsers = make(map[int64]bool)
 		gs.mu.Unlock()
 
-		isLast := gs.currentIdx == len(gs.cards)-1
+		isLast := gs.currentIdx == len(gs.playItems)-1
 
-		// Broadcast card_start — 扁平结构，与前端 WSEvent 匹配
-		gs.hub.BroadcastJSON(map[string]interface{}{
-			"type":      "card_start",
-			"card_id":   card.ID,
-			"audio_url": audioURL(card),
-			"hint_text": card.HintText,
-			"index":     gs.currentIdx + 1,
-			"total":     len(gs.cards),
-			"is_last":   isLast,
-		})
+		cardStartMsg := map[string]interface{}{
+			"type":           "card_start",
+			"card_id":        item.CardID,
+			"card_audio_id":  item.CardAudioID,
+			"audio_url":      audioURLFromPath(item.AudioPath),
+			"hint_text":      item.HintText,
+			"index":          gs.currentIdx + 1,
+			"total":          len(gs.playItems),
+			"is_last":        isLast,
+		}
+		if gs.room.RandomStart {
+			rng := rand.New(rand.NewSource(gs.room.MaskSeed ^ item.CardAudioID ^ int64(gs.currentIdx)))
+			maxPct := gs.room.RandomStartMax
+			if maxPct <= 0 || maxPct > 80 {
+				maxPct = 50
+			}
+			cardStartMsg["start_ratio"] = float64(rng.Intn(maxPct)) / 100.0
+		}
+		gs.hub.BroadcastJSON(cardStartMsg)
 
-		// 最后一张：等音频播完后立即结束，不等结算间隔
 		if isLast {
 			if !gs.waitAudioOnly() {
 				return
@@ -173,19 +229,32 @@ func (gs *GameSession) runAutoMode() {
 			return
 		}
 
-		// Close grab window
 		gs.mu.Lock()
-		delete(gs.grabWindow, card.ID)
-		_, grabbed := gs.grabbedCards[card.ID]
+		delete(gs.grabWindow, item.Index)
+		_, grabbed := gs.roundResults[item.Index]
 		gs.mu.Unlock()
 
 		if !grabbed {
+			gs.mu.Lock()
+			gs.cardRemainingCount[item.CardID]--
+			remaining := gs.cardRemainingCount[item.CardID]
+			gs.mu.Unlock()
+
 			gs.hub.BroadcastJSON(map[string]interface{}{
-				"type":    "card_missed",
-				"card_id": card.ID,
+				"type":      "card_missed",
+				"card_id":   item.CardID,
+				"remaining": remaining,
 			})
+
+			if remaining <= 0 {
+				gs.hub.BroadcastJSON(map[string]interface{}{
+					"type":    "card_exhausted",
+					"card_id": item.CardID,
+				})
+			}
+
 			now := time.Now()
-			_ = gs.store.GameRecords.InsertRecord(gs.room.ID, card.ID, nil, now)
+			_ = gs.store.GameRecords.InsertRecord(gs.room.ID, item.CardID, nil, now)
 		}
 
 		gs.currentIdx++
@@ -194,108 +263,150 @@ func (gs *GameSession) runAutoMode() {
 	gs.broadcastGameOver()
 }
 
-// runJudgeMode is the judge-driven loop: wait for judge to choose each card.
 func (gs *GameSession) runJudgeMode() {
-	played := make(map[int64]bool)
+	playedCount := 0
 
 	for {
-		// 通知裁判可以选牌
 		gs.hub.BroadcastJSON(map[string]interface{}{
 			"type":         "judge_waiting",
-			"played_count": len(played),
-			"total_count":  len(gs.cards),
+			"played_count": playedCount,
+			"total_count":  len(gs.playItems),
 		})
 
-		// 等待裁判选牌、结束或停止
-		var cardID int64
+		var req judgePlayRequest
 		select {
 		case <-gs.stopCh:
 			return
 		case <-gs.judgeEndCh:
 			goto gameOver
 		case <-gs.judgeOfflineCh:
-			// 裁判断线，广播提示，等待重连（最多 60s）
 			gs.hub.BroadcastJSON(map[string]interface{}{
 				"type":    "judge_offline",
 				"timeout": 60,
 			})
 			reconnected := false
 			reconnectTimer := time.NewTimer(60 * time.Second)
-			waitLoop:
+		waitLoop:
 			for {
 				select {
 				case <-gs.stopCh:
 					reconnectTimer.Stop()
 					return
-				case cardID = <-gs.judgePlayCh:
-					// 裁判重连并选了牌
+				case req = <-gs.judgePlayCh:
 					reconnectTimer.Stop()
 					reconnected = true
 					break waitLoop
 				case <-reconnectTimer.C:
-					// 超时，结束游戏
 					gs.hub.BroadcastJSON(map[string]interface{}{
 						"type": "judge_timeout",
 					})
-					break waitLoop
+					goto gameOver
 				}
 			}
 			if !reconnected {
 				goto gameOver
 			}
-		case cardID = <-gs.judgePlayCh:
+		case req = <-gs.judgePlayCh:
 		}
 
-		// 找到这张牌
-		var card *model.Card
-		for _, c := range gs.cards {
-			if c.ID == cardID {
-				card = c
-				break
+		playedCount++
+
+		// find the PlayItem: prefer exact match by CardAudioID, fallback to first unplayed of this card
+		var item *PlayItem
+		if req.CardAudioID > 0 {
+			for _, pi := range gs.playItems {
+				if pi.CardAudioID == req.CardAudioID {
+					if _, done := gs.roundResults[pi.Index]; !done {
+						item = pi
+						break
+					}
+				}
 			}
 		}
-		if card == nil {
-			// 无效卡片，继续等待
+		if item == nil {
+			for _, pi := range gs.playItems {
+				if pi.CardID == req.CardID {
+					if _, done := gs.roundResults[pi.Index]; !done {
+						item = pi
+						break
+					}
+				}
+			}
+		}
+		if item == nil {
 			continue
 		}
-		played[cardID] = true
 
-		// 每首新牌开始，重置抢错记录
 		gs.mu.Lock()
+		gs.currentIdx = item.Index
+		gs.grabWindow[item.Index] = time.Now()
 		gs.wrongUsers = make(map[int64]bool)
-		gs.grabWindow[card.ID] = time.Now()
 		gs.mu.Unlock()
 
-		// 广播 card_start
-		gs.hub.BroadcastJSON(map[string]interface{}{
-			"type":      "card_start",
-			"card_id":   card.ID,
-			"audio_url": audioURL(card),
-			"hint_text": card.HintText,
-		})
+		judgeCardStart := map[string]interface{}{
+			"type":           "card_start",
+			"card_id":        item.CardID,
+			"card_audio_id":  item.CardAudioID,
+			"audio_url":      audioURLFromPath(item.AudioPath),
+			"hint_text":      item.HintText,
+			"index":          playedCount,
+			"total":          len(gs.playItems),
+			"is_last":        playedCount >= len(gs.playItems),
+		}
+		if gs.room.RandomStart {
+			rng := rand.New(rand.NewSource(gs.room.MaskSeed ^ item.CardAudioID ^ int64(playedCount)))
+			maxPct := gs.room.RandomStartMax
+			if maxPct <= 0 || maxPct > 80 {
+				maxPct = 50
+			}
+			judgeCardStart["start_ratio"] = float64(rng.Intn(maxPct)) / 100.0
+		}
+		gs.hub.BroadcastJSON(judgeCardStart)
 
-		// 等待玩家抢牌或音频结束
 		if !gs.waitInterval() {
 			return
 		}
 
-		// 关闭抢牌窗口
 		gs.mu.Lock()
-		delete(gs.grabWindow, card.ID)
-		_, grabbed := gs.grabbedCards[card.ID]
+		delete(gs.grabWindow, item.Index)
+		_, grabbed := gs.roundResults[item.Index]
 		gs.mu.Unlock()
 
 		if !grabbed {
+			gs.mu.Lock()
+			gs.cardRemainingCount[item.CardID]--
+			remaining := gs.cardRemainingCount[item.CardID]
+			gs.mu.Unlock()
+
 			gs.hub.BroadcastJSON(map[string]interface{}{
-				"type":    "card_missed",
-				"card_id": card.ID,
+				"type":      "card_missed",
+				"card_id":   item.CardID,
+				"remaining": remaining,
 			})
-			_ = gs.store.GameRecords.InsertRecord(gs.room.ID, card.ID, nil, time.Now())
+			if remaining <= 0 {
+				gs.hub.BroadcastJSON(map[string]interface{}{
+					"type":    "card_exhausted",
+					"card_id": item.CardID,
+				})
+			}
+			_ = gs.store.GameRecords.InsertRecord(gs.room.ID, item.CardID, nil, time.Now())
 		}
 
-		// 如果所有牌都播完了，自动结束
-		if len(played) >= len(gs.cards) {
-			goto gameOver
+		allPlayed := true
+		for _, pi := range gs.playItems {
+			if _, done := gs.roundResults[pi.Index]; !done {
+				// check if this card's remaining > 0 (it could be missed but remaining consumed)
+				gs.mu.Lock()
+				r := gs.cardRemainingCount[pi.CardID]
+				gs.mu.Unlock()
+				if r > 0 {
+					allPlayed = false
+					break
+				}
+			}
+		}
+		if allPlayed {
+			break
 		}
 	}
 
@@ -303,12 +414,10 @@ gameOver:
 	gs.broadcastGameOver()
 }
 
-// broadcastGameOver persists end status and broadcasts the final scoreboard.
 func (gs *GameSession) broadcastGameOver() {
 	_ = gs.store.Rooms.UpdateStatus(gs.room.ID, "end")
 
 	players, _ := gs.store.Rooms.ListPlayers(gs.room.ID)
-	// 裁判模式下，裁判不参与排名
 	scoringPlayers := players
 	if gs.judgeMode {
 		filtered := make([]*model.RoomPlayer, 0, len(players))
@@ -319,31 +428,29 @@ func (gs *GameSession) broadcastGameOver() {
 		}
 		scoringPlayers = filtered
 	}
-	// 按得分排序
 	for i := 1; i < len(scoringPlayers); i++ {
 		for j := i; j > 0 && scoringPlayers[j].Score > scoringPlayers[j-1].Score; j-- {
 			scoringPlayers[j], scoringPlayers[j-1] = scoringPlayers[j-1], scoringPlayers[j]
 		}
 	}
-	// 构建每人抢到的牌列表
+
+	// Build grabbed cards per user (each round = one entry, same cover can appear multiple times)
 	userCards := make(map[int64][]map[string]interface{})
 	gs.mu.Lock()
-	for cardID, winnerID := range gs.grabbedCards {
+	for idx, winnerID := range gs.roundResults {
+		item := gs.playItems[idx]
 		for _, c := range gs.cards {
-			if c.ID == cardID {
+			if c.ID == item.CardID {
 				userCards[winnerID] = append(userCards[winnerID], map[string]interface{}{
 					"id":           c.ID,
 					"display_text": c.DisplayText,
 					"cover_url":    coverURL(c),
-					"hint_text":    c.HintText,
+					"hint_text":    item.HintText,
 				})
 				break
 			}
 		}
 	}
-	gs.mu.Unlock()
-
-	gs.mu.Lock()
 	penaltyCount := gs.penaltyCount
 	lastCardWinner := gs.lastCardWinner
 	gs.mu.Unlock()
@@ -360,28 +467,26 @@ func (gs *GameSession) broadcastGameOver() {
 		})
 	}
 	gs.hub.BroadcastJSON(map[string]interface{}{
-		"type":                  "game_over",
-		"results":               results,
-		"last_card_winner_id":   lastCardWinner,
+		"type":                "game_over",
+		"results":            results,
+		"last_card_winner_id": lastCardWinner,
 	})
 
-	// 等待客户端收到 game_over 再清理
 	time.Sleep(4 * time.Second)
 	gs.hub.Stop()
 }
 
-// SendRoomStateToClient 向单个新连接客户端发送当前游戏状态
 func (gs *GameSession) SendRoomStateToClient(client *Client) {
 	cardList := gs.buildCardList()
 	players, _ := gs.store.Rooms.ListPlayers(gs.room.ID)
 	playerList := gs.buildPlayerList(players)
 
 	gs.mu.Lock()
-	remaining := len(gs.cards) - len(gs.grabbedCards)
-	gs.mu.Unlock()
-
-	gs.mu.Lock()
-	judgeWaiting := gs.judgeMode && len(gs.grabWindow) == 0 && len(gs.grabbedCards) < len(gs.cards)
+	totalRemaining := 0
+	for _, r := range gs.cardRemainingCount {
+		totalRemaining += r
+	}
+	judgeWaiting := gs.judgeMode && len(gs.grabWindow) == 0 && totalRemaining > 0
 	grabbedList := gs.buildGrabbedList()
 	gs.mu.Unlock()
 
@@ -392,7 +497,7 @@ func (gs *GameSession) SendRoomStateToClient(client *Client) {
 			"players":         playerList,
 			"cards":           cardList,
 			"grabbed_cards":   grabbedList,
-			"remaining_count": remaining,
+			"remaining_count": totalRemaining,
 			"judge_waiting":   judgeWaiting,
 		},
 	})
@@ -405,15 +510,15 @@ func (gs *GameSession) SendRoomStateToClient(client *Client) {
 	}
 }
 
-// broadcastRoomState 广播全量房间状态，供新连接或游戏开始时同步
 func (gs *GameSession) broadcastRoomState() {
 	players, _ := gs.store.Rooms.ListPlayers(gs.room.ID)
-	gs.mu.Lock()
-	remaining := len(gs.cards) - len(gs.grabbedCards)
-	judgeWaiting := gs.judgeMode && len(gs.grabWindow) == 0 && len(gs.grabbedCards) < len(gs.cards)
-	gs.mu.Unlock()
 
 	gs.mu.Lock()
+	totalRemaining := 0
+	for _, r := range gs.cardRemainingCount {
+		totalRemaining += r
+	}
+	judgeWaiting := gs.judgeMode && len(gs.grabWindow) == 0 && totalRemaining > 0
 	grabbedList := gs.buildGrabbedList()
 	gs.mu.Unlock()
 
@@ -424,34 +529,35 @@ func (gs *GameSession) broadcastRoomState() {
 			"players":         gs.buildPlayerList(players),
 			"cards":           gs.buildCardList(),
 			"grabbed_cards":   grabbedList,
-			"remaining_count": remaining,
+			"remaining_count": totalRemaining,
 			"judge_waiting":   judgeWaiting,
 		},
 	})
 }
 
-// buildGrabbedList 返回已抢走（或无人抢）的牌列表，需在 mu 锁内调用
 func (gs *GameSession) buildGrabbedList() []map[string]interface{} {
-	if len(gs.grabbedCards) == 0 {
+	if len(gs.roundResults) == 0 {
 		return nil
 	}
-	list := make([]map[string]interface{}, 0, len(gs.grabbedCards))
-	for cardID, winnerID := range gs.grabbedCards {
+	list := make([]map[string]interface{}, 0, len(gs.roundResults))
+	for idx, winnerID := range gs.roundResults {
+		item := gs.playItems[idx]
 		winnerName := ""
 		if u, err := gs.store.Users.GetByID(winnerID); err == nil {
 			winnerName = u.Username
 		}
 		list = append(list, map[string]interface{}{
-			"card_id":     cardID,
+			"card_id":     item.CardID,
 			"winner_id":   winnerID,
 			"winner_name": winnerName,
+			"hint_text":   item.HintText,
 		})
 	}
 	return list
 }
 
 func (gs *GameSession) buildRoomMap() map[string]interface{} {
-	return map[string]interface{}{
+	m := map[string]interface{}{
 		"id":           gs.room.ID,
 		"code":         gs.room.Code,
 		"status":       "reading",
@@ -460,31 +566,66 @@ func (gs *GameSession) buildRoomMap() map[string]interface{} {
 		"deck_id":      gs.room.DeckID,
 		"mode":         gs.room.Mode,
 	}
+	if gs.room.MaskEnabled {
+		m["mask_enabled"] = true
+		m["mask_difficulty"] = gs.room.MaskDifficulty
+	}
+	if gs.room.ShuffleRemaining > 0 {
+		m["shuffle_remaining"] = gs.room.ShuffleRemaining
+	}
+	return m
 }
 
 func (gs *GameSession) buildCardList() []map[string]interface{} {
+	gs.mu.Lock()
+	defer gs.mu.Unlock()
+
+	// 如果开启了遮罩模式，生成 masks
+	var masks map[int64]*mask.CardMask
+	if gs.room.MaskEnabled {
+		cardIDs := make([]int64, len(gs.cards))
+		for i, c := range gs.cards {
+			cardIDs[i] = c.ID
+		}
+		masks = mask.GenerateMasks(gs.room.MaskSeed, cardIDs, gs.room.MaskDifficulty)
+	}
+
 	list := make([]map[string]interface{}, 0, len(gs.cards))
 	for _, c := range gs.cards {
-		list = append(list, map[string]interface{}{
+		item := map[string]interface{}{
 			"id":           c.ID,
 			"display_text": c.DisplayText,
-			"hint_text":    c.HintText,
-			"audio_url":    audioURL(c),
 			"cover_url":    coverURL(c),
-		})
+			"audio_count":  c.AudioCount,
+			"remaining":    gs.cardRemainingCount[c.ID],
+		}
+		// 裁判模式下返回 audios 列表，供裁判选择播放
+		if gs.judgeMode && len(c.Audios) > 0 {
+			audioList := make([]map[string]interface{}, 0, len(c.Audios))
+			for _, a := range c.Audios {
+				audioList = append(audioList, map[string]interface{}{
+					"id":        a.ID,
+					"audio_url": storage.FileURL(a.AudioPath, "audio"),
+					"hint_text": a.HintText,
+				})
+			}
+			item["audios"] = audioList
+		}
+		if masks != nil {
+			item["mask"] = masks[c.ID]
+		}
+		list = append(list, item)
 	}
 	return list
 }
 
 func (gs *GameSession) buildPlayerList(players []*model.RoomPlayer) []map[string]interface{} {
-	// 获取当前在线用户集合
 	onlineSet := make(map[int64]bool)
 	for _, id := range gs.hub.OnlineUserIDs() {
 		onlineSet[id] = true
 	}
 	list := make([]map[string]interface{}, 0, len(players))
 	for _, p := range players {
-		// 裁判模式下，裁判不出现在分数榜
 		if gs.judgeMode && p.UserID == gs.judgeUserID {
 			continue
 		}
@@ -499,7 +640,6 @@ func (gs *GameSession) buildPlayerList(players []*model.RoomPlayer) []map[string
 	return list
 }
 
-// NotifyAudioEnded is called when a client reports the audio has finished playing.
 func (gs *GameSession) NotifyAudioEnded() {
 	select {
 	case gs.audioEndedCh <- struct{}{}:
@@ -507,9 +647,8 @@ func (gs *GameSession) NotifyAudioEnded() {
 	}
 }
 
-// waitAudioOnly 只等音频播完（或被抢），不等结算间隔，用于最后一张牌
 func (gs *GameSession) waitAudioOnly() bool {
-	maxWait := time.Duration(gs.room.IntervalSec)*time.Second*10
+	maxWait := time.Duration(gs.room.IntervalSec) * time.Second * 10
 	if maxWait < 60*time.Second {
 		maxWait = 60 * time.Second
 	}
@@ -520,7 +659,6 @@ func (gs *GameSession) waitAudioOnly() bool {
 		case <-gs.stopCh:
 			return false
 		case <-gs.cardGrabbedCh:
-			// 被抢走，短暂等待让前端动画播完再结束
 			select {
 			case <-gs.stopCh:
 				return false
@@ -528,7 +666,6 @@ func (gs *GameSession) waitAudioOnly() bool {
 			}
 			return true
 		case <-gs.audioEndedCh:
-			// 音频播完，短暂等待后结束
 			select {
 			case <-gs.stopCh:
 				return false
@@ -536,7 +673,6 @@ func (gs *GameSession) waitAudioOnly() bool {
 			}
 			return true
 		case <-gs.skipCh:
-			// 房主跳过，立即结束
 			return true
 		case <-maxTimer.C:
 			return true
@@ -548,36 +684,21 @@ func (gs *GameSession) waitAudioOnly() bool {
 					return false
 				case <-gs.resumeCh:
 					maxTimer = time.NewTimer(maxWait)
-					goto continueAudio
+					goto continueAudioOnly
 				}
 			}
-		continueAudio:
+		continueAudioOnly:
 		}
 	}
 }
 
-// waitFixed waits for a fixed duration, interruptible by stop only.
-func (gs *GameSession) waitFixed(dur time.Duration) bool {
-	select {
-	case <-gs.stopCh:
-		return false
-	case <-time.After(dur):
-		return true
-	}
-}
-
-// waitInterval waits for audio to finish (via audioEndedCh), then settles for interval_sec.
-// If no audio_ended signal arrives, falls back to interval_sec timeout.
-// Can be cut short by cardGrabbedCh.
 func (gs *GameSession) waitInterval() bool {
 	settle := time.Duration(gs.room.IntervalSec) * time.Second
-	// 最长兜底：interval_sec * 10，防止客户端永不发 audio_ended
 	maxWait := settle * 10
 	if maxWait < 60*time.Second {
 		maxWait = 60 * time.Second
 	}
 
-	// Phase 1：等音频播完（或超时兜底，或被抢，或暂停）
 	maxTimer := time.NewTimer(maxWait)
 	defer maxTimer.Stop()
 
@@ -586,39 +707,28 @@ func (gs *GameSession) waitInterval() bool {
 		select {
 		case <-gs.stopCh:
 			return false
-
 		case <-gs.cardGrabbedCh:
-			// 抢到了，等 interval_sec 结算间隔后进下一首
 			select {
 			case <-gs.stopCh:
 				return false
 			case <-time.After(settle):
 			}
 			return true
-
 		case <-gs.audioEndedCh:
-			// 音频播完，进入 Phase 2
 			goto afterAudio
-
 		case <-gs.skipCh:
-			// 房主跳过，直接进 Phase 2
 			goto afterAudio
-
 		case <-maxTimer.C:
-			// 超时兜底，直接进 Phase 2
 			goto afterAudio
-
 		case <-gs.pauseCh:
 			paused = true
 			maxTimer.Stop()
-			// 暂停期间阻塞
 			for paused {
 				select {
 				case <-gs.stopCh:
 					return false
 				case <-gs.resumeCh:
 					paused = false
-					// 重置超时
 					maxTimer = time.NewTimer(maxWait)
 				}
 			}
@@ -626,7 +736,6 @@ func (gs *GameSession) waitInterval() bool {
 	}
 
 afterAudio:
-	// Phase 2：音频放完后，等 interval_sec 让玩家抢牌
 	settleTimer := time.NewTimer(settle)
 	defer settleTimer.Stop()
 	for {
@@ -634,7 +743,6 @@ afterAudio:
 		case <-gs.stopCh:
 			return false
 		case <-gs.cardGrabbedCh:
-			// 结算期间被抢，再等一个 settle
 			select {
 			case <-gs.stopCh:
 				return false
@@ -644,7 +752,6 @@ afterAudio:
 		case <-settleTimer.C:
 			return true
 		case <-gs.skipCh:
-			// 房主跳过，立即进下一首
 			return true
 		case <-gs.pauseCh:
 			settleTimer.Stop()
@@ -667,7 +774,6 @@ func (gs *GameSession) HandleGrab(userID, cardID int64) {
 	gs.mu.Lock()
 	defer gs.mu.Unlock()
 
-	// 裁判模式下，裁判不能抢牌
 	if gs.judgeMode && userID == gs.judgeUserID {
 		gs.hub.SendJSONToUser(userID, map[string]interface{}{
 			"type": "grab_banned",
@@ -675,7 +781,6 @@ func (gs *GameSession) HandleGrab(userID, cardID int64) {
 		return
 	}
 
-	// 本局抢错过的用户，禁止继续抢牌
 	if gs.wrongUsers[userID] {
 		gs.hub.SendJSONToUser(userID, map[string]interface{}{
 			"type":    "grab_banned",
@@ -684,21 +789,34 @@ func (gs *GameSession) HandleGrab(userID, cardID int64) {
 		return
 	}
 
-	_, ok := gs.grabWindow[cardID]
-	if !ok {
-		// 点的不是当前播放的牌，或窗口已关闭 — 扣分、禁止本首、广播公告
+	// Current PlayItem
+	if gs.currentIdx >= len(gs.playItems) {
+		return
+	}
+	currentItem := gs.playItems[gs.currentIdx]
+
+	// Check if grab window is open for current item
+	if _, ok := gs.grabWindow[currentItem.Index]; !ok {
+		return
+	}
+
+	// Validate: player clicked the correct card?
+	if cardID != currentItem.CardID {
 		grabberName := ""
 		if u, err := gs.store.Users.GetByID(userID); err == nil {
 			grabberName = u.Username
 		}
 		gs.wrongUsers[userID] = true
-		gs.penaltyCount[userID]++
-		_ = gs.store.Rooms.DeductScore(gs.room.ID, userID, 1)
+		penalty := gs.room.PenaltyWrong
+		if penalty {
+			gs.penaltyCount[userID]++
+			_ = gs.store.Rooms.DeductScore(gs.room.ID, userID, 1)
+		}
 		gs.hub.SendJSONToUser(userID, map[string]interface{}{
 			"type":    "grab_failed",
 			"card_id": cardID,
 			"reason":  "not_current",
-			"penalty": true,
+			"penalty": penalty,
 		})
 		gs.hub.BroadcastJSON(map[string]interface{}{
 			"type":     "grab_wrong",
@@ -706,24 +824,31 @@ func (gs *GameSession) HandleGrab(userID, cardID int64) {
 			"username": grabberName,
 			"card_id":  cardID,
 			"reason":   "not_current",
+			"penalty":  penalty,
 		})
-		go gs.broadcastScores()
+		if penalty {
+			gs.broadcastScores()
+		}
 		gs.checkAllBanned()
 		return
 	}
 
-	if _, alreadyGrabbed := gs.grabbedCards[cardID]; alreadyGrabbed {
+	// Check if already grabbed this round
+	if _, alreadyGrabbed := gs.roundResults[currentItem.Index]; alreadyGrabbed {
 		grabberName := ""
 		if u, err := gs.store.Users.GetByID(userID); err == nil {
 			grabberName = u.Username
 		}
 		gs.wrongUsers[userID] = true
-		gs.penaltyCount[userID]++
-		_ = gs.store.Rooms.DeductScore(gs.room.ID, userID, 1)
+		penalty := gs.room.PenaltySlow
+		if penalty {
+			gs.penaltyCount[userID]++
+			_ = gs.store.Rooms.DeductScore(gs.room.ID, userID, 1)
+		}
 		gs.hub.SendJSONToUser(userID, map[string]interface{}{
 			"type":    "grab_failed",
 			"card_id": cardID,
-			"penalty": true,
+			"penalty": penalty,
 		})
 		gs.hub.BroadcastJSON(map[string]interface{}{
 			"type":     "grab_wrong",
@@ -731,50 +856,57 @@ func (gs *GameSession) HandleGrab(userID, cardID int64) {
 			"username": grabberName,
 			"card_id":  cardID,
 			"reason":   "already_grabbed",
+			"penalty":  penalty,
 		})
-		go gs.broadcastScores()
+		if penalty {
+			gs.broadcastScores()
+		}
 		gs.checkAllBanned()
 		return
 	}
 
-	// Record winner
-	gs.grabbedCards[cardID] = userID
-	gs.lastCardWinner = userID // 每次成功抢牌都更新，最终保留最后一张的抢牌者
+	// Success!
+	gs.roundResults[currentItem.Index] = userID
+	gs.cardRemainingCount[cardID]--
+	remaining := gs.cardRemainingCount[cardID]
+	gs.lastCardWinner = userID
 
-	// Get winner username
 	winnerName := ""
 	if u, err := gs.store.Users.GetByID(userID); err == nil {
 		winnerName = u.Username
 	}
 
-	// 先更新分数，再广播（保证 score_update 里分数是最新的）
 	_ = gs.store.Rooms.UpdateScore(gs.room.ID, userID, 1)
 
-	// Persist game record（最后一张标记 is_last）
 	now := time.Now()
 	winnerIDCopy := userID
-	isLastCard := gs.currentIdx == len(gs.cards)-1
-	_ = gs.store.GameRecords.InsertRecordFull(gs.room.ID, cardID, &winnerIDCopy, now, isLastCard)
+	isLastItem := gs.currentIdx == len(gs.playItems)-1
+	_ = gs.store.GameRecords.InsertRecordFull(gs.room.ID, cardID, &winnerIDCopy, now, isLastItem)
 
-	// 广播 card_claimed
 	gs.hub.BroadcastJSON(map[string]interface{}{
 		"type":        "card_claimed",
 		"card_id":     cardID,
 		"winner_id":   userID,
 		"winner_name": winnerName,
+		"remaining":   remaining,
+		"hint_text":   currentItem.HintText,
 	})
 
-	// 立即广播最新分数
+	if remaining <= 0 {
+		gs.hub.BroadcastJSON(map[string]interface{}{
+			"type":    "card_exhausted",
+			"card_id": cardID,
+		})
+	}
+
 	gs.broadcastScores()
 
-	// 通知 waitInterval 提前结束
 	select {
 	case gs.cardGrabbedCh <- struct{}{}:
 	default:
 	}
 }
 
-// Pause signals the game session to pause.
 func (gs *GameSession) Pause() {
 	gs.mu.Lock()
 	if !gs.paused {
@@ -785,11 +917,9 @@ func (gs *GameSession) Pause() {
 		}
 	}
 	gs.mu.Unlock()
-
 	gs.hub.BroadcastJSON(map[string]interface{}{"type": "paused"})
 }
 
-// Resume signals the game session to resume.
 func (gs *GameSession) Resume() {
 	gs.mu.Lock()
 	if gs.paused {
@@ -800,22 +930,19 @@ func (gs *GameSession) Resume() {
 		}
 	}
 	gs.mu.Unlock()
-
 	gs.hub.BroadcastJSON(map[string]interface{}{"type": "resumed"})
 }
 
-// JudgePlayCard sends a card ID to the judge play channel.
-func (gs *GameSession) JudgePlayCard(cardID int64) {
+func (gs *GameSession) JudgePlayCard(cardID, cardAudioID int64) {
 	if gs.judgePlayCh == nil {
 		return
 	}
 	select {
-	case gs.judgePlayCh <- cardID:
+	case gs.judgePlayCh <- judgePlayRequest{CardID: cardID, CardAudioID: cardAudioID}:
 	default:
 	}
 }
 
-// Stop terminates the game session immediately.
 func (gs *GameSession) Stop() {
 	select {
 	case <-gs.stopCh:
@@ -824,7 +951,6 @@ func (gs *GameSession) Stop() {
 	}
 }
 
-// SkipCard signals the session to skip the current card immediately.
 func (gs *GameSession) SkipCard() {
 	select {
 	case gs.skipCh <- struct{}{}:
@@ -832,12 +958,10 @@ func (gs *GameSession) SkipCard() {
 	}
 }
 
-// IsJudge returns true if the given userID is the judge in judge mode.
 func (gs *GameSession) IsJudge(userID int64) bool {
 	return gs.judgeMode && gs.judgeUserID == userID
 }
 
-// OnJudgeDisconnected notifies the session that the judge has disconnected.
 func (gs *GameSession) OnJudgeDisconnected() {
 	if gs.judgeOfflineCh == nil {
 		return
@@ -848,11 +972,8 @@ func (gs *GameSession) OnJudgeDisconnected() {
 	}
 }
 
-// checkAllBanned 检查所有非裁判在线玩家是否全部已被禁止抢牌
-// 必须在 gs.mu 锁内调用
 func (gs *GameSession) checkAllBanned() {
 	onlineIDs := gs.hub.OnlinePlayerIDs()
-	// 过滤掉裁判
 	playerIDs := make([]int64, 0, len(onlineIDs))
 	for _, id := range onlineIDs {
 		if gs.judgeMode && id == gs.judgeUserID {
@@ -865,14 +986,12 @@ func (gs *GameSession) checkAllBanned() {
 	}
 	for _, id := range playerIDs {
 		if !gs.wrongUsers[id] {
-			return // 还有玩家可以抢
+			return
 		}
 	}
-	// 所有非裁判在线玩家都已被禁止，广播提示并提前结束本首
 	gs.hub.BroadcastJSON(map[string]interface{}{
 		"type": "all_banned",
 	})
-	// 同时通知 Phase 1 和 Phase 2
 	select {
 	case gs.audioEndedCh <- struct{}{}:
 	default:
@@ -905,16 +1024,10 @@ func (gs *GameSession) broadcastScores() {
 	})
 }
 
-func audioURL(card *model.Card) string {
-	if card.AudioPath == "" {
-		return ""
-	}
-	return "/uploads/audio/" + filepath.Base(card.AudioPath)
+func audioURLFromPath(path string) string {
+	return storage.FileURL(path, "audio")
 }
 
 func coverURL(card *model.Card) string {
-	if card.CoverPath == "" {
-		return ""
-	}
-	return "/uploads/covers/" + filepath.Base(card.CoverPath)
+	return storage.FileURL(card.CoverPath, "covers")
 }

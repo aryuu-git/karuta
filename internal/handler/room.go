@@ -7,11 +7,12 @@ import (
 	"errors"
 	"math/big"
 	"net/http"
-	"path/filepath"
 	"strconv"
 	"time"
 
+	"karuta/internal/mask"
 	"karuta/internal/middleware"
+	"karuta/internal/storage"
 	"karuta/internal/store"
 	"karuta/internal/ws"
 
@@ -28,6 +29,50 @@ type RoomHandler struct {
 
 func NewRoomHandler(s *store.Store, hm *ws.HubManager) *RoomHandler {
 	return &RoomHandler{store: s, hubManager: hm}
+}
+
+// POST /api/rooms/{id}/kick — 房主踢人
+func (h *RoomHandler) KickPlayer(w http.ResponseWriter, r *http.Request) {
+	userID, ok := middleware.GetUserID(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "not authenticated")
+		return
+	}
+	roomID, err := parseRoomID(r)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "invalid room id")
+		return
+	}
+	room, err := h.store.Rooms.GetByID(roomID)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "NOT_FOUND", "room not found")
+		return
+	}
+	if room.HostID != userID {
+		writeError(w, http.StatusForbidden, "FORBIDDEN", "only host can kick")
+		return
+	}
+	var req struct {
+		UserID int64 `json:"user_id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.UserID == 0 {
+		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "user_id is required")
+		return
+	}
+	if req.UserID == userID {
+		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "cannot kick yourself")
+		return
+	}
+	_ = h.store.Rooms.RemovePlayer(roomID, req.UserID)
+	// 断开该用户的 WebSocket 连接并通知
+	if hub := h.hubManager.Get(roomID); hub != nil {
+		hub.SendJSONToUser(req.UserID, map[string]interface{}{
+			"type":    "kicked",
+			"message": "你被房主移出了房间",
+		})
+		hub.DisconnectUser(req.UserID)
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
 // POST /api/rooms/{id}/force-end — 管理员强制结束对局（仅 aryuu）
@@ -140,9 +185,16 @@ func (h *RoomHandler) CreateRoom(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req struct {
-		DeckID      int64  `json:"deck_id"`
-		IntervalSec int    `json:"interval_sec"`
-		Mode        string `json:"mode"`
+		DeckID           int64  `json:"deck_id"`
+		IntervalSec      int    `json:"interval_sec"`
+		Mode             string `json:"mode"`
+		MaskEnabled      bool   `json:"mask_enabled"`
+		MaskDifficulty   string `json:"mask_difficulty"`
+		PenaltyWrong     *bool  `json:"penalty_wrong"`
+		PenaltySlow      *bool  `json:"penalty_slow"`
+		ShuffleRemaining int    `json:"shuffle_remaining"`
+		RandomStart      bool   `json:"random_start"`
+		RandomStartMax   int    `json:"random_start_max"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "invalid request body")
@@ -157,6 +209,9 @@ func (h *RoomHandler) CreateRoom(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.Mode != "judge" {
 		req.Mode = "auto"
+	}
+	if req.MaskDifficulty == "" {
+		req.MaskDifficulty = "normal"
 	}
 
 	deck, err := h.store.Decks.GetByID(req.DeckID)
@@ -180,7 +235,19 @@ func (h *RoomHandler) CreateRoom(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	room, err := h.store.Rooms.CreateRoom(code, req.DeckID, userID, req.IntervalSec, req.Mode)
+	penaltyWrong := true
+	if req.PenaltyWrong != nil {
+		penaltyWrong = *req.PenaltyWrong
+	}
+	penaltySlow := true
+	if req.PenaltySlow != nil {
+		penaltySlow = *req.PenaltySlow
+	}
+	randomStartMax := req.RandomStartMax
+	if randomStartMax <= 0 || randomStartMax > 80 {
+		randomStartMax = 50
+	}
+	room, err := h.store.Rooms.CreateRoom(code, req.DeckID, userID, req.IntervalSec, req.Mode, req.MaskEnabled, req.MaskDifficulty, penaltyWrong, penaltySlow, req.ShuffleRemaining, req.RandomStart, randomStartMax)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to create room")
 		return
@@ -304,25 +371,47 @@ func (h *RoomHandler) GetRoom(w http.ResponseWriter, r *http.Request) {
 	// 返回牌组（供刷新页面恢复棋盘、等待大厅预加载等）
 	var cardList interface{}
 	{
-		cards, err := h.store.Cards.ListByDeck(room.DeckID)
+		// 优先从 deck_cards (M:N) 查询，为空则 fallback 到 legacy cards.deck_id
+		cards, err := h.store.DeckCards.ListCardsByDeck(room.DeckID)
+		if err != nil || len(cards) == 0 {
+			cards, err = h.store.Cards.ListByDeck(room.DeckID)
+		}
 		if err == nil {
+			// 如果开启了遮罩，生成 masks
+			var masks map[int64]*mask.CardMask
+			if room.MaskEnabled && room.MaskSeed != 0 {
+				cardIDs := make([]int64, len(cards))
+				for i, c := range cards {
+					cardIDs[i] = c.ID
+				}
+				masks = mask.GenerateMasks(room.MaskSeed, cardIDs, room.MaskDifficulty)
+			}
+
 			list := make([]map[string]interface{}, 0, len(cards))
 			for _, c := range cards {
+				coverURL := storage.FileURL(c.CoverPath, "covers")
+				// 获取音频列表
+				audios := h.store.CardAudios.GetAudiosForCard(c)
+				audioCount := len(audios)
+				// audio_url 取第一条音频（供预览/兼容）
 				audioURL := ""
-				if c.AudioPath != "" {
-					audioURL = "/uploads/audio/" + filepath.Base(c.AudioPath)
+				if len(audios) > 0 {
+					audioURL = storage.FileURL(audios[0].AudioPath, "audio")
 				}
-				coverURL := ""
-				if c.CoverPath != "" {
-					coverURL = "/uploads/covers/" + filepath.Base(c.CoverPath)
-				}
-				list = append(list, map[string]interface{}{
+				item := map[string]interface{}{
 					"id":           c.ID,
 					"display_text": c.DisplayText,
 					"hint_text":    c.HintText,
 					"audio_url":    audioURL,
 					"cover_url":    coverURL,
-				})
+					"audio_count":  audioCount,
+				}
+				if masks != nil {
+					if m, ok := masks[c.ID]; ok {
+						item["mask"] = m
+					}
+				}
+				list = append(list, item)
 			}
 			cardList = list
 		}
@@ -386,7 +475,11 @@ func (h *RoomHandler) StartRoom(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cards, err := h.store.Cards.ListByDeck(room.DeckID)
+	// 优先从 deck_cards 加载，fallback 到 legacy
+	cards, err := h.store.DeckCards.ListCardsByDeck(room.DeckID)
+	if err != nil || len(cards) == 0 {
+		cards, err = h.store.Cards.ListByDeck(room.DeckID)
+	}
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to load cards")
 		return
@@ -394,6 +487,15 @@ func (h *RoomHandler) StartRoom(w http.ResponseWriter, r *http.Request) {
 	if len(cards) == 0 {
 		writeError(w, http.StatusConflict, "NO_CARDS", "deck has no cards")
 		return
+	}
+
+	// 如果开启了模糊牌面，生成随机种子
+	if room.MaskEnabled || room.RandomStart {
+		room.MaskSeed = time.Now().UnixNano()
+		if err := h.store.Rooms.UpdateMaskSeed(roomID, room.MaskSeed); err != nil {
+			writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to save mask seed")
+			return
+		}
 	}
 
 	if err := h.store.Rooms.UpdateStatus(roomID, "reading"); err != nil {
@@ -563,7 +665,8 @@ func (h *RoomHandler) PlayCard(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req struct {
-		CardID int64 `json:"card_id"`
+		CardID      int64 `json:"card_id"`
+		CardAudioID int64 `json:"card_audio_id"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.CardID == 0 {
 		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "card_id is required")
@@ -572,10 +675,21 @@ func (h *RoomHandler) PlayCard(w http.ResponseWriter, r *http.Request) {
 
 	// If room was still in waiting, transition to reading and initialise session first
 	if room.Status == "waiting" {
-		cards, err := h.store.Cards.ListByDeck(room.DeckID)
+		cards, err := h.store.DeckCards.ListCardsByDeck(room.DeckID)
 		if err != nil || len(cards) == 0 {
+			cards, _ = h.store.Cards.ListByDeck(room.DeckID)
+		}
+		if len(cards) == 0 {
 			writeError(w, http.StatusBadRequest, "BAD_REQUEST", "deck has no cards")
 			return
+		}
+		// 如果开启了模糊牌面或随机片段，生成随机种子
+		if room.MaskEnabled || room.RandomStart {
+			room.MaskSeed = time.Now().UnixNano()
+			if err := h.store.Rooms.UpdateMaskSeed(roomID, room.MaskSeed); err != nil {
+				writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to save mask seed")
+				return
+			}
 		}
 		if err := h.store.Rooms.UpdateStatus(roomID, "reading"); err != nil {
 			writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to update room status")
@@ -584,7 +698,7 @@ func (h *RoomHandler) PlayCard(w http.ResponseWriter, r *http.Request) {
 		hub := h.hubManager.GetOrCreate(roomID)
 		hub.StartGame(room, cards, h.store)
 		time.Sleep(100 * time.Millisecond) // 等 session 初始化
-		hub.JudgePlayCard(req.CardID)
+		hub.JudgePlayCard(req.CardID, req.CardAudioID)
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 		return
 	}
@@ -594,7 +708,7 @@ func (h *RoomHandler) PlayCard(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusConflict, "NOT_STARTED", "game has not been started")
 		return
 	}
-	hub.JudgePlayCard(req.CardID)
+	hub.JudgePlayCard(req.CardID, req.CardAudioID)
 
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }

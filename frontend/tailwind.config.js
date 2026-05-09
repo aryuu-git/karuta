@@ -4,21 +4,21 @@ export default {
   theme: {
     extend: {
       colors: {
-        ink: { DEFAULT: '#2d0a1a', deep: '#200814' },
-        gold: { DEFAULT: '#e8a4b8', light: '#f5c6d0', dark: '#d4849a' },
-        crimson: { DEFAULT: '#c0392b', light: '#e74c3c' },
-        surface: { DEFAULT: '#3d1525', elevated: '#4a1a30' },
-        border: '#5c1a30',
-        muted: '#b88a98',
+        ink: { DEFAULT: '#442038', deep: '#381830' },
+        gold: { DEFAULT: '#f8b0c8', light: '#fdd8e8', dark: '#f090b0' },
+        crimson: { DEFAULT: '#f87090', light: '#ff98b0' },
+        surface: { DEFAULT: '#552a40', elevated: '#66304a' },
+        border: '#884868',
+        muted: '#e8c0d4',
       },
       fontFamily: {
         serif: ['"Noto Serif JP"', 'serif'],
         sans: ['system-ui', 'sans-serif'],
       },
       boxShadow: {
-        gold: '0 0 15px rgba(232,164,184,0.4)',
-        'gold-lg': '0 0 30px rgba(232,164,184,0.6)',
-        crimson: '0 0 15px rgba(192,57,43,0.4)',
+        gold: '0 0 15px rgba(var(--accent-primary, 232,164,184),0.4)',
+        'gold-lg': '0 0 30px rgba(var(--accent-primary, 232,164,184),0.6)',
+        crimson: '0 0 15px rgba(var(--color-crimson, 248,112,144),0.4)',
       },
       backgroundImage: {
         'washi': `repeating-linear-gradient(

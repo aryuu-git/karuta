@@ -16,49 +16,87 @@ type Deck struct {
 	Name        string    `json:"name"`
 	Description string    `json:"description"`
 	IsPublic    bool      `json:"is_public"`
+	ShareLevel  string    `json:"share_level"`
+	EditLevel   string    `json:"edit_level"`
 	CardCount   int       `json:"card_count,omitempty"`
 	CreatedAt   time.Time `json:"created_at"`
 	OwnerName   string    `json:"owner_name,omitempty"`
 }
 
 type Card struct {
-	ID          int64     `json:"id"`
-	DeckID      int64     `json:"deck_id"`
-	AudioPath   string    `json:"audio_path"`
-	AudioURL    string    `json:"audio_url,omitempty"`
-	CoverPath   string    `json:"cover_path"`
-	CoverURL    string    `json:"cover_url,omitempty"`
-	HintText    string    `json:"hint_text"`
-	DisplayText string    `json:"display_text"`
-	SortOrder   int       `json:"sort_order"`
-	CreatedAt   time.Time `json:"created_at"`
+	ID          int64        `json:"id"`
+	DeckID      int64        `json:"deck_id,omitempty"`
+	OwnerID     int64        `json:"owner_id"`
+	AudioPath   string       `json:"audio_path"`
+	AudioURL    string       `json:"audio_url,omitempty"`
+	CoverPath   string       `json:"cover_path"`
+	CoverURL    string       `json:"cover_url,omitempty"`
+	HintText    string       `json:"hint_text"`
+	DisplayText string       `json:"display_text"`
+	Series      string       `json:"series"`
+	Tags        string       `json:"tags"`
+	IsShared    bool         `json:"is_shared"`
+	SortOrder   int          `json:"sort_order"`
+	CreatedAt   time.Time    `json:"created_at"`
+	Audios      []*CardAudio `json:"audios,omitempty"`
+	AudioCount  int          `json:"audio_count,omitempty"`
+	OwnerName   string       `json:"owner_name,omitempty"`
+}
+
+type CardAudio struct {
+	ID        int64     `json:"id"`
+	CardID    int64     `json:"card_id"`
+	AudioPath string    `json:"audio_path"`
+	AudioURL  string    `json:"audio_url,omitempty"`
+	HintText  string    `json:"hint_text"`
+	SortOrder int       `json:"sort_order"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+type DeckCard struct {
+	DeckID    int64     `json:"deck_id"`
+	CardID    int64     `json:"card_id"`
+	SortOrder int       `json:"sort_order"`
+	AddedBy   int64     `json:"added_by"`
+	AddedAt   time.Time `json:"added_at"`
 }
 
 type Room struct {
-	ID          int64     `json:"id"`
-	Code        string    `json:"code"`
-	DeckID      int64     `json:"deck_id"`
-	HostID      int64     `json:"host_id"`
-	Status      string    `json:"status"` // waiting/reading/judging/paused/end
-	IntervalSec int       `json:"interval_sec"`
-	Mode        string    `json:"mode"` // "auto" | "judge"
-	CreatedAt   time.Time `json:"created_at"`
+	ID             int64     `json:"id"`
+	Code           string    `json:"code"`
+	DeckID         int64     `json:"deck_id"`
+	HostID         int64     `json:"host_id"`
+	Status         string    `json:"status"`
+	IntervalSec    int       `json:"interval_sec"`
+	Mode           string    `json:"mode"`
+	MaskEnabled    bool      `json:"mask_enabled"`
+	MaskDifficulty string    `json:"mask_difficulty"`
+	MaskSeed       int64     `json:"-"`
+	PenaltyWrong     bool `json:"penalty_wrong"`
+	PenaltySlow      bool `json:"penalty_slow"`
+	ShuffleRemaining int  `json:"shuffle_remaining"`
+	RandomStart    bool `json:"random_start"`
+	RandomStartMax int  `json:"random_start_max"`
+	CreatedAt      time.Time `json:"created_at"`
 }
 
 type RoomPlayer struct {
 	RoomID   int64     `json:"room_id"`
 	UserID   int64     `json:"user_id"`
 	Username string    `json:"username"`
-	Role     string    `json:"role"` // player/spectator
+	Role     string    `json:"role"`
 	Score    int       `json:"score"`
 	Online   bool      `json:"online"`
 	JoinedAt time.Time `json:"joined_at"`
 }
 
 type GameRecord struct {
-	ID        int64     `json:"id"`
-	RoomID    int64     `json:"room_id"`
-	CardID    int64     `json:"card_id"`
-	WinnerID  *int64    `json:"winner_id"`
-	GrabbedAt time.Time `json:"grabbed_at"`
+	ID          int64     `json:"id"`
+	RoomID      int64     `json:"room_id"`
+	CardID      int64     `json:"card_id"`
+	CardAudioID *int64    `json:"card_audio_id"`
+	WinnerID    *int64    `json:"winner_id"`
+	GrabbedAt   time.Time `json:"grabbed_at"`
+	IsLast      bool      `json:"is_last"`
+	HintText    string    `json:"hint_text"`
 }

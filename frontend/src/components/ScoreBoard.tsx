@@ -4,14 +4,16 @@ import type { RoomPlayer } from '../api/types'
 interface ScoreBoardProps {
   players: RoomPlayer[]
   currentUserId: number
+  hostId?: number
   remainingCount: number
   totalCount: number
+  onKick?: (userId: number) => void
 }
 
 const RANK_MEDAL = ['🥇', '🥈', '🥉']
 const RANK_GLOW = ['rgba(255,215,0,0.15)', 'rgba(192,192,192,0.1)', 'rgba(205,127,50,0.1)']
 
-export function ScoreBoard({ players, currentUserId, remainingCount, totalCount }: ScoreBoardProps) {
+export function ScoreBoard({ players, currentUserId, hostId, remainingCount, totalCount, onKick }: ScoreBoardProps) {
   // 玩家按分数排，旁观者排最后
   const sorted = [...players].sort((a, b) => {
     const aSpec = (a as any).role === 'spectator'
@@ -23,7 +25,7 @@ export function ScoreBoard({ players, currentUserId, remainingCount, totalCount 
   const progressPct = totalCount > 0 ? ((totalCount - remainingCount) / totalCount) * 100 : 0
 
   return (
-    <div className="flex flex-col h-full w-52 shrink-0" style={{ background: 'linear-gradient(180deg, rgba(32,8,20,0.98) 0%, rgba(45,10,26,0.95) 100%)', borderLeft: '1px solid rgba(232,164,184,0.1)' }}>
+    <div className="flex flex-col h-full w-52 shrink-0" style={{ background: 'linear-gradient(180deg, rgba(var(--accent-bg-mid),0.98) 0%, rgba(var(--accent-bg-end),0.95) 100%)', borderLeft: '1px solid rgba(var(--accent-primary),0.1)' }}>
 
       {/* Header */}
       <div className="px-4 pt-4 pb-3 border-b border-white/5">
@@ -45,8 +47,8 @@ export function ScoreBoard({ players, currentUserId, remainingCount, totalCount 
                 style={{ strokeDashoffset: 94.2 * (1 - progressPct / 100) }} />
               <defs>
                 <linearGradient id="scoreGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor="#e8a4b8" />
-                  <stop offset="100%" stopColor="#f5c6d0" />
+                  <stop offset="0%" stopColor="var(--color-gold)" />
+                  <stop offset="100%" stopColor="var(--color-gold-light)" />
                 </linearGradient>
               </defs>
             </svg>
@@ -80,12 +82,12 @@ export function ScoreBoard({ players, currentUserId, remainingCount, totalCount 
                 initial={{ opacity: 0, x: 20 }} animate={{ opacity: player.online ? 1 : 0.35, x: 0 }}
                 transition={{ duration: 0.3, layout: { duration: 0.4, ease: 'easeOut' } }}
                 className="relative rounded-lg mb-1.5 overflow-hidden"
-                style={{ background: isMe ? 'rgba(232,164,184,0.07)' : glow ?? 'rgba(255,255,255,0.02)', border: `1px solid ${isMe ? 'rgba(232,164,184,0.25)' : 'rgba(255,255,255,0.04)'}` }}>
+                style={{ background: isMe ? 'rgba(var(--accent-primary),0.07)' : glow ?? 'rgba(255,255,255,0.02)', border: `1px solid ${isMe ? 'rgba(var(--accent-primary),0.25)' : 'rgba(255,255,255,0.04)'}` }}>
 
                 {/* 我的高亮条 */}
                 {isMe && (
                   <div className="absolute left-0 top-0 bottom-0 w-0.5 rounded-l"
-                    style={{ background: 'linear-gradient(180deg, #e8a4b8, #f5c6d0)' }} />
+                    style={{ background: 'linear-gradient(180deg, var(--color-gold), var(--color-gold-light))' }} />
                 )}
 
                 <div className="flex items-center gap-2 px-3 py-2.5">
@@ -111,12 +113,19 @@ export function ScoreBoard({ players, currentUserId, remainingCount, totalCount 
                     <span className="text-xs shrink-0" style={{ color: 'rgba(128,90,213,0.5)' }}>—</span>
                   ) : (
                   <motion.div key={`score-${player.user_id}-${player.score}`}
-                    initial={{ scale: 1.6, color: '#f5c6d0' }}
-                    animate={{ scale: 1, color: isMe ? '#e8a4b8' : 'rgba(255,255,255,0.5)' }}
+                    initial={{ scale: 1.6, color: 'var(--color-gold-light)' }}
+                    animate={{ scale: 1, color: isMe ? 'var(--color-gold)' : 'rgba(255,255,255,0.5)' }}
                     transition={{ duration: 0.4, ease: 'backOut' }}
                     className="text-sm font-bold tabular-nums shrink-0">
                     {player.score}
                   </motion.div>
+                  )}
+
+                  {/* 踢人按钮 */}
+                  {onKick && hostId === currentUserId && !isMe && (
+                    <button onClick={() => onKick(player.user_id)}
+                      className="text-[10px] text-muted/30 hover:text-crimson transition-colors shrink-0 ml-1"
+                      title="踢出房间">✕</button>
                   )}
                 </div>
               </motion.div>
@@ -128,7 +137,7 @@ export function ScoreBoard({ players, currentUserId, remainingCount, totalCount 
       {/* 底部装饰 */}
       <div className="px-4 py-3 border-t border-white/5">
         <div className="text-center">
-          <span className="text-muted/40 text-xs font-serif">🌸 歌牌 · 拼尽全力！</span>
+          <span className="text-pink-300/30 text-xs font-serif italic">🌸 命运之战 · 全力以赴 ✧</span>
         </div>
       </div>
     </div>

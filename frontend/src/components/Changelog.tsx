@@ -1,10 +1,68 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 
-const CURRENT_VERSION = '1.4.0'
+const CURRENT_VERSION = '2.3.0'
 const STORAGE_KEY = 'karuta_changelog_seen'
 
 const CHANGELOG = [
+  {
+    version: '2.3.0',
+    date: '2026-05',
+    title: '新玩法 + 房主强化 🎲',
+    items: [
+      { emoji: '🎲', text: '随机片段播放：每首歌从随机位置开始，可配置最大起始%' },
+      { emoji: '🔀', text: '牌面打乱：可设置剩余N张时每轮抢完后打乱棋盘位置' },
+      { emoji: '🚪', text: '房主踢人：等待大厅和游戏中均可踢出玩家' },
+      { emoji: '📋', text: '复制牌组新增选项：完整复制 / 只复制牌面' },
+      { emoji: '☑', text: '牌库页支持多选批量删除' },
+      { emoji: '🔧', text: '修复关闭扣分后toast仍显示"-1分"' },
+      { emoji: '🔧', text: '修复复制牌组不带牌的问题' },
+    ],
+  },
+  {
+    version: '2.2.0',
+    date: '2026-05',
+    title: '线下决斗 + 裁判强化 ⚔️',
+    items: [
+      { emoji: '🗡️', text: '新增「线下决斗」：一键导出牌组所有封面图的压缩包' },
+      { emoji: '☑', text: '牌组支持多选批量移除牌' },
+      { emoji: '👑', text: '裁判模式修复：多音频牌可精确指定播放哪首歌' },
+      { emoji: '🎵', text: '废牌堆：每轮抢牌/逃跑后立即在底部显示记录' },
+      { emoji: '✏️', text: '音频提示文字支持在线编辑（点击即改）' },
+      { emoji: '🏷️', text: '自定义标签不再因切换选项而消失' },
+      { emoji: '🔧', text: '修复数据库外键问题导致无法创建牌的bug' },
+      { emoji: '🔧', text: '修复裁判模式多音频牌同时高亮的bug' },
+      { emoji: '🔧', text: '修复牌组共享设置无法保存的bug' },
+    ],
+  },
+  {
+    version: '2.1.0',
+    date: '2026-05',
+    title: '体验优化 + 主题切换 ✧',
+    items: [
+      { emoji: '🎨', text: '新增主题切换！左下角按钮可切换樱花粉 / 蓝白条纹风格' },
+      { emoji: '⚔️', text: '旁观者现在可以随时点击「加入战斗」切换为玩家参与抢牌' },
+      { emoji: '⚡', text: '建房新增惩罚规则开关：可选择抢错/抢慢是否扣分' },
+      { emoji: '👑', text: '裁判模式支持多音频牌：每首歌独立显示供裁判选择' },
+      { emoji: '🎯', text: '对局棋盘自适应屏幕宽度，不再固定5列' },
+      { emoji: '🌸', text: '全站 UI 大美化：二次元风格统一、渐变光效、诗意文案' },
+    ],
+  },
+  {
+    version: '2.0.0',
+    date: '2026-05',
+    title: '牌库大重构 + 新玩法！🎉',
+    items: [
+      { emoji: '📚', text: '全新「牌库」系统！牌独立管理，一张牌可被多个牌组引用' },
+      { emoji: '🎵', text: '一张牌可绑定多首歌！棋盘上堆叠显示×N，每首歌独立抢' },
+      { emoji: '🎭', text: '新玩法「模糊牌面」！建房开启后封面被随机遮罩，增加辨识难度' },
+      { emoji: '✂️', text: '上传歌曲时可选压缩/裁剪前30s/随机30s，不用再自己剪了' },
+      { emoji: '▶', text: '牌列表支持播放预览，上传完直接能听' },
+      { emoji: '🤝', text: '牌组三级共享：私有/可使用/可编辑，支持一键复制牌组' },
+      { emoji: '🔍', text: '公共牌库支持按作品名、标签筛选' },
+      { emoji: '☁️', text: '文件存储支持云端（COS），加载更快更稳定' },
+    ],
+  },
   {
     version: '1.4.0',
     date: '2026-04',
@@ -105,7 +163,7 @@ export function Changelog() {
             exit={{ scale: 0.92, opacity: 0, y: 16 }}
             transition={{ duration: 0.4, ease: 'backOut' }}
             className="w-full max-w-md max-h-[80vh] flex flex-col rounded-2xl overflow-hidden"
-            style={{ background: 'linear-gradient(160deg, #2d0a1a 0%, #200814 100%)', border: '1px solid rgba(232,164,184,0.2)', boxShadow: '0 0 60px rgba(232,164,184,0.15), 0 24px 48px rgba(0,0,0,0.6)' }}
+            style={{ background: 'linear-gradient(160deg, var(--color-ink) 0%, var(--color-ink-deep) 100%)', border: '1px solid rgba(var(--accent-primary),0.2)', boxShadow: '0 0 60px rgba(var(--accent-primary),0.15), 0 24px 48px rgba(0,0,0,0.6)' }}
             onClick={e => e.stopPropagation()}
           >
             {/* 头部 */}
@@ -116,7 +174,7 @@ export function Changelog() {
                     <span className="text-xl">🌸</span>
                     <h2 className="font-serif text-lg font-bold text-gold">更新日志</h2>
                     <span className="text-xs px-2 py-0.5 rounded-full font-mono"
-                      style={{ background: 'rgba(232,164,184,0.15)', color: '#e8a4b8', border: '1px solid rgba(232,164,184,0.25)' }}>
+                      style={{ background: 'rgba(var(--accent-primary),0.15)', color: 'var(--color-gold)', border: '1px solid rgba(var(--accent-primary),0.25)' }}>
                       v{CURRENT_VERSION}
                     </span>
                   </div>
@@ -135,7 +193,7 @@ export function Changelog() {
                 <div key={log.version}>
                   <div className="flex items-center gap-2 mb-3">
                     <span className="text-xs font-mono px-2 py-0.5 rounded"
-                      style={{ background: li === 0 ? 'rgba(232,164,184,0.15)' : 'rgba(255,255,255,0.05)', color: li === 0 ? '#e8a4b8' : 'rgba(255,255,255,0.3)', border: `1px solid ${li === 0 ? 'rgba(232,164,184,0.2)' : 'rgba(255,255,255,0.08)'}` }}>
+                      style={{ background: li === 0 ? 'rgba(var(--accent-primary),0.15)' : 'rgba(255,255,255,0.05)', color: li === 0 ? 'var(--color-gold)' : 'rgba(255,255,255,0.3)', border: `1px solid ${li === 0 ? 'rgba(var(--accent-primary),0.2)' : 'rgba(255,255,255,0.08)'}` }}>
                       v{log.version}
                     </span>
                     <span className="font-medium text-sm" style={{ color: li === 0 ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.4)' }}>

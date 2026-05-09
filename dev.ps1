@@ -60,7 +60,13 @@ Write-Host "OK -> dist/"
 Write-Host ""
 
 Write-Host "[4] Starting services..."
-Start-Process "cmd" -ArgumentList "/k `"$ROOT\karuta-server.exe`""
+# COS 配置
+$env:COS_ENABLED = "true"
+$env:COS_SECRET_ID = "xxx"
+$env:COS_SECRET_KEY = "xxx"
+$env:COS_BUCKET = "xxx"
+$env:COS_REGION = "xxx"
+Start-Process "$ROOT\karuta-server.exe" -WorkingDirectory $ROOT
 Start-Sleep -Seconds 2
 Start-Process "cmd" -ArgumentList "/k `"cd /d $ROOT\frontend && npm run dev`""
 

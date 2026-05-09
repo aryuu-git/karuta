@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 interface ReadingPanelProps {
   hintText: string | null
   audioUrl: string | null
+  startRatio?: number
   intervalSec: number
   isActive: boolean
   isPaused: boolean
@@ -14,7 +15,7 @@ interface ReadingPanelProps {
 }
 
 // intervalSec 保留 prop 供外部传入，ReadingPanel 内部仅用 audio timeupdate 驱动进度条
-export function ReadingPanel({ hintText, audioUrl, intervalSec: _intervalSec, isActive, isPaused, countdown, intervalCountdown, onAudioEnded, isLastCard }: ReadingPanelProps) {
+export function ReadingPanel({ hintText, audioUrl, startRatio, intervalSec: _intervalSec, isActive, isPaused, countdown, intervalCountdown, onAudioEnded, isLastCard }: ReadingPanelProps) {
   const audioRef = useRef<HTMLAudioElement>(null)
   const [audioError, setAudioError] = useState(false)
   const [progress, setProgress] = useState(0)
@@ -29,6 +30,15 @@ export function ReadingPanel({ hintText, audioUrl, intervalSec: _intervalSec, is
     audio.currentTime = 0
     audio.src = audioUrl
     audio.load()
+
+    // 随机片段：加载完 metadata 后 seek 到指定位置
+    const currentStartRatio = startRatio
+    const seekHandler = () => {
+      if (currentStartRatio && currentStartRatio > 0 && audio.duration && isFinite(audio.duration)) {
+        audio.currentTime = audio.duration * currentStartRatio
+      }
+    }
+    audio.addEventListener('loadedmetadata', seekHandler, { once: true })
 
     let retryCount = 0
     let retryTimer: ReturnType<typeof setTimeout>
@@ -82,11 +92,11 @@ export function ReadingPanel({ hintText, audioUrl, intervalSec: _intervalSec, is
   const barColor = urgency === 'urgent'
     ? 'linear-gradient(90deg, #ff6b6b, #ff8e53)'
     : urgency === 'warning'
-    ? 'linear-gradient(90deg, #f5a623, #f5c6d0)'
-    : 'linear-gradient(90deg, #e8a4b8, #f5c6d0, #e8a4b8)'
+    ? 'linear-gradient(90deg, #f5a623, var(--color-gold-light))'
+    : 'linear-gradient(90deg, var(--color-gold), var(--color-gold-light), var(--color-gold))'
 
   return (
-    <div className="relative border-b border-border/60" style={{ background: 'linear-gradient(180deg, rgba(32,8,20,0.98) 0%, rgba(45,10,26,0.95) 100%)' }}>
+    <div className="relative border-b border-border/60" style={{ background: 'linear-gradient(180deg, rgba(var(--accent-bg-mid),0.98) 0%, rgba(var(--accent-bg-end),0.95) 100%)' }}>
       <audio ref={audioRef} onError={() => setAudioError(true)} preload="auto" style={{ display: 'none' }} />
 
       {/* 最后一张牌提示横幅 */}
@@ -114,11 +124,11 @@ export function ReadingPanel({ hintText, audioUrl, intervalSec: _intervalSec, is
             initial={{ opacity: 0, scale: 2.5 }} animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.3 }} transition={{ duration: 0.3, ease: 'backOut' }}
             className="absolute inset-0 flex flex-col items-center justify-center z-20"
-            style={{ background: 'rgba(20,5,15,0.92)', backdropFilter: 'blur(4px)' }}>
+            style={{ background: 'rgba(var(--accent-bg-mid),0.92)', backdropFilter: 'blur(4px)' }}>
             <motion.span
               animate={{ scale: [1, 1.1, 1] }} transition={{ duration: 0.4 }}
               className="font-serif font-bold tabular-nums"
-              style={{ fontSize: '5rem', lineHeight: 1, color: '#e8a4b8', textShadow: '0 0 60px rgba(232,164,184,0.8), 0 0 120px rgba(232,164,184,0.4)' }}>
+              style={{ fontSize: '5rem', lineHeight: 1, color: 'var(--color-gold)', textShadow: '0 0 60px rgba(var(--accent-primary),0.8), 0 0 120px rgba(var(--accent-primary),0.4)' }}>
               {countdown}
             </motion.span>
             <span className="text-muted text-sm mt-2 tracking-widest">深呼吸… 全神贯注！(ง •̀_•́)ง</span>
@@ -129,9 +139,9 @@ export function ReadingPanel({ hintText, audioUrl, intervalSec: _intervalSec, is
             initial={{ opacity: 0, scale: 0.4 }} animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.35, ease: 'backOut' }}
             className="absolute inset-0 flex items-center justify-center z-20"
-            style={{ background: 'rgba(20,5,15,0.85)', backdropFilter: 'blur(4px)' }}>
+            style={{ background: 'rgba(var(--accent-bg-mid),0.85)', backdropFilter: 'blur(4px)' }}>
             <span className="font-serif font-bold text-gold"
-              style={{ fontSize: '3.5rem', textShadow: '0 0 40px rgba(232,164,184,1)' }}>
+              style={{ fontSize: '3.5rem', textShadow: '0 0 40px rgba(var(--accent-primary),1)' }}>
               開始！(ง •̀_•́)ง
             </span>
           </motion.div>
@@ -159,7 +169,7 @@ export function ReadingPanel({ hintText, audioUrl, intervalSec: _intervalSec, is
                     <motion.p initial={{ opacity: 0, letterSpacing: '0.1em' }} animate={{ opacity: 1, letterSpacing: '0.3em' }}
                       transition={{ duration: 0.4 }}
                       className="font-serif text-2xl sm:text-3xl font-medium text-white tracking-widest drop-shadow-lg"
-                      style={{ textShadow: '0 2px 20px rgba(232,164,184,0.3)' }}>
+                      style={{ textShadow: '0 2px 20px rgba(var(--accent-primary),0.3)' }}>
                       {hintText}
                     </motion.p>
                   ) : (
@@ -207,7 +217,7 @@ export function ReadingPanel({ hintText, audioUrl, intervalSec: _intervalSec, is
                     animate={{ scale: 1, opacity: 1 }}
                     transition={{ duration: 0.25, ease: 'backOut' }}
                     className="font-serif font-bold tabular-nums"
-                    style={{ fontSize: '1.8rem', color: intervalCountdown <= 3 ? '#e8a4b8' : 'rgba(255,255,255,0.5)', textShadow: intervalCountdown <= 3 ? '0 0 20px rgba(232,164,184,0.6)' : 'none' }}>
+                    style={{ fontSize: '1.8rem', color: intervalCountdown <= 3 ? 'var(--color-gold)' : 'rgba(255,255,255,0.5)', textShadow: intervalCountdown <= 3 ? '0 0 20px rgba(var(--accent-primary),0.6)' : 'none' }}>
                     {intervalCountdown}
                   </motion.div>
                 </div>
@@ -222,7 +232,7 @@ export function ReadingPanel({ hintText, audioUrl, intervalSec: _intervalSec, is
       </div>
 
       {/* 底部装饰线 */}
-      <div className="h-px" style={{ background: 'linear-gradient(90deg, transparent, rgba(232,164,184,0.4), transparent)' }} />
+      <div className="h-px" style={{ background: 'linear-gradient(90deg, transparent, rgba(var(--accent-primary),0.4), transparent)' }} />
     </div>
   )
 }

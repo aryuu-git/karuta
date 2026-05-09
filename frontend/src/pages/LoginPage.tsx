@@ -30,9 +30,9 @@ export function LoginPage() {
     <div className="min-h-screen washi-bg flex items-center justify-center px-4">
       <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden="true">
         <div className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full opacity-10 blur-3xl"
-          style={{ background: 'radial-gradient(circle, #e8a4b8, transparent)' }} />
+          style={{ background: 'radial-gradient(circle, var(--color-gold), transparent)' }} />
         <div className="absolute bottom-1/4 right-1/4 w-64 h-64 rounded-full opacity-8 blur-2xl"
-          style={{ background: 'radial-gradient(circle, #f5c6d0, transparent)' }} />
+          style={{ background: 'radial-gradient(circle, var(--color-gold-light), transparent)' }} />
       </div>
 
       <motion.div
@@ -48,7 +48,7 @@ export function LoginPage() {
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.1, duration: 0.5 }}
             className="font-serif text-6xl font-bold text-gold-shimmer mb-2"
-            style={{ textShadow: '0 0 40px rgba(232,164,184,0.4)' }}
+            style={{ textShadow: '0 0 40px rgba(var(--accent-primary),0.4)' }}
           >
             🌸 二次元歌牌大乱斗
           </motion.h1>
@@ -68,13 +68,14 @@ export function LoginPage() {
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2, duration: 0.4 }}
-          className="bg-surface border border-border rounded-xl p-8"
-          style={{ boxShadow: '0 0 40px rgba(0,0,0,0.4), 0 0 0 1px rgba(232,164,184,0.08)' }}
+          className="rounded-2xl p-8 relative overflow-hidden"
+          style={{ background: 'linear-gradient(160deg, rgba(var(--accent-bg-end),0.8), rgba(var(--accent-bg-mid),0.95))', border: '1px solid rgba(var(--accent-primary),0.15)', boxShadow: '0 0 60px rgba(var(--accent-primary),0.1), 0 20px 40px rgba(0,0,0,0.5)' }}
         >
-          <h2 className="text-gold font-serif font-medium text-lg mb-1 text-center">
+          <div className="absolute top-0 left-0 w-full h-0.5" style={{ background: 'linear-gradient(90deg, transparent, rgba(var(--glow-color),0.4), rgba(var(--accent-primary),0.4), transparent)' }} />
+          <h2 className="text-gold font-serif font-bold text-lg mb-1 text-center">
             おかえり～ (｡•̀ᴗ-)✧
           </h2>
-          <p className="text-muted text-xs text-center mb-6">战友们已经蓄势待发了！快来集合！(≧▽≦)</p>
+          <p className="text-pink-300/50 text-xs text-center mb-6 font-serif italic">战友们已蓄势待发，快来集合！✦</p>
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div>
@@ -122,9 +123,9 @@ export function LoginPage() {
               disabled={loading}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              className="btn-gold w-full mt-2 text-base py-3 disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-200"
+              className="btn-gold w-full mt-2 text-base py-3 disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-200 shadow-lg shadow-gold/20 font-serif"
             >
-              {loading ? '正在召唤你的分身… (｡･ω･｡)' : '「冲进去！」ヽ(°〇°)ﾉ'}
+              {loading ? '正在召唤你的分身… (｡･ω･｡)' : '「降临战场！」ヽ(°〇°)ﾉ'}
             </motion.button>
           </form>
         </motion.div>

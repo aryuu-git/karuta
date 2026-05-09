@@ -1,15 +1,19 @@
 package main
 
 import (
+	"bytes"
+	"context"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"karuta/internal/config"
 	"karuta/internal/handler"
 	"karuta/internal/middleware"
+	"karuta/internal/storage"
 	"karuta/internal/store"
 	"karuta/internal/ws"
 
@@ -37,12 +41,38 @@ func main() {
 
 	s := store.NewStore(db)
 
+	// Initialize storage backend
+	var stor storage.Storage
+	if cfg.COSEnabled {
+		cosStorage, err := storage.NewCOSStorage(
+			cfg.COSSecretID,
+			cfg.COSSecretKey,
+			cfg.COSBucket,
+			cfg.COSRegion,
+			cfg.COSCDNDomain,
+		)
+		if err != nil {
+			log.Fatalf("init cos storage: %v", err)
+		}
+		stor = cosStorage
+		log.Printf("storage: COS enabled (bucket=%s, region=%s)", cfg.COSBucket, cfg.COSRegion)
+	} else {
+		stor = storage.NewLocalStorage(cfg.UploadDir)
+		log.Printf("storage: local filesystem (%s)", cfg.UploadDir)
+	}
+
+	// Background: migrate local files to COS
+	if cfg.COSEnabled {
+		go migrateLocalToCOS(cfg.UploadDir, stor)
+	}
+
 	// WebSocket hub manager
 	hubManager := ws.NewHubManager()
 
 	// Handlers
 	authH := handler.NewAuthHandler(s, cfg.JWTSecret)
 	deckH := handler.NewDeckHandler(s, cfg.UploadDir)
+	cardH := handler.NewCardHandler(s, cfg.UploadDir, stor)
 	roomH := handler.NewRoomHandler(s, hubManager)
 	wsH := handler.NewWSHandler(s, hubManager, cfg.JWTSecret)
 
@@ -69,14 +99,27 @@ func main() {
 
 		// Deck routes
 		r.Post("/api/decks", deckH.CreateDeck)
-		r.Get("/api/decks", deckH.ListDecks)
+		r.Get("/api/decks/mine", deckH.ListMyDecks)
 		r.Get("/api/decks/public", deckH.ListPublicDecks)
-		r.Post("/api/decks/{id}/share", deckH.ShareDeck)
+		r.Get("/api/decks/editable", deckH.ListEditableDecks)
 		r.Get("/api/decks/{id}", deckH.GetDeck)
 		r.Patch("/api/decks/{id}", deckH.UpdateDeck)
 		r.Delete("/api/decks/{id}", deckH.DeleteDeck)
-		r.Post("/api/decks/{id}/cards", deckH.AddCard)
-		r.Delete("/api/decks/{id}/cards/{cardID}", deckH.DeleteCard)
+		r.Post("/api/decks/{id}/share", deckH.ShareDeck)
+		r.Post("/api/decks/{id}/cards", deckH.AddCardsToDeck)
+		r.Delete("/api/decks/{id}/cards/{cardID}", deckH.RemoveCardFromDeck)
+		r.Post("/api/decks/{id}/clone", deckH.CloneDeck)
+
+		// Card routes (library)
+		r.Get("/api/cards/mine", cardH.ListMyCards)
+		r.Get("/api/cards/public", cardH.ListPublicCards)
+		r.Get("/api/cards/{id}", cardH.GetCard)
+		r.Post("/api/cards", cardH.CreateCard)
+		r.Patch("/api/cards/{id}", cardH.UpdateCard)
+		r.Delete("/api/cards/{id}", cardH.DeleteCard)
+		r.Post("/api/cards/{id}/audios", cardH.AddAudio)
+		r.Patch("/api/cards/{id}/audios/{audioID}", cardH.UpdateAudio)
+		r.Delete("/api/cards/{id}/audios/{audioID}", cardH.DeleteAudio)
 
 		// Room routes
 		r.Get("/api/rooms", roomH.ListRooms)
@@ -86,6 +129,7 @@ func main() {
 		r.Post("/api/rooms/{id}/start", roomH.StartRoom)
 		r.Post("/api/rooms/{id}/next-card", roomH.NextCard)
 		r.Post("/api/rooms/{id}/spectate", roomH.SetSpectate)
+		r.Post("/api/rooms/{id}/kick", roomH.KickPlayer)
 		r.Post("/api/rooms/{id}/force-end", roomH.ForceEndRoom)
 		r.Post("/api/rooms/{id}/pause", roomH.PauseRoom)
 		r.Post("/api/rooms/{id}/resume", roomH.ResumeRoom)
@@ -96,11 +140,25 @@ func main() {
 	// WebSocket endpoint (auth via query token)
 	r.Get("/ws/rooms/{id}", wsH.ServeWS)
 
-	// Static file serving for uploads
+	// Static file serving for uploads with COS redirect support
 	uploadsFS := http.StripPrefix("/uploads/", http.FileServer(http.Dir(cfg.UploadDir)))
-	r.Get("/uploads/*", func(w http.ResponseWriter, r *http.Request) {
+	r.Get("/uploads/*", func(w http.ResponseWriter, req *http.Request) {
+		path := strings.TrimPrefix(req.URL.Path, "/uploads/")
+		if path == "" || path == "/" {
+			http.NotFound(w, req)
+			return
+		}
+		if cfg.COSEnabled {
+			cosURL := stor.URL(path)
+			if cosURL != "" {
+				w.Header().Set("Cache-Control", "public, max-age=86400")
+				http.Redirect(w, req, cosURL, http.StatusFound)
+				return
+			}
+		}
+		// Fallback to local file serving
 		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
-		uploadsFS.ServeHTTP(w, r)
+		uploadsFS.ServeHTTP(w, req)
 	})
 
 	addr := fmt.Sprintf(":%s", cfg.Port)
@@ -108,6 +166,59 @@ func main() {
 	if err := http.ListenAndServe(addr, r); err != nil {
 		log.Fatalf("server error: %v", err)
 	}
+}
+
+// migrateLocalToCOS uploads local files to COS in background.
+func migrateLocalToCOS(uploadDir string, stor storage.Storage) {
+	for _, sub := range []string{"audio", "covers"} {
+		dir := filepath.Join(uploadDir, sub)
+		entries, err := os.ReadDir(dir)
+		if err != nil {
+			continue
+		}
+		migrated := 0
+		for _, entry := range entries {
+			if entry.IsDir() {
+				continue
+			}
+			key := sub + "/" + entry.Name()
+			if stor.Exists(context.Background(), key) {
+				continue
+			}
+			filePath := filepath.Join(dir, entry.Name())
+			data, err := os.ReadFile(filePath)
+			if err != nil {
+				continue
+			}
+			contentType := "application/octet-stream"
+			if strings.HasSuffix(entry.Name(), ".mp3") {
+				contentType = "audio/mpeg"
+			} else if strings.HasSuffix(entry.Name(), ".jpg") || strings.HasSuffix(entry.Name(), ".jpeg") {
+				contentType = "image/jpeg"
+			} else if strings.HasSuffix(entry.Name(), ".png") {
+				contentType = "image/png"
+			} else if strings.HasSuffix(entry.Name(), ".webp") {
+				contentType = "image/webp"
+			} else if strings.HasSuffix(entry.Name(), ".wav") {
+				contentType = "audio/wav"
+			} else if strings.HasSuffix(entry.Name(), ".m4a") {
+				contentType = "audio/mp4"
+			} else if strings.HasSuffix(entry.Name(), ".flac") {
+				contentType = "audio/flac"
+			} else if strings.HasSuffix(entry.Name(), ".ogg") {
+				contentType = "audio/ogg"
+			}
+			if err := stor.Put(context.Background(), key, bytes.NewReader(data), int64(len(data)), contentType); err != nil {
+				log.Printf("[cos-migrate] failed to upload %s: %v", key, err)
+				continue
+			}
+			migrated++
+		}
+		if migrated > 0 {
+			log.Printf("[cos-migrate] uploaded %d files from %s/", migrated, sub)
+		}
+	}
+	log.Printf("[cos-migrate] background migration complete")
 }
 
 // corsMiddleware allows all origins for development.

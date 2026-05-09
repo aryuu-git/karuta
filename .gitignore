@@ -35,5 +35,6 @@ frontend/uploads/
 .DS_Store
 Thumbs.db
 
-# 本地服务器目录
-karuta-server/
+# 编译产物
+karuta-server
+migrate-cos-linux

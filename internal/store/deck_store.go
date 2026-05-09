@@ -31,12 +31,10 @@ func (s *DeckStore) CreateDeck(ownerID int64, name, description string) (*model.
 
 func (s *DeckStore) ListByOwner(ownerID int64) ([]*model.Deck, error) {
 	rows, err := s.db.Query(
-		`SELECT d.id, d.owner_id, d.name, d.description, d.is_public, d.created_at,
-		        COUNT(c.id) AS card_count
+		`SELECT d.id, d.owner_id, d.name, d.description, d.is_public, d.share_level, d.edit_level, d.created_at,
+		        (SELECT COUNT(*) FROM deck_cards dc WHERE dc.deck_id = d.id) AS card_count
 		 FROM decks d
-		 LEFT JOIN cards c ON c.deck_id = d.id
 		 WHERE d.owner_id = ?
-		 GROUP BY d.id
 		 ORDER BY d.created_at DESC`,
 		ownerID,
 	)
@@ -48,7 +46,7 @@ func (s *DeckStore) ListByOwner(ownerID int64) ([]*model.Deck, error) {
 	var decks []*model.Deck
 	for rows.Next() {
 		d := &model.Deck{}
-		if err := rows.Scan(&d.ID, &d.OwnerID, &d.Name, &d.Description, &d.IsPublic, &d.CreatedAt, &d.CardCount); err != nil {
+		if err := rows.Scan(&d.ID, &d.OwnerID, &d.Name, &d.Description, &d.IsPublic, &d.ShareLevel, &d.EditLevel, &d.CreatedAt, &d.CardCount); err != nil {
 			return nil, fmt.Errorf("scan deck: %w", err)
 		}
 		decks = append(decks, d)
@@ -58,14 +56,73 @@ func (s *DeckStore) ListByOwner(ownerID int64) ([]*model.Deck, error) {
 
 func (s *DeckStore) GetByID(id int64) (*model.Deck, error) {
 	row := s.db.QueryRow(
-		`SELECT id, owner_id, name, description, is_public, created_at FROM decks WHERE id = ?`,
+		`SELECT id, owner_id, name, description, is_public, share_level, edit_level, created_at FROM decks WHERE id = ?`,
 		id,
 	)
 	d := &model.Deck{}
-	if err := row.Scan(&d.ID, &d.OwnerID, &d.Name, &d.Description, &d.IsPublic, &d.CreatedAt); err != nil {
+	if err := row.Scan(&d.ID, &d.OwnerID, &d.Name, &d.Description, &d.IsPublic, &d.ShareLevel, &d.EditLevel, &d.CreatedAt); err != nil {
 		return nil, fmt.Errorf("get deck by id: %w", err)
 	}
 	return d, nil
+}
+
+func (s *DeckStore) UpdateShareLevel(id int64, shareLevel, editLevel string) error {
+	isPublic := shareLevel != "private"
+	_, err := s.db.Exec(
+		`UPDATE decks SET share_level = ?, edit_level = ?, is_public = ? WHERE id = ?`,
+		shareLevel, editLevel, isPublic, id,
+	)
+	return err
+}
+
+func (s *DeckStore) ListPublicByShareLevel() ([]*model.Deck, error) {
+	rows, err := s.db.Query(
+		`SELECT d.id, d.owner_id, d.name, d.description, d.is_public, d.share_level, d.edit_level, d.created_at,
+		        (SELECT COUNT(*) FROM deck_cards dc WHERE dc.deck_id = d.id) AS card_count,
+		        COALESCE(u.username, '') AS owner_name
+		 FROM decks d
+		 LEFT JOIN users u ON u.id = d.owner_id
+		 WHERE d.share_level IN ('playable', 'editable')
+		 ORDER BY d.created_at DESC`,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("list public decks by share level: %w", err)
+	}
+	defer rows.Close()
+	var decks []*model.Deck
+	for rows.Next() {
+		d := &model.Deck{}
+		if err := rows.Scan(&d.ID, &d.OwnerID, &d.Name, &d.Description, &d.IsPublic, &d.ShareLevel, &d.EditLevel, &d.CreatedAt, &d.CardCount, &d.OwnerName); err != nil {
+			return nil, fmt.Errorf("scan deck: %w", err)
+		}
+		decks = append(decks, d)
+	}
+	return decks, rows.Err()
+}
+
+func (s *DeckStore) ListEditable() ([]*model.Deck, error) {
+	rows, err := s.db.Query(
+		`SELECT d.id, d.owner_id, d.name, d.description, d.is_public, d.share_level, d.edit_level, d.created_at,
+		        (SELECT COUNT(*) FROM deck_cards dc WHERE dc.deck_id = d.id) AS card_count,
+		        COALESCE(u.username, '') AS owner_name
+		 FROM decks d
+		 LEFT JOIN users u ON u.id = d.owner_id
+		 WHERE d.share_level = 'editable'
+		 ORDER BY d.created_at DESC`,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("list editable decks: %w", err)
+	}
+	defer rows.Close()
+	var decks []*model.Deck
+	for rows.Next() {
+		d := &model.Deck{}
+		if err := rows.Scan(&d.ID, &d.OwnerID, &d.Name, &d.Description, &d.IsPublic, &d.ShareLevel, &d.EditLevel, &d.CreatedAt, &d.CardCount, &d.OwnerName); err != nil {
+			return nil, fmt.Errorf("scan deck: %w", err)
+		}
+		decks = append(decks, d)
+	}
+	return decks, rows.Err()
 }
 
 func (s *DeckStore) ListPublic() ([]*model.Deck, error) {

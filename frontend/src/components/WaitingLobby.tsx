@@ -8,6 +8,7 @@ interface WaitingLobbyProps {
   players: RoomPlayer[]
   currentUserId: number
   onRoleChange?: (isSpectator: boolean) => void
+  onKick?: (userId: number) => void
   preloadProgress?: { loaded: number; total: number } | null
 }
 
@@ -49,12 +50,14 @@ function useAmbientParticles(canvasRef: RefObject<HTMLCanvasElement>) {
       })
     }
 
+    const accentRgb = getComputedStyle(document.documentElement).getPropertyValue('--accent-primary').trim() || '232,164,184'
+
     const draw = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height)
       particles.forEach((p) => {
         ctx.beginPath()
         ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2)
-        ctx.fillStyle = `rgba(232,164,184,${p.opacity})`
+        ctx.fillStyle = `rgba(${accentRgb},${p.opacity})`
         ctx.fill()
 
         p.x += p.vx
@@ -80,7 +83,7 @@ function useAmbientParticles(canvasRef: RefObject<HTMLCanvasElement>) {
   }, [canvasRef])
 }
 
-export function WaitingLobby({ room, players, currentUserId, onRoleChange, preloadProgress }: WaitingLobbyProps) {
+export function WaitingLobby({ room, players, currentUserId, onRoleChange, onKick, preloadProgress }: WaitingLobbyProps) {
   const [copied, setCopied] = useState(false)
   const [starting, setStarting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -155,10 +158,10 @@ export function WaitingLobby({ room, players, currentUserId, onRoleChange, prelo
           animate={{ opacity: 1, y: 0 }}
           className="text-center"
         >
-          <p className="text-muted text-sm font-sans mb-2 tracking-widest">🌸 把邀请码发给战友，一起来抢！(ﾉ◕ヮ◕)ﾉ*:･ﾟ✧</p>
+          <p className="text-pink-300/50 text-sm font-serif mb-2 tracking-widest italic">🌸 将此令牌传递给战友，共赴命运之战！✧</p>
           <div
             className="font-serif text-5xl sm:text-6xl font-bold tracking-[0.2em] text-gold cursor-pointer select-all"
-            style={{ textShadow: '0 0 30px rgba(232,164,184,0.5)' }}
+            style={{ textShadow: '0 0 30px rgba(var(--accent-primary),0.5)' }}
             onClick={copyCode}
           >
             {room.code}
@@ -178,13 +181,23 @@ export function WaitingLobby({ room, players, currentUserId, onRoleChange, prelo
           </button>
         </motion.div>
 
+        {/* 房间模式信息 */}
+        {room.mask_enabled && (
+          <div className="flex items-center gap-2 px-4 py-2 rounded-lg border border-gold/20 bg-gold/5">
+            <span className="text-gold text-sm">🎭</span>
+            <span className="text-sm text-white/80">
+              模糊牌面：{room.mask_difficulty === 'easy' ? '简单' : room.mask_difficulty === 'hard' ? '困难' : '普通'}难度
+            </span>
+          </div>
+        )}
+
         {/* Divider */}
         <div className="w-full h-px bg-gradient-to-r from-transparent via-border to-transparent" />
 
         {/* Players */}
         <div className="w-full">
-          <p className="text-muted text-xs tracking-widest mb-3 text-center">
-            ✦ 集结中的勇士们 · 已到场 {players.length} 人 (ง •̀_•́)ง ✦
+          <p className="text-pink-300/40 text-xs tracking-widest mb-3 text-center font-serif">
+            ✦ 集结中的勇者们 · 已到场 {players.length} 位英杰 ✦
           </p>
           <div className="grid grid-cols-2 gap-2">
             {players.map((player, i) => (
@@ -204,15 +217,15 @@ export function WaitingLobby({ room, players, currentUserId, onRoleChange, prelo
                 <div
                   className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-xs font-bold"
                   style={{
-                    background: 'linear-gradient(135deg, #4a1a30, #3d1525)',
-                    border: '1px solid rgba(232,164,184,0.3)',
-                    color: '#e8a4b8',
+                    background: 'linear-gradient(135deg, var(--color-surface), var(--color-surface))',
+                    border: '1px solid rgba(var(--accent-primary),0.3)',
+                    color: 'var(--color-gold)',
                   }}
                 >
                   {player.username.charAt(0).toUpperCase()}
                 </div>
                 <span
-                  className={`text-sm truncate ${
+                  className={`text-sm truncate flex-1 ${
                     player.user_id === currentUserId ? 'text-gold' : 'text-white/80'
                   }`}
                 >
@@ -224,6 +237,13 @@ export function WaitingLobby({ room, players, currentUserId, onRoleChange, prelo
                     <span className="text-xs ml-1" style={{ color: 'rgba(128,90,213,0.7)' }}>👁旁观</span>
                   )}
                 </span>
+                {onKick && currentUserId === room.host_id && player.user_id !== currentUserId && (
+                  <button onClick={() => onKick(player.user_id)}
+                    className="text-xs text-muted/40 hover:text-crimson transition-colors shrink-0 px-1"
+                    title="踢出房间">
+                    ✕
+                  </button>
+                )}
               </motion.div>
             ))}
           </div>
@@ -243,7 +263,7 @@ export function WaitingLobby({ room, players, currentUserId, onRoleChange, prelo
             <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
               <motion.div
                 className="h-full rounded-full"
-                style={{ background: 'linear-gradient(90deg, #e8a4b8, #c9a84c)' }}
+                style={{ background: 'linear-gradient(90deg, var(--color-gold), var(--color-gold-dark))' }}
                 initial={{ width: 0 }}
                 animate={{ width: `${preloadPercent}%` }}
                 transition={{ duration: 0.3, ease: 'easeOut' }}
@@ -287,14 +307,14 @@ export function WaitingLobby({ room, players, currentUserId, onRoleChange, prelo
             className="btn-gold w-full text-lg py-4 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
             style={{ animation: !starting ? 'glowPulse 2s ease-in-out infinite' : 'none' }}
           >
-            {starting ? '集结号角吹响中… (｡･ω･｡)' : '「全员集合！开战！」(ง •̀_•́)ง'}
+            {starting ? '号角响彻天际… (｡･ω･｡)' : '「全军出击！命运之战，开始！」(ง •̀_•́)ง'}
           </motion.button>
         ) : (
           <div className="text-center">
-            <p className="text-muted text-sm font-serif tracking-widest animate-pulse mb-1">
+            <p className="text-pink-300/50 text-sm font-serif tracking-widest animate-pulse mb-1">
               等待大将军的号令… (´。• ω •。`)
             </p>
-            <p className="text-muted/50 text-xs">房主正在磨刀霍霍…</p>
+            <p className="text-pink-300/30 text-xs font-serif italic">将军正在磨刀霍霍 ♪</p>
           </div>
         )}
       </div>

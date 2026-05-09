@@ -4,19 +4,16 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"fmt"
-	"io"
+	"log"
 	"net/http"
-	"os"
-	"path/filepath"
 	"strconv"
 
 	"karuta/internal/middleware"
 	"karuta/internal/model"
+	"karuta/internal/storage"
 	"karuta/internal/store"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
 )
 
 const (
@@ -33,95 +30,6 @@ func NewDeckHandler(s *store.Store, uploadDir string) *DeckHandler {
 	return &DeckHandler{store: s, uploadDir: uploadDir}
 }
 
-// GET /api/decks/public
-func (h *DeckHandler) ListPublicDecks(w http.ResponseWriter, r *http.Request) {
-	decks, err := h.store.Decks.ListPublic()
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to list public decks")
-		return
-	}
-	if decks == nil {
-		decks = []*model.Deck{}
-	}
-	writeJSON(w, http.StatusOK, decks)
-}
-
-// POST /api/decks/{id}/share  — 切换共享状态
-func (h *DeckHandler) ShareDeck(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.GetUserID(r.Context())
-	if !ok {
-		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "not authenticated")
-		return
-	}
-	deckID, err := parseDeckID(r)
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "invalid deck id")
-		return
-	}
-	deck, err := h.store.Decks.GetByID(deckID)
-	if err != nil {
-		writeError(w, http.StatusNotFound, "NOT_FOUND", "deck not found")
-		return
-	}
-	if deck.OwnerID != userID {
-		writeError(w, http.StatusForbidden, "FORBIDDEN", "access denied")
-		return
-	}
-	var req struct {
-		IsPublic bool `json:"is_public"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "invalid body")
-		return
-	}
-	if err := h.store.Decks.SetPublic(deckID, req.IsPublic); err != nil {
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to update")
-		return
-	}
-	writeJSON(w, http.StatusOK, map[string]bool{"is_public": req.IsPublic})
-}
-
-// PATCH /api/decks/{id}
-func (h *DeckHandler) UpdateDeck(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.GetUserID(r.Context())
-	if !ok {
-		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "not authenticated")
-		return
-	}
-	deckID, err := parseDeckID(r)
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "invalid deck id")
-		return
-	}
-	var req struct {
-		Name        string `json:"name"`
-		Description string `json:"description"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "invalid request body")
-		return
-	}
-	if req.Name == "" {
-		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "name is required")
-		return
-	}
-	deck, err := h.store.Decks.GetByID(deckID)
-	if err != nil {
-		writeError(w, http.StatusNotFound, "NOT_FOUND", "deck not found")
-		return
-	}
-	if deck.OwnerID != userID {
-		writeError(w, http.StatusForbidden, "FORBIDDEN", "access denied")
-		return
-	}
-	updated, err := h.store.Decks.UpdateDeck(deckID, req.Name, req.Description)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to update deck")
-		return
-	}
-	writeJSON(w, http.StatusOK, updated)
-}
-
 // POST /api/decks
 func (h *DeckHandler) CreateDeck(w http.ResponseWriter, r *http.Request) {
 	userID, ok := middleware.GetUserID(r.Context())
@@ -133,6 +41,8 @@ func (h *DeckHandler) CreateDeck(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Name        string `json:"name"`
 		Description string `json:"description"`
+		ShareLevel  string `json:"share_level"`
+		EditLevel   string `json:"edit_level"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "invalid request body")
@@ -149,11 +59,26 @@ func (h *DeckHandler) CreateDeck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Set share/edit level if provided
+	if req.ShareLevel != "" {
+		editLevel := req.EditLevel
+		if editLevel == "" {
+			editLevel = "add_only"
+		}
+		if err := h.store.Decks.UpdateShareLevel(deck.ID, req.ShareLevel, editLevel); err != nil {
+			writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to set share level")
+			return
+		}
+		deck.ShareLevel = req.ShareLevel
+		deck.EditLevel = editLevel
+		deck.IsPublic = req.ShareLevel != "private"
+	}
+
 	writeJSON(w, http.StatusCreated, deck)
 }
 
-// GET /api/decks
-func (h *DeckHandler) ListDecks(w http.ResponseWriter, r *http.Request) {
+// GET /api/decks/mine
+func (h *DeckHandler) ListMyDecks(w http.ResponseWriter, r *http.Request) {
 	userID, ok := middleware.GetUserID(r.Context())
 	if !ok {
 		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "not authenticated")
@@ -169,6 +94,32 @@ func (h *DeckHandler) ListDecks(w http.ResponseWriter, r *http.Request) {
 		decks = []*model.Deck{}
 	}
 
+	writeJSON(w, http.StatusOK, decks)
+}
+
+// GET /api/decks/public
+func (h *DeckHandler) ListPublicDecks(w http.ResponseWriter, r *http.Request) {
+	decks, err := h.store.Decks.ListPublicByShareLevel()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to list public decks")
+		return
+	}
+	if decks == nil {
+		decks = []*model.Deck{}
+	}
+	writeJSON(w, http.StatusOK, decks)
+}
+
+// GET /api/decks/editable
+func (h *DeckHandler) ListEditableDecks(w http.ResponseWriter, r *http.Request) {
+	decks, err := h.store.Decks.ListEditable()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to list editable decks")
+		return
+	}
+	if decks == nil {
+		decks = []*model.Deck{}
+	}
 	writeJSON(w, http.StatusOK, decks)
 }
 
@@ -196,28 +147,39 @@ func (h *DeckHandler) GetDeck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if deck.OwnerID != userID && !deck.IsPublic {
+	if !canPlayDeck(userID, deck) {
 		writeError(w, http.StatusForbidden, "FORBIDDEN", "access denied")
 		return
 	}
 
-	cards, err := h.store.Cards.ListByDeck(deckID)
+	// Load cards via deck_cards (M:N), fallback to legacy
+	cards, err := h.store.DeckCards.ListCardsByDeck(deckID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to list cards")
 		return
+	}
+	// Fallback to legacy if deck_cards is empty
+	if len(cards) == 0 {
+		cards, err = h.store.Cards.ListByDeck(deckID)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to list cards")
+			return
+		}
 	}
 	if cards == nil {
 		cards = []*model.Card{}
 	}
 
-	// Populate URL fields
+	// Populate URL fields and audios
 	for _, c := range cards {
-		if c.AudioPath != "" {
-			c.AudioURL = "/uploads/audio/" + filepath.Base(c.AudioPath)
+		c.CoverURL = storage.FileURL(c.CoverPath, "covers")
+		// Load audios for each card
+		audios := h.store.CardAudios.GetAudiosForCard(c)
+		for _, a := range audios {
+			a.AudioURL = storage.FileURL(a.AudioPath, "audio")
 		}
-		if c.CoverPath != "" {
-			c.CoverURL = "/uploads/covers/" + filepath.Base(c.CoverPath)
-		}
+		c.Audios = audios
+		c.AudioCount = len(audios)
 	}
 
 	deck.CardCount = len(cards)
@@ -226,6 +188,74 @@ func (h *DeckHandler) GetDeck(w http.ResponseWriter, r *http.Request) {
 		"deck":  deck,
 		"cards": cards,
 	})
+}
+
+// PATCH /api/decks/{id}
+func (h *DeckHandler) UpdateDeck(w http.ResponseWriter, r *http.Request) {
+	userID, ok := middleware.GetUserID(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "not authenticated")
+		return
+	}
+	deckID, err := parseDeckID(r)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "invalid deck id")
+		return
+	}
+	var req struct {
+		Name        *string `json:"name"`
+		Description *string `json:"description"`
+		ShareLevel  *string `json:"share_level"`
+		EditLevel   *string `json:"edit_level"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "invalid request body")
+		return
+	}
+	deck, err := h.store.Decks.GetByID(deckID)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "NOT_FOUND", "deck not found")
+		return
+	}
+	if deck.OwnerID != userID {
+		writeError(w, http.StatusForbidden, "FORBIDDEN", "access denied")
+		return
+	}
+
+	// 部分更新：只更新传入的字段
+	if req.Name != nil && *req.Name != "" {
+		deck.Name = *req.Name
+	}
+	if req.Description != nil {
+		deck.Description = *req.Description
+	}
+	if req.ShareLevel != nil {
+		deck.ShareLevel = *req.ShareLevel
+	}
+	if req.EditLevel != nil {
+		deck.EditLevel = *req.EditLevel
+	}
+
+	// 更新名称/描述
+	if _, err := h.store.Decks.UpdateDeck(deckID, deck.Name, deck.Description); err != nil {
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to update deck")
+		return
+	}
+	// 更新共享设置
+	if req.ShareLevel != nil || req.EditLevel != nil {
+		if err := h.store.Decks.UpdateShareLevel(deckID, deck.ShareLevel, deck.EditLevel); err != nil {
+			writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to update share level")
+			return
+		}
+	}
+
+	// 重新读取返回
+	updated, err := h.store.Decks.GetByID(deckID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to get updated deck")
+		return
+	}
+	writeJSON(w, http.StatusOK, updated)
 }
 
 // DELETE /api/decks/{id}
@@ -267,19 +297,6 @@ func (h *DeckHandler) DeleteDeck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Delete all card files before removing from DB
-	cards, err := h.store.Cards.ListByDeck(deckID)
-	if err == nil {
-		for _, c := range cards {
-			if c.AudioPath != "" {
-				_ = os.Remove(c.AudioPath)
-			}
-			if c.CoverPath != "" {
-				_ = os.Remove(c.CoverPath)
-			}
-		}
-	}
-
 	if err := h.store.Decks.DeleteDeck(deckID); err != nil {
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to delete deck")
 		return
@@ -288,8 +305,59 @@ func (h *DeckHandler) DeleteDeck(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// POST /api/decks/{id}/cards
-func (h *DeckHandler) AddCard(w http.ResponseWriter, r *http.Request) {
+// POST /api/decks/{id}/share
+func (h *DeckHandler) ShareDeck(w http.ResponseWriter, r *http.Request) {
+	userID, ok := middleware.GetUserID(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "not authenticated")
+		return
+	}
+	deckID, err := parseDeckID(r)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "invalid deck id")
+		return
+	}
+	deck, err := h.store.Decks.GetByID(deckID)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "NOT_FOUND", "deck not found")
+		return
+	}
+	if deck.OwnerID != userID {
+		writeError(w, http.StatusForbidden, "FORBIDDEN", "access denied")
+		return
+	}
+
+	var req struct {
+		ShareLevel string `json:"share_level"`
+		EditLevel  string `json:"edit_level"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "invalid body")
+		return
+	}
+
+	// Validate share_level
+	if req.ShareLevel != "private" && req.ShareLevel != "playable" && req.ShareLevel != "editable" {
+		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "share_level must be private, playable, or editable")
+		return
+	}
+	if req.EditLevel == "" {
+		req.EditLevel = "add_only"
+	}
+
+	if err := h.store.Decks.UpdateShareLevel(deckID, req.ShareLevel, req.EditLevel); err != nil {
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to update share settings")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]string{
+		"share_level": req.ShareLevel,
+		"edit_level":  req.EditLevel,
+	})
+}
+
+// POST /api/decks/{id}/cards — 添加牌到牌组
+func (h *DeckHandler) AddCardsToDeck(w http.ResponseWriter, r *http.Request) {
 	userID, ok := middleware.GetUserID(r.Context())
 	if !ok {
 		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "not authenticated")
@@ -311,129 +379,38 @@ func (h *DeckHandler) AddCard(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to get deck")
 		return
 	}
-	if deck.OwnerID != userID {
+
+	if !canAddCardToDeck(userID, deck) {
 		writeError(w, http.StatusForbidden, "FORBIDDEN", "access denied")
 		return
 	}
 
-	// Limit multipart memory to 25MB
-	if err := r.ParseMultipartForm(25 * 1024 * 1024); err != nil {
-		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "failed to parse multipart form")
+	var req struct {
+		CardIDs []int64 `json:"card_ids"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "invalid request body")
+		return
+	}
+	if len(req.CardIDs) == 0 {
+		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "card_ids is required")
 		return
 	}
 
-	displayText := r.FormValue("display_text")
-	hintText := r.FormValue("hint_text")
-	if displayText == "" {
-		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "display_text is required")
+	if err := h.store.DeckCards.AddBatch(deckID, req.CardIDs, userID); err != nil {
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to add cards to deck")
 		return
 	}
 
-	// Handle audio file
-	audioFile, audioHeader, err := r.FormFile("audio")
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "audio file is required")
-		return
-	}
-	defer audioFile.Close()
-
-	if audioHeader.Size > maxAudioSize {
-		writeError(w, http.StatusBadRequest, "FILE_TOO_LARGE", "audio file must be <= 20MB")
-		return
-	}
-
-	audioBytes, err := io.ReadAll(io.LimitReader(audioFile, maxAudioSize+1))
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to read audio file")
-		return
-	}
-
-	audioExt, ok := detectAudioFormat(audioBytes)
-	if !ok {
-		writeError(w, http.StatusBadRequest, "INVALID_FORMAT", "unsupported audio format; allowed: mp3, wav, m4a, flac, ogg, aac")
-		return
-	}
-
-	audioDir := filepath.Join(h.uploadDir, "audio")
-	if err := os.MkdirAll(audioDir, 0755); err != nil {
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to create audio directory")
-		return
-	}
-	audioFilename := uuid.New().String() + "." + audioExt
-	audioPath := filepath.Join(audioDir, audioFilename)
-	if err := os.WriteFile(audioPath, audioBytes, 0644); err != nil {
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to save audio file")
-		return
-	}
-
-	// Handle cover file (required)
-	coverPath := ""
-	coverFile, coverHeader, coverErr := r.FormFile("cover")
-	if coverErr != nil {
-		_ = os.Remove(audioPath)
-		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "cover image is required")
-		return
-	}
-	if true {
-		defer coverFile.Close()
-		if coverHeader.Size > maxCoverSize {
-			_ = os.Remove(audioPath)
-			writeError(w, http.StatusBadRequest, "FILE_TOO_LARGE", "cover file must be <= 5MB")
-			return
-		}
-
-		coverBytes, err := io.ReadAll(io.LimitReader(coverFile, maxCoverSize+1))
-		if err != nil {
-			_ = os.Remove(audioPath)
-			writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to read cover file")
-			return
-		}
-
-		coverExt, ok := detectImageFormat(coverBytes)
-		if !ok {
-			_ = os.Remove(audioPath)
-			writeError(w, http.StatusBadRequest, "INVALID_FORMAT", "unsupported cover format; allowed: jpg, png, webp")
-			return
-		}
-
-		coverDir := filepath.Join(h.uploadDir, "covers")
-		if err := os.MkdirAll(coverDir, 0755); err != nil {
-			_ = os.Remove(audioPath)
-			writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to create covers directory")
-			return
-		}
-		coverFilename := uuid.New().String() + "." + coverExt
-		coverPath = filepath.Join(coverDir, coverFilename)
-		if err := os.WriteFile(coverPath, coverBytes, 0644); err != nil {
-			_ = os.Remove(audioPath)
-			writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to save cover file")
-			return
-		}
-	}
-
-	existingCards, _ := h.store.Cards.ListByDeck(deckID)
-	sortOrder := len(existingCards)
-
-	card, err := h.store.Cards.CreateCard(deckID, audioPath, coverPath, hintText, displayText, sortOrder)
-	if err != nil {
-		_ = os.Remove(audioPath)
-		if coverPath != "" {
-			_ = os.Remove(coverPath)
-		}
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to create card")
-		return
-	}
-
-	card.AudioURL = "/uploads/audio/" + filepath.Base(card.AudioPath)
-	if card.CoverPath != "" {
-		card.CoverURL = "/uploads/covers/" + filepath.Base(card.CoverPath)
-	}
-
-	writeJSON(w, http.StatusCreated, card)
+	count, _ := h.store.DeckCards.CountByDeck(deckID)
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"added":      len(req.CardIDs),
+		"card_count": count,
+	})
 }
 
-// DELETE /api/decks/{id}/cards/{cardID}
-func (h *DeckHandler) DeleteCard(w http.ResponseWriter, r *http.Request) {
+// DELETE /api/decks/{id}/cards/{cardID} — 从牌组移除牌
+func (h *DeckHandler) RemoveCardFromDeck(w http.ResponseWriter, r *http.Request) {
 	userID, ok := middleware.GetUserID(r.Context())
 	if !ok {
 		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "not authenticated")
@@ -462,49 +439,131 @@ func (h *DeckHandler) DeleteCard(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to get deck")
 		return
 	}
-	if deck.OwnerID != userID {
+
+	if !canRemoveCardFromDeck(userID, deck) {
 		writeError(w, http.StatusForbidden, "FORBIDDEN", "access denied")
 		return
 	}
 
-	card, err := h.store.Cards.GetByID(cardID)
+	// Verify card is in deck
+	inDeck, err := h.store.DeckCards.CardInDeck(deckID, cardID)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			writeError(w, http.StatusNotFound, "NOT_FOUND", "card not found")
-			return
-		}
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to get card")
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to check card membership")
 		return
 	}
-	if card.DeckID != deckID {
+	if !inDeck {
 		writeError(w, http.StatusNotFound, "NOT_FOUND", "card not found in this deck")
 		return
 	}
 
-	if err := h.store.Cards.DeleteCard(cardID); err != nil {
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to delete card")
+	if err := h.store.DeckCards.Remove(deckID, cardID); err != nil {
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to remove card from deck")
 		return
-	}
-
-	// Clean up files
-	if card.AudioPath != "" {
-		_ = os.Remove(card.AudioPath)
-	}
-	if card.CoverPath != "" {
-		_ = os.Remove(card.CoverPath)
 	}
 
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// POST /api/decks/{id}/clone — 复制牌组
+func (h *DeckHandler) CloneDeck(w http.ResponseWriter, r *http.Request) {
+	userID, ok := middleware.GetUserID(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "not authenticated")
+		return
+	}
+
+	deckID, err := parseDeckID(r)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "invalid deck id")
+		return
+	}
+
+	var req struct {
+		Mode string `json:"mode"` // "full" (default) or "covers_only"
+	}
+	_ = json.NewDecoder(r.Body).Decode(&req)
+	if req.Mode == "" {
+		req.Mode = "full"
+	}
+
+	srcDeck, err := h.store.Decks.GetByID(deckID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			writeError(w, http.StatusNotFound, "NOT_FOUND", "deck not found")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to get deck")
+		return
+	}
+
+	if !canPlayDeck(userID, srcDeck) {
+		writeError(w, http.StatusForbidden, "FORBIDDEN", "access denied")
+		return
+	}
+
+	newDeck, err := h.store.Decks.CreateDeck(userID, srcDeck.Name+" (copy)", srcDeck.Description)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to create deck copy")
+		return
+	}
+
+	if req.Mode == "covers_only" {
+		// 创建新牌（只有封面，无音频），加入新牌组
+		srcCards, _ := h.store.DeckCards.ListCardsByDeck(deckID)
+		if len(srcCards) == 0 {
+			srcCards, _ = h.store.Cards.ListByDeck(deckID)
+		}
+		for i, c := range srcCards {
+			newCard, err := h.store.Cards.CreateCard(userID, c.CoverPath, c.DisplayText+"_copy", c.Series, c.Tags, true)
+			if err != nil {
+				log.Printf("[clone] CreateCard failed: %v", err)
+				continue
+			}
+			if err := h.store.DeckCards.Add(newDeck.ID, newCard.ID, userID, i); err != nil {
+				log.Printf("[clone] DeckCards.Add failed: %v (deck=%d, card=%d)", err, newDeck.ID, newCard.ID)
+			}
+		}
+	} else {
+		// 完整复制：引用相同的牌
+		if err := h.store.DeckCards.CloneDeck(deckID, newDeck.ID, userID); err != nil {
+			writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to clone cards")
+			return
+		}
+	}
+
+	count, _ := h.store.DeckCards.CountByDeck(newDeck.ID)
+	newDeck.CardCount = count
+
+	writeJSON(w, http.StatusCreated, newDeck)
+}
+
+// Permission helpers
+
+func canAddCardToDeck(userID int64, deck *model.Deck) bool {
+	if deck.OwnerID == userID {
+		return true
+	}
+	return deck.ShareLevel == "editable"
+}
+
+func canRemoveCardFromDeck(userID int64, deck *model.Deck) bool {
+	if deck.OwnerID == userID {
+		return true
+	}
+	return deck.ShareLevel == "editable" && deck.EditLevel == "full"
+}
+
+func canPlayDeck(userID int64, deck *model.Deck) bool {
+	if deck.OwnerID == userID {
+		return true
+	}
+	return deck.ShareLevel != "private"
+}
+
 // parseDeckID extracts and parses the {id} URL parameter.
 func parseDeckID(r *http.Request) (int64, error) {
 	idStr := chi.URLParam(r, "id")
-	id, err := strconv.ParseInt(idStr, 10, 64)
-	if err != nil {
-		return 0, fmt.Errorf("invalid id: %w", err)
-	}
-	return id, nil
+	return strconv.ParseInt(idStr, 10, 64)
 }
 
 // detectAudioFormat inspects magic bytes to identify audio format.

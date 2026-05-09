@@ -227,6 +227,25 @@ func (h *RoomHub) SendJSONToUser(userID int64, v interface{}) {
 	h.SendToUser(userID, data)
 }
 
+// DisconnectUser forcibly disconnects a user from the hub.
+func (h *RoomHub) DisconnectUser(userID int64) {
+	h.mu.RLock()
+	var target *Client
+	for c := range h.clients {
+		if c.userID == userID {
+			target = c
+			break
+		}
+	}
+	h.mu.RUnlock()
+	if target != nil {
+		select {
+		case h.unregister <- target:
+		default:
+		}
+	}
+}
+
 // OnlineUserIDs returns the list of currently connected user IDs.
 func (h *RoomHub) OnlineUserIDs() []int64 {
 	h.mu.RLock()
@@ -302,12 +321,12 @@ func (h *RoomHub) ResumeGame() {
 }
 
 // JudgePlayCard signals the game session that the judge has chosen a card to play.
-func (h *RoomHub) JudgePlayCard(cardID int64) {
+func (h *RoomHub) JudgePlayCard(cardID, cardAudioID int64) {
 	h.mu.RLock()
 	sess := h.session
 	h.mu.RUnlock()
 	if sess != nil {
-		sess.JudgePlayCard(cardID)
+		sess.JudgePlayCard(cardID, cardAudioID)
 	}
 }
 

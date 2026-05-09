@@ -15,7 +15,7 @@ import { useAuth } from '../hooks/useAuth'
 import { api } from '../api/client'
 import type { RoomState, Card, RoomPlayer, WSEvent } from '../api/types'
 
-interface CurrentReading { cardId: number; audioUrl: string; hintText: string }
+interface CurrentReading { cardId: number; cardAudioId: number; audioUrl: string; hintText: string; startRatio?: number }
 interface GrabbedCard { id: number; display_text: string; cover_url: string; hint_text: string }
 interface GameResult { user_id: number; username: string; score: number; rank: number; penalty_count?: number; grabbed_cards?: GrabbedCard[] }
 
@@ -114,8 +114,8 @@ export function RoomPage() {
   const [cards, setCards] = useState<Card[]>([])
   const displayOrderRef = useRef<number[]>([]) // 存打乱后的 id 顺序
   const [players, setPlayers] = useState<RoomPlayer[]>([])
-  const [claimedCards, setClaimedCards] = useState<Set<number>>(new Set())
-  const [claimedByMap, setClaimedByMap] = useState<Map<number, string>>(new Map())
+  const [cardRemaining, setCardRemaining] = useState<Map<number, number>>(new Map())
+  const [discardPile, setDiscardPile] = useState<Array<{ cardId: number; winner: string; hintText: string }>>([])
   const [currentReading, setCurrentReading] = useState<CurrentReading | null>(null)
   const [isPaused, setIsPaused] = useState(false)
   const [gameResults, setGameResults] = useState<GameResult[] | null>(null)
@@ -204,25 +204,44 @@ export function RoomPage() {
           setCards(shuffled)
           setTotalCardCount(state.cards.length)
         }
-        // 恢复已抢走的牌（刷新页面时保持棋盘状态）
+        // 初始化 cardRemaining（从 room_state cards 中获取）
+        if (state.cards?.length) {
+          const rm = new Map<number, number>()
+          state.cards.forEach((c: any) => rm.set(c.id, c.remaining ?? c.audio_count ?? 1))
+          setCardRemaining(rm)
+        }
+        // 恢复废牌堆（从 grabbed_cards 重建）
         if (state.grabbed_cards?.length) {
-          const claimed = new Set(state.grabbed_cards.map(g => g.card_id))
-          const byMap = new Map(
-            state.grabbed_cards
-              .filter(g => g.winner_id !== null)
-              .map(g => [g.card_id, g.winner_name || '无人'])
-          )
-          // 无人抢的也标记为已消耗
-          state.grabbed_cards
-            .filter(g => g.winner_id === null)
-            .forEach(g => byMap.set(g.card_id, '无人'))
-          setClaimedCards(claimed)
-          setClaimedByMap(byMap)
+          setDiscardPile(state.grabbed_cards.map((g: any) => ({
+            cardId: g.card_id,
+            winner: g.winner_name || '无人',
+            hintText: g.hint_text || '',
+          })))
         }
       })
       .catch((e) => setError(e instanceof Error ? e.message : '加载失败'))
       .finally(() => setLoading(false))
   }, [roomId])
+
+  // 牌面打乱：cardRemaining 变化时检查是否需要打乱
+  const shuffleThreshold = roomState?.room?.shuffle_remaining ?? 0
+  const prevRemainingRef = useRef<number>(-1)
+  useEffect(() => {
+    if (shuffleThreshold <= 0 || cards.length === 0) return
+    const boardCount = cards.filter(c => (cardRemaining.get(c.id) ?? c.audio_count ?? 1) > 0).length
+    // 只在 boardCount 发生变化且 <= 阈值时打乱（避免初始化时打乱）
+    if (boardCount <= shuffleThreshold && prevRemainingRef.current !== boardCount && prevRemainingRef.current >= 0) {
+      setCards(prev => {
+        const shuffled = [...prev]
+        for (let i = shuffled.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+        }
+        return shuffled
+      })
+    }
+    prevRemainingRef.current = boardCount
+  }, [cardRemaining, shuffleThreshold, cards.length])
 
   // 等待大厅阶段预加载所有封面图和音频
   useEffect(() => {
@@ -232,7 +251,11 @@ export function RoomPage() {
     const items: { type: 'image' | 'audio'; url: string }[] = []
     cards.forEach(card => {
       if (card.cover_url) items.push({ type: 'image', url: card.cover_url })
-      if (card.audio_url) items.push({ type: 'audio', url: card.audio_url })
+      if (card.audios?.length) {
+        card.audios.forEach(a => { if (a.audio_url) items.push({ type: 'audio', url: a.audio_url }) })
+      } else if (card.audio_url) {
+        items.push({ type: 'audio', url: card.audio_url })
+      }
     })
     if (!items.length) return
 
@@ -284,14 +307,18 @@ export function RoomPage() {
           setCards(shuffled)
           setTotalCardCount(s.cards.length)
         }
-        // 恢复已抢走的牌状态
+        // 恢复 cardRemaining 状态
+        if (s.cards?.length) {
+          const rm = new Map<number, number>()
+          s.cards.forEach((c: any) => rm.set(c.id, c.remaining ?? c.audio_count ?? 1))
+          setCardRemaining(rm)
+        }
         if (s.grabbed_cards?.length) {
-          const claimed = new Set(s.grabbed_cards.map((g: any) => g.card_id as number))
-          const byMap = new Map(
-            s.grabbed_cards.map((g: any) => [g.card_id as number, (g.winner_name || '无人') as string])
-          )
-          setClaimedCards(claimed)
-          setClaimedByMap(byMap)
+          setDiscardPile(s.grabbed_cards.map((g: any) => ({
+            cardId: g.card_id as number,
+            winner: (g.winner_name || '无人') as string,
+            hintText: (g.hint_text || '') as string,
+          })))
         }
         if (s.judge_waiting) setIsJudgeWaiting(true)
         break
@@ -315,7 +342,7 @@ export function RoomPage() {
         intervalRemainingRef.current = 0
         setJustJoined(false)
         setIsLastCard(event.is_last ?? false)
-        setCurrentReading({ cardId: event.card_id, audioUrl: event.audio_url, hintText: event.hint_text })
+        setCurrentReading({ cardId: event.card_id, cardAudioId: event.card_audio_id ?? 0, audioUrl: event.audio_url, hintText: event.hint_text, startRatio: event.start_ratio })
         setIsJudgeWaiting(false)
         setIsPaused(false)
         playSound('card_start')
@@ -323,8 +350,9 @@ export function RoomPage() {
       }
 
       case 'card_claimed': {
-        setClaimedCards(prev => new Set([...prev, event.card_id]))
-        setClaimedByMap(prev => new Map(prev).set(event.card_id, event.winner_name))
+        const remaining = (event as any).remaining ?? 0
+        setCardRemaining(prev => new Map(prev).set(event.card_id, remaining))
+        setDiscardPile(prev => [...prev, { cardId: event.card_id, winner: event.winner_name, hintText: (event as any).hint_text ?? '' }])
         setCurrentReading(null)
         const isMe = user && event.winner_id === user.id
         if (isMe) {
@@ -333,26 +361,30 @@ export function RoomPage() {
         } else {
           showToast(`✨ ${event.winner_name} 手速真快！+1分`, 'info')
         }
+        // 牌面打乱
         break
       }
 
       case 'card_missed': {
-        setClaimedCards(prev => new Set([...prev, event.card_id]))
-        setClaimedByMap(prev => new Map(prev).set(event.card_id, '无人'))
+        const remaining = (event as any).remaining ?? 0
+        setCardRemaining(prev => new Map(prev).set(event.card_id, remaining))
+        setDiscardPile(prev => [...prev, { cardId: event.card_id, winner: '无人', hintText: '' }])
         setCurrentReading(null)
         showToast('这张牌成功逃跑了… (°ω°)', 'info', 1500)
         break
       }
 
+      case 'card_exhausted': {
+        setCardRemaining(prev => new Map(prev).set(event.card_id, 0))
+        break
+      }
+
       case 'grab_failed': {
-        if (event.penalty) {
-          // penalty=true 由 grab_wrong 广播统一处理，跳过
-        } else if (event.reason === 'not_current') {
-          // 点的不是当前播放的牌
-          showToast('🎯 这不是当前的牌！仔细听歌再抢！(°ω°)', 'fail', 1500)
-          playSound('grab_fail')
+        // 有 reason 时由 grab_wrong 广播统一处理 toast，这里跳过
+        if (event.reason === 'not_current' || event.reason === 'already_grabbed') {
+          // grab_wrong 会处理
         } else {
-          // 窗口已关闭（歌播完后的结算期结束）
+          // 窗口已关闭等其他原因
           showToast('⚡ 晚了一步！(>_<) 下次要更快！', 'fail', 1200)
           playSound('grab_fail')
         }
@@ -362,17 +394,18 @@ export function RoomPage() {
       case 'grab_wrong': {
         const isMe = user && event.user_id === user.id
         const isNotCurrent = event.reason === 'not_current'
+        const hasPenalty = event.penalty !== false
         if (isMe) {
           if (isNotCurrent) {
-            showToast('🎯 抢错牌了！-1分，本首禁止抢牌 (╥_╥)', 'fail', 3000)
+            showToast(hasPenalty ? '🎯 抢错牌了！-1分，本首禁止抢牌 (╥_╥)' : '🎯 抢错牌了！本首禁止抢牌 (°ω°)', 'fail', 3000)
           } else {
-            showToast('😭 被人抢先了！-1分，本首禁止抢牌 (╥_╥)', 'fail', 3000)
+            showToast(hasPenalty ? '😭 被人抢先了！-1分，本首禁止抢牌 (╥_╥)' : '😭 被人抢先了！本首禁止抢牌 (°ω°)', 'fail', 3000)
           }
         } else {
           if (isNotCurrent) {
-            showToast(`❌ ${event.username} 抢了错误的牌，扣1分！本首出局`, 'info', 2500)
+            showToast(hasPenalty ? `❌ ${event.username} 抢了错误的牌，扣1分！本首出局` : `❌ ${event.username} 抢错了！本首出局`, 'info', 2500)
           } else {
-            showToast(`💨 ${event.username} 抢慢了一步，扣1分！本首出局`, 'info', 2500)
+            showToast(hasPenalty ? `💨 ${event.username} 抢慢了一步，扣1分！本首出局` : `💨 ${event.username} 抢慢了！本首出局`, 'info', 2500)
           }
         }
         playSound('grab_fail')
@@ -477,6 +510,12 @@ export function RoomPage() {
 
       case 'room_closed': {
         showToast('战场已解散，撤退中… (｡•́︿•̀｡)', 'info', 3000)
+        setTimeout(() => navigate('/'), 2000)
+        break
+      }
+
+      case 'kicked': {
+        showToast('😢 你被房主移出了房间…', 'fail', 3000)
         setTimeout(() => navigate('/'), 2000)
         break
       }
@@ -596,6 +635,12 @@ export function RoomPage() {
           players={players}
           currentUserId={user?.id ?? 0}
           onRoleChange={setIsSpectator}
+          onKick={async (userId) => {
+            try {
+              await api.rooms.kick(roomId, userId)
+              setPlayers(prev => prev.filter(p => p.user_id !== userId))
+            } catch { /* ignore */ }
+          }}
           preloadProgress={preloadProgress}
         />
         <ChatRoom messages={chatMessages} players={players} currentUserId={user?.id ?? 0}
@@ -607,16 +652,17 @@ export function RoomPage() {
 
   const isHost = roomState.room.host_id === user?.id
   const isJudgeMode = roomState.room.mode === 'judge'
-  const remainingCount = totalCardCount - claimedCards.size
+  const remainingCount = Array.from(cardRemaining.values()).filter(r => r > 0).length
 
   return (
     <Layout>
-      <div className="flex flex-col h-[calc(100vh-3.5rem)]" style={{ background: 'linear-gradient(160deg, #1a0510 0%, #200814 50%, #160412 100%)' }}>
+      <div className="flex flex-col h-[calc(100vh-3.5rem)]" style={{ background: 'linear-gradient(160deg, var(--color-ink-deep) 0%, var(--color-ink-deep) 50%, var(--color-ink-deep) 100%)' }}>
 
         {/* 读牌区 */}
         <ReadingPanel
           hintText={currentReading?.hintText ?? null}
           audioUrl={currentReading?.audioUrl ?? null}
+          startRatio={currentReading?.startRatio}
           intervalSec={roomState.room.interval_sec}
           isActive={!!currentReading}
           isPaused={isPaused}
@@ -627,7 +673,7 @@ export function RoomPage() {
         />
 
         {/* 刚加入进行中游戏的提示 */}
-        {justJoined && (
+        {justJoined && !isSpectator && (
           <div className="flex items-center justify-between px-4 py-2 text-xs"
             style={{ background: 'rgba(128,90,213,0.12)', borderBottom: '1px solid rgba(128,90,213,0.2)' }}>
             <span style={{ color: 'rgba(167,139,250,0.9)' }}>
@@ -638,9 +684,32 @@ export function RoomPage() {
           </div>
         )}
 
+        {/* 旁观者切换提示 */}
+        {isSpectator && (
+          <div className="flex items-center justify-between px-4 py-2 text-xs"
+            style={{ background: 'rgba(var(--accent-primary),0.08)', borderBottom: '1px solid rgba(var(--accent-primary),0.15)' }}>
+            <span className="text-gold/80">
+              👁 你当前是旁观者，无法抢牌
+            </span>
+            <button
+              onClick={async () => {
+                try {
+                  await api.rooms.spectate(roomId, false)
+                  setIsSpectator(false)
+                  setPlayers(prev => prev.map(p => p.user_id === user?.id ? { ...p, role: 'player' } : p))
+                  showToast('⚔️ 已加入战斗！下一首可以抢了！', 'success')
+                } catch { /* ignore */ }
+              }}
+              className="px-3 py-1 rounded text-xs font-medium transition-all hover:scale-105"
+              style={{ background: 'rgba(var(--accent-primary),0.2)', border: '1px solid rgba(var(--accent-primary),0.4)', color: 'var(--color-gold)' }}>
+              ⚔️ 加入战斗！
+            </button>
+          </div>
+        )}
+
         {/* 控制栏 */}
         <div className="flex items-center gap-3 px-4 py-2"
-          style={{ background: 'rgba(20,5,15,0.6)', borderBottom: '1px solid rgba(232,164,184,0.08)' }}>
+          style={{ background: 'rgba(var(--accent-bg-mid),0.6)', borderBottom: '1px solid rgba(var(--accent-primary),0.08)' }}>
           {/* 连接状态 */}
           <div className="flex items-center gap-1.5">
             <motion.div animate={{ opacity: connected ? 1 : [1, 0.3, 1] }}
@@ -651,7 +720,7 @@ export function RoomPage() {
 
           {/* 房间码 */}
           <div className="flex items-center gap-1.5 px-2 py-0.5 rounded"
-            style={{ background: 'rgba(232,164,184,0.05)', border: '1px solid rgba(232,164,184,0.1)' }}>
+            style={{ background: 'rgba(var(--accent-primary),0.05)', border: '1px solid rgba(var(--accent-primary),0.1)' }}>
             <span className="text-white/30 text-xs">房间</span>
             <span className="text-gold/80 font-serif text-xs font-bold tracking-widest">{roomState.room.code}</span>
           </div>
@@ -662,7 +731,7 @@ export function RoomPage() {
           {isHost && (
             <motion.button onClick={handlePauseResume} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
-              style={{ background: isPaused ? 'rgba(232,164,184,0.15)' : 'rgba(255,255,255,0.05)', border: `1px solid ${isPaused ? 'rgba(232,164,184,0.4)' : 'rgba(255,255,255,0.08)'}`, color: isPaused ? '#e8a4b8' : 'rgba(255,255,255,0.5)' }}>
+              style={{ background: isPaused ? 'rgba(var(--accent-primary),0.15)' : 'rgba(255,255,255,0.05)', border: `1px solid ${isPaused ? 'rgba(var(--accent-primary),0.4)' : 'rgba(255,255,255,0.08)'}`, color: isPaused ? 'var(--color-gold)' : 'rgba(255,255,255,0.5)' }}>
               {isPaused ? '▶ 继续战斗！' : '⏸ 暂停'}
             </motion.button>
           )}
@@ -713,24 +782,38 @@ export function RoomPage() {
               <JudgePanel
                 roomId={roomId}
                 cards={cards}
-                playedCardIds={claimedCards}
+                playedCardIds={new Set(Array.from(cardRemaining.entries()).filter(([, r]) => r <= 0).map(([id]) => id))}
                 currentCardId={currentReading?.cardId ?? null}
+                currentAudioId={currentReading?.cardAudioId ?? null}
+                currentHintText={currentReading?.hintText ?? null}
                 isJudgeWaiting={isJudgeWaiting}
               />
             </div>
-            {/* 下：只读棋布（增加参与感，不能抢牌） */}
-            <div className="flex-1 overflow-y-auto relative">
-              <div className="absolute top-2 left-0 right-0 flex justify-center z-10 pointer-events-none">
-                <span className="text-white/20 text-xs bg-black/40 px-2 py-0.5 rounded-full">
-                  裁判视角 · 仅观察
-                </span>
+            {/* 下：棋布 + 计分板 */}
+            <div className="flex flex-1 overflow-hidden">
+              <div className="flex-1 overflow-y-auto relative">
+                <div className="absolute top-2 left-0 right-0 flex justify-center z-10 pointer-events-none">
+                  <span className="text-white/20 text-xs bg-black/40 px-2 py-0.5 rounded-full">
+                    裁判视角 · 仅观察
+                  </span>
+                </div>
+                <CardGrid
+                  cards={cards}
+                  cardRemaining={cardRemaining}
+                  discardPile={discardPile}
+                />
               </div>
-              <CardGrid
-                cards={cards}
-                claimedCards={claimedCards}
-                claimedByMap={claimedByMap}
-                // onGrab 不传，只读模式
-              />
+              <div className="hidden md:flex shrink-0">
+                <ScoreBoard players={players} currentUserId={user?.id ?? 0}
+                  hostId={roomState.room.host_id}
+                  remainingCount={remainingCount} totalCount={totalCardCount}
+                  onKick={async (userId) => {
+                    try {
+                      await api.rooms.kick(roomId, userId)
+                      setPlayers(prev => prev.filter(p => p.user_id !== userId))
+                    } catch { /* ignore */ }
+                  }} />
+              </div>
             </div>
           </div>
         ) : (
@@ -739,21 +822,28 @@ export function RoomPage() {
             <div className="flex-1 overflow-y-auto">
               <CardGrid
                 cards={cards}
-                claimedCards={claimedCards}
-                claimedByMap={claimedByMap}
+                cardRemaining={cardRemaining}
+                discardPile={discardPile}
                 onGrab={handleGrab}
               />
             </div>
             <div className="hidden md:flex shrink-0">
               <ScoreBoard players={players} currentUserId={user?.id ?? 0}
-                remainingCount={remainingCount} totalCount={totalCardCount} />
+                hostId={roomState.room.host_id}
+                remainingCount={remainingCount} totalCount={totalCardCount}
+                onKick={async (userId) => {
+                  try {
+                    await api.rooms.kick(roomId, userId)
+                    setPlayers(prev => prev.filter(p => p.user_id !== userId))
+                  } catch { /* ignore */ }
+                }} />
             </div>
           </div>
         )}
 
         {/* 移动端底部计分条 */}
         <div className="md:hidden"
-          style={{ background: 'rgba(20,5,15,0.9)', borderTop: '1px solid rgba(232,164,184,0.08)' }}>
+          style={{ background: 'rgba(var(--accent-bg-mid),0.9)', borderTop: '1px solid rgba(var(--accent-primary),0.08)' }}>
           <div className="flex overflow-x-auto gap-1 px-3 py-2">
             {[...players]
               .filter(p => !(isJudgeMode && p.user_id === roomState.room.host_id))
@@ -763,7 +853,7 @@ export function RoomPage() {
               return (
                 <div key={p.user_id}
                   className="flex items-center gap-1 shrink-0 px-2 py-1 rounded-lg"
-                  style={{ background: isMe ? 'rgba(232,164,184,0.08)' : 'rgba(255,255,255,0.03)', border: `1px solid ${isMe ? 'rgba(232,164,184,0.2)' : 'rgba(255,255,255,0.04)'}` }}>
+                  style={{ background: isMe ? 'rgba(var(--accent-primary),0.08)' : 'rgba(255,255,255,0.03)', border: `1px solid ${isMe ? 'rgba(var(--accent-primary),0.2)' : 'rgba(255,255,255,0.04)'}` }}>
                   <span className="text-xs">{medals[i] ?? `${i+1}.`}</span>
                   <span className={`text-xs ${isMe ? 'text-gold font-medium' : 'text-white/60'} ${!p.online ? 'opacity-40' : ''}`}>
                     {p.username}
@@ -771,7 +861,7 @@ export function RoomPage() {
                   <motion.span key={`${p.user_id}-${p.score}`}
                     initial={{ scale: 1.5 }} animate={{ scale: 1 }} transition={{ duration: 0.3 }}
                     className="text-xs font-bold tabular-nums"
-                    style={{ color: isMe ? '#e8a4b8' : 'rgba(255,255,255,0.4)' }}>
+                    style={{ color: isMe ? 'var(--color-gold)' : 'rgba(255,255,255,0.4)' }}>
                     {p.score}
                   </motion.span>
                 </div>
@@ -800,12 +890,12 @@ export function RoomPage() {
               ].join(' ')}
                 style={{
                   background: toast.type === 'success'
-                    ? 'linear-gradient(135deg, rgba(201,168,76,0.3), rgba(232,164,184,0.2))'
+                    ? 'linear-gradient(135deg, rgba(var(--glow-color),0.3), rgba(var(--accent-primary),0.2))'
                     : toast.type === 'fail'
                     ? 'linear-gradient(135deg, rgba(192,57,43,0.35), rgba(231,76,60,0.2))'
-                    : 'rgba(20,5,15,0.85)',
+                    : 'rgba(var(--accent-bg-mid),0.85)',
                   boxShadow: toast.type === 'success'
-                    ? '0 0 30px rgba(232,164,184,0.3), 0 8px 24px rgba(0,0,0,0.5)'
+                    ? '0 0 30px rgba(var(--accent-primary),0.3), 0 8px 24px rgba(0,0,0,0.5)'
                     : toast.type === 'fail'
                     ? '0 0 30px rgba(192,57,43,0.3), 0 8px 24px rgba(0,0,0,0.5)'
                     : '0 8px 24px rgba(0,0,0,0.5)',

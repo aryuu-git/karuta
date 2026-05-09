@@ -14,13 +14,16 @@ func NewRoomStore(db *sql.DB) *RoomStore {
 	return &RoomStore{db: db}
 }
 
-func (s *RoomStore) CreateRoom(code string, deckID, hostID int64, intervalSec int, mode string) (*model.Room, error) {
+func (s *RoomStore) CreateRoom(code string, deckID, hostID int64, intervalSec int, mode string, maskEnabled bool, maskDifficulty string, penaltyWrong, penaltySlow bool, shuffleRemaining int, randomStart bool, randomStartMax int) (*model.Room, error) {
 	if mode == "" {
 		mode = "auto"
 	}
+	if maskDifficulty == "" {
+		maskDifficulty = "normal"
+	}
 	res, err := s.db.Exec(
-		`INSERT INTO rooms (code, deck_id, host_id, interval_sec, mode) VALUES (?, ?, ?, ?, ?)`,
-		code, deckID, hostID, intervalSec, mode,
+		`INSERT INTO rooms (code, deck_id, host_id, interval_sec, mode, mask_enabled, mask_difficulty, penalty_wrong, penalty_slow, shuffle_remaining, random_start, random_start_max) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		code, deckID, hostID, intervalSec, mode, maskEnabled, maskDifficulty, penaltyWrong, penaltySlow, shuffleRemaining, randomStart, randomStartMax,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("create room: %w", err)
@@ -34,11 +37,11 @@ func (s *RoomStore) CreateRoom(code string, deckID, hostID int64, intervalSec in
 
 func (s *RoomStore) GetByCode(code string) (*model.Room, error) {
 	row := s.db.QueryRow(
-		`SELECT id, code, deck_id, host_id, status, interval_sec, mode, created_at FROM rooms WHERE code = ?`,
+		`SELECT id, code, deck_id, host_id, status, interval_sec, mode, mask_enabled, mask_difficulty, mask_seed, penalty_wrong, penalty_slow, shuffle_remaining, random_start, random_start_max, created_at FROM rooms WHERE code = ?`,
 		code,
 	)
 	r := &model.Room{}
-	if err := row.Scan(&r.ID, &r.Code, &r.DeckID, &r.HostID, &r.Status, &r.IntervalSec, &r.Mode, &r.CreatedAt); err != nil {
+	if err := row.Scan(&r.ID, &r.Code, &r.DeckID, &r.HostID, &r.Status, &r.IntervalSec, &r.Mode, &r.MaskEnabled, &r.MaskDifficulty, &r.MaskSeed, &r.PenaltyWrong, &r.PenaltySlow, &r.ShuffleRemaining, &r.RandomStart, &r.RandomStartMax, &r.CreatedAt); err != nil {
 		return nil, fmt.Errorf("get room by code: %w", err)
 	}
 	return r, nil
@@ -46,11 +49,11 @@ func (s *RoomStore) GetByCode(code string) (*model.Room, error) {
 
 func (s *RoomStore) GetByID(id int64) (*model.Room, error) {
 	row := s.db.QueryRow(
-		`SELECT id, code, deck_id, host_id, status, interval_sec, mode, created_at FROM rooms WHERE id = ?`,
+		`SELECT id, code, deck_id, host_id, status, interval_sec, mode, mask_enabled, mask_difficulty, mask_seed, penalty_wrong, penalty_slow, shuffle_remaining, random_start, random_start_max, created_at FROM rooms WHERE id = ?`,
 		id,
 	)
 	r := &model.Room{}
-	if err := row.Scan(&r.ID, &r.Code, &r.DeckID, &r.HostID, &r.Status, &r.IntervalSec, &r.Mode, &r.CreatedAt); err != nil {
+	if err := row.Scan(&r.ID, &r.Code, &r.DeckID, &r.HostID, &r.Status, &r.IntervalSec, &r.Mode, &r.MaskEnabled, &r.MaskDifficulty, &r.MaskSeed, &r.PenaltyWrong, &r.PenaltySlow, &r.ShuffleRemaining, &r.RandomStart, &r.RandomStartMax, &r.CreatedAt); err != nil {
 		return nil, fmt.Errorf("get room by id: %w", err)
 	}
 	return r, nil
@@ -60,6 +63,14 @@ func (s *RoomStore) UpdateStatus(id int64, status string) error {
 	_, err := s.db.Exec(`UPDATE rooms SET status = ? WHERE id = ?`, status, id)
 	if err != nil {
 		return fmt.Errorf("update room status: %w", err)
+	}
+	return nil
+}
+
+func (s *RoomStore) UpdateMaskSeed(id int64, seed int64) error {
+	_, err := s.db.Exec(`UPDATE rooms SET mask_seed = ? WHERE id = ?`, seed, id)
+	if err != nil {
+		return fmt.Errorf("update mask seed: %w", err)
 	}
 	return nil
 }
@@ -232,6 +243,11 @@ func (s *RoomStore) GetPlayerRole(roomID, userID int64) string {
 		return "player"
 	}
 	return role
+}
+
+func (s *RoomStore) RemovePlayer(roomID, userID int64) error {
+	_, err := s.db.Exec(`DELETE FROM room_players WHERE room_id = ? AND user_id = ?`, roomID, userID)
+	return err
 }
 
 func (s *RoomStore) SetPlayerRole(roomID, userID int64, role string) error {
