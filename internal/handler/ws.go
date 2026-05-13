@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"karuta/internal/storage"
 	"karuta/internal/store"
 	"karuta/internal/ws"
 
@@ -103,6 +104,10 @@ func (h *WSHandler) ServeWS(w http.ResponseWriter, r *http.Request) {
 	// 获取该玩家在此房间的 role
 	role := h.store.Rooms.GetPlayerRole(roomID, userID)
 
+	avatarURL := ""
+	if user.AvatarPath != "" {
+		avatarURL = storage.FileURL(user.AvatarPath, "avatars")
+	}
 	hub := h.hubManager.GetOrCreate(roomID)
-	ws.UpgradeHandler(hub, w, r, userID, user.Username, role)
+	ws.UpgradeHandler(hub, w, r, userID, user.Username, avatarURL, role)
 }

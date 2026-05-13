@@ -57,8 +57,9 @@ type RoomHub struct {
 	broadcast  chan []byte
 	register   chan *Client
 	unregister chan *Client
-	session    *GameSession
-	stopCh     chan struct{}
+	session      *GameSession
+	duelSession  *DuelSession
+	stopCh       chan struct{}
 	mu         sync.RWMutex
 
 	// game control channels exposed to HTTP handlers
@@ -109,19 +110,24 @@ func (h *RoomHub) Run() {
 			h.mu.Lock()
 			h.clients[client] = true
 			sess := h.session
+			ds := h.duelSession
 			h.mu.Unlock()
 			// 广播玩家加入
 			if data, err := json.Marshal(map[string]interface{}{
-				"type":     "player_joined",
-				"user_id":  client.userID,
-								"username": client.username,
-				"role":     client.role,
+				"type":       "player_joined",
+				"user_id":    client.userID,
+				"username":   client.username,
+				"avatar_url": client.avatarURL,
+				"role":       client.role,
 			}); err == nil {
 				h.broadcast <- data
 			}
 			// 游戏进行中，向新连接单独推送当前状态
 			if sess != nil {
 				go sess.SendRoomStateToClient(client)
+			}
+			if ds != nil {
+				go ds.SendDuelStateToClient(client)
 			}
 
 		case client := <-h.unregister:
@@ -270,6 +276,68 @@ func (h *RoomHub) StartGame(room *model.Room, cards []*model.Card, s *store.Stor
 	go sess.Run()
 }
 
+// StartDuelGame initializes a duel session.
+func (h *RoomHub) StartDuelGame(room *model.Room, cards []*model.Card, s *store.Store, player1, player2 int64) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if h.duelSession != nil {
+		return
+	}
+	ds := newDuelSession(h, room, cards, s, player1, player2)
+	h.duelSession = ds
+	go ds.Run()
+}
+
+// HandleDuelGrab routes a grab to the duel session.
+func (h *RoomHub) HandleDuelGrab(userID, cardID int64) {
+	h.mu.RLock()
+	ds := h.duelSession
+	h.mu.RUnlock()
+	if ds != nil {
+		ds.HandleGrab(userID, cardID)
+	}
+}
+
+// HandleDuelArrangeSwap routes an arrange swap to the duel session.
+func (h *RoomHub) HandleDuelArrangeSwap(userID int64, posA, posB int, cross bool) {
+	h.mu.RLock()
+	ds := h.duelSession
+	h.mu.RUnlock()
+	if ds != nil {
+		ds.HandleArrangeSwap(userID, posA, posB, cross)
+	}
+}
+
+// HandleDuelArrangeReady routes an arrange ready to the duel session.
+func (h *RoomHub) HandleDuelArrangeReady(userID int64) {
+	h.mu.RLock()
+	ds := h.duelSession
+	h.mu.RUnlock()
+	if ds != nil {
+		ds.HandleArrangeReady(userID)
+	}
+}
+
+// HandleDuelGiveCard routes a give_card to the duel session.
+func (h *RoomHub) HandleDuelGiveCard(userID, cardID int64) {
+	h.mu.RLock()
+	ds := h.duelSession
+	h.mu.RUnlock()
+	if ds != nil {
+		ds.HandleGiveCard(userID, cardID)
+	}
+}
+
+// SendDuelStateToClient sends duel state to a reconnecting client.
+func (h *RoomHub) SendDuelStateToClient(client *Client) {
+	h.mu.RLock()
+	ds := h.duelSession
+	h.mu.RUnlock()
+	if ds != nil {
+		ds.SendDuelStateToClient(client)
+	}
+}
+
 // HandleAudioEnded notifies the session that audio has finished playing.
 func (h *RoomHub) HandleAudioEnded() {
 	h.mu.RLock()
@@ -294,9 +362,13 @@ func (h *RoomHub) HandleGrab(userID, cardID int64) {
 func (h *RoomHub) PauseGame() {
 	h.mu.RLock()
 	sess := h.session
+	ds := h.duelSession
 	h.mu.RUnlock()
 	if sess != nil {
 		sess.Pause()
+	}
+	if ds != nil {
+		ds.Pause()
 	}
 }
 
@@ -304,9 +376,13 @@ func (h *RoomHub) PauseGame() {
 func (h *RoomHub) SkipCard() {
 	h.mu.RLock()
 	sess := h.session
+	ds := h.duelSession
 	h.mu.RUnlock()
 	if sess != nil {
 		sess.SkipCard()
+	}
+	if ds != nil {
+		ds.SkipCard()
 	}
 }
 
@@ -314,9 +390,13 @@ func (h *RoomHub) SkipCard() {
 func (h *RoomHub) ResumeGame() {
 	h.mu.RLock()
 	sess := h.session
+	ds := h.duelSession
 	h.mu.RUnlock()
 	if sess != nil {
 		sess.Resume()
+	}
+	if ds != nil {
+		ds.Resume()
 	}
 }
 

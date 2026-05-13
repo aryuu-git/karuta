@@ -140,6 +140,10 @@ export function LoginPage() {
           <Link to="/register" className="text-gold hover:text-gold-light transition-colors underline underline-offset-2">
             快来加入战场 ✨
           </Link>
+          {' · '}
+          <Link to="/guest" className="text-muted hover:text-white/70 transition-colors underline underline-offset-2">
+            游客进入
+          </Link>
         </motion.p>
       </motion.div>
     </div>

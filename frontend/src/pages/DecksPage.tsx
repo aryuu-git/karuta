@@ -22,6 +22,7 @@ export function DecksPage() {
   const [publicDecks, setPublicDecks] = useState<Deck[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
+  const [filterOwner, setFilterOwner] = useState('')
 
   // Create dialog
   const [showCreate, setShowCreate] = useState(false)
@@ -41,7 +42,7 @@ export function DecksPage() {
         const data = await api.decks.listEditable()
         setEditableDecks(data)
       } else {
-        const data = await api.decks.listPublic()
+        const data = await api.decks.listPublic(filterOwner || undefined)
         setPublicDecks(data)
       }
     } catch { /* ignore */ }
@@ -135,6 +136,16 @@ export function DecksPage() {
               />
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted/40 text-sm">🔮</span>
             </div>
+            {tab === 'public' && (
+              <input
+                type="text"
+                value={filterOwner}
+                onChange={e => { setFilterOwner(e.target.value) }}
+                onKeyDown={e => { if (e.key === 'Enter') loadDecks('public') }}
+                className="text-xs px-3 py-2 rounded-lg bg-white/5 border border-white/5 text-white/70 w-28 placeholder:text-white/30 focus:border-gold/30 outline-none"
+                placeholder="创建人"
+              />
+            )}
           </div>
         </div>
 

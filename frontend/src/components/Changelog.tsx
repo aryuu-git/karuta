@@ -1,10 +1,58 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 
-const CURRENT_VERSION = '2.3.0'
+const CURRENT_VERSION = '3.2.0'
 const STORAGE_KEY = 'karuta_changelog_seen'
 
 const CHANGELOG = [
+  {
+    version: '3.2.0',
+    date: '2026-05',
+    title: '👤 用户系统 + 游客模式',
+    items: [
+      { emoji: '👻', text: '游客模式：无需注册，输入昵称+邀请码即可加入对局' },
+      { emoji: '🎫', text: '邀请码系统：默认不启用，注册依旧使用神秘代号；开启后每人可生成邀请码分享给朋友' },
+      { emoji: '🖼️', text: '头像系统：个人页上传头像，等待大厅/分数板显示头像' },
+      { emoji: '🎵', text: '创建歌牌支持同时添加多首曲目' },
+      { emoji: '🚪', text: '新建歌牌时点击返回会提示是否放弃当前编辑' },
+      { emoji: '🏷️', text: '所有页面显示全量标签（从后端接口获取）' },
+      { emoji: '🎮', text: '多音频牌模式：全部播完 / 拍一次消失，可选' },
+    ],
+  },
+  {
+    version: '3.1.0',
+    date: '2026-05',
+    title: '🎯 体验升级 + Bangumi + 桌面版',
+    items: [
+      { emoji: '🔍', text: 'Bangumi 搜索：建牌时可搜索动画/游戏，自动填充作品名+封面' },
+      { emoji: '💻', text: '桌面版（Electron）：音频本地缓存，省流量更流畅' },
+      { emoji: '🏋️', text: '训练模式：只允许自己对局，他人只能旁观' },
+      { emoji: '⏱️', text: '最短播放时间：短歌也要播够N秒，来得及反应' },
+      { emoji: '🖼️', text: '封面支持修改：编辑牌页面点击封面即可更换' },
+      { emoji: '✏️', text: '用户名支持修改：个人页点击用户名即改' },
+      { emoji: '🎵', text: '添加音频支持拖拽+同时多首上传' },
+      { emoji: '🏷️', text: '标签显示数量：一眼看到每个标签下有多少首歌' },
+      { emoji: '🔎', text: '牌库/牌组/加牌弹窗：新增创建人筛选' },
+      { emoji: '🃏', text: '加牌弹窗改为网格卡片式+分页，翻找更快' },
+    ],
+  },
+  {
+    version: '3.0.0',
+    date: '2026-05',
+    title: '⚔️ 对阵模式 + 牌权限系统',
+    items: [
+      { emoji: '⚔️', text: '新模式「对阵模式」[内测]：1v1花牌决斗，双方各持牌，听音抢牌' },
+      { emoji: '🪑', text: '选手席位制：2个席位先到先得，其余自动旁观' },
+      { emoji: '🧩', text: '排阵环节：开局前可调整牌面布局，支持跨区对调' },
+      { emoji: '🔒', text: '牌权限三级制：私有 / 可使用 / 可编辑，多选批量切换' },
+      { emoji: '📋', text: '公开牌一键复制：他人的公开牌可快速复制到自己牌库编辑' },
+      { emoji: '⏱️', text: '倒数N首开启扣分：前期可自由试错，后期才开始惩罚' },
+      { emoji: '🌀', text: '牌面打乱优化：改为下一首开始时弹窗打乱，打乱后立即可抢' },
+      { emoji: '⏸️', text: '对阵模式支持暂停/跳过/模糊牌面/随机片段播放' },
+      { emoji: '👁', text: '对局中显示旁观席位列表，选手和旁观者都可见' },
+      { emoji: '🏆', text: '专用对阵结算界面：展示双方各自抢到的牌+未抢到的牌' },
+    ],
+  },
   {
     version: '2.3.0',
     date: '2026-05',

@@ -1,5 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import type { RoomPlayer } from '../api/types'
+import { Avatar } from './Avatar'
 
 interface ScoreBoardProps {
   players: RoomPlayer[]
@@ -96,7 +97,8 @@ export function ScoreBoard({ players, currentUserId, hostId, remainingCount, tot
                     {isSpectator ? '👁' : (medal ?? <span className="text-white/30 text-xs font-mono">{rankIdx + 1}</span>)}
                   </span>
 
-                  {/* 用户名 */}
+                  {/* Avatar + 用户名 */}
+                  <Avatar username={player.username} avatarUrl={player.avatar_url} size={20} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1">
                       <span className={`text-xs font-sans truncate ${isMe ? 'text-gold font-semibold' : isSpectator ? 'text-white/40' : 'text-white/75'} ${!player.online ? 'line-through' : ''}`}>

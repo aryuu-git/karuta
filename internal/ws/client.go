@@ -26,12 +26,13 @@ var upgrader = websocket.Upgrader{
 
 // Client represents a single WebSocket connection.
 type Client struct {
-	hub      *RoomHub
-	conn     *websocket.Conn
-	send     chan []byte
-	userID   int64
-	username string
-	role     string // "player" or "spectator"
+	hub       *RoomHub
+	conn      *websocket.Conn
+	send      chan []byte
+	userID    int64
+	username  string
+	avatarURL string
+	role      string // "player" or "spectator"
 }
 
 // wsMessage is the generic message envelope for incoming WS messages.
@@ -44,14 +45,15 @@ type wsMessage struct {
 }
 
 // NewClient creates and registers a new client, then starts its pumps.
-func NewClient(hub *RoomHub, conn *websocket.Conn, userID int64, username, role string) *Client {
+func NewClient(hub *RoomHub, conn *websocket.Conn, userID int64, username, avatarURL, role string) *Client {
 	c := &Client{
-		hub:      hub,
-		conn:     conn,
-		send:     make(chan []byte, 256),
-		userID:   userID,
-		username: username,
-		role:     role,
+		hub:       hub,
+		conn:      conn,
+		send:      make(chan []byte, 256),
+		userID:    userID,
+		username:  username,
+		avatarURL: avatarURL,
+		role:      role,
 	}
 	hub.register <- c
 	go c.writePump()
@@ -91,8 +93,23 @@ func (c *Client) readPump() {
 		switch msg.Type {
 		case "grab":
 			if c.role != "spectator" {
+				// Route to duel or normal mode
 				c.hub.HandleGrab(c.userID, msg.CardID)
+				c.hub.HandleDuelGrab(c.userID, msg.CardID)
 			}
+		case "give_card":
+			c.hub.HandleDuelGiveCard(c.userID, msg.CardID)
+		case "duel_arrange_swap":
+			var swap struct {
+				PosA  int  `json:"pos_a"`
+				PosB  int  `json:"pos_b"`
+				Cross bool `json:"cross"`
+			}
+			if err := json.Unmarshal(msg.Data, &swap); err == nil {
+				c.hub.HandleDuelArrangeSwap(c.userID, swap.PosA, swap.PosB, swap.Cross)
+			}
+		case "duel_arrange_ready":
+			c.hub.HandleDuelArrangeReady(c.userID)
 		case "audio_ended":
 			c.hub.HandleAudioEnded()
 		case "pause":
@@ -159,11 +176,11 @@ func (c *Client) writePump() {
 }
 
 // UpgradeHandler upgrades the HTTP connection and creates a new Client.
-func UpgradeHandler(hub *RoomHub, w http.ResponseWriter, r *http.Request, userID int64, username, role string) {
+func UpgradeHandler(hub *RoomHub, w http.ResponseWriter, r *http.Request, userID int64, username, avatarURL, role string) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Printf("ws upgrade error: %v", err)
 		return
 	}
-	NewClient(hub, conn, userID, username, role)
+	NewClient(hub, conn, userID, username, avatarURL, role)
 }

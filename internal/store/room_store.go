@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"karuta/internal/model"
+	"karuta/internal/storage"
 )
 
 type RoomStore struct {
@@ -37,11 +38,11 @@ func (s *RoomStore) CreateRoom(code string, deckID, hostID int64, intervalSec in
 
 func (s *RoomStore) GetByCode(code string) (*model.Room, error) {
 	row := s.db.QueryRow(
-		`SELECT id, code, deck_id, host_id, status, interval_sec, mode, mask_enabled, mask_difficulty, mask_seed, penalty_wrong, penalty_slow, shuffle_remaining, random_start, random_start_max, created_at FROM rooms WHERE code = ?`,
+		`SELECT id, code, deck_id, host_id, status, interval_sec, mode, mask_enabled, mask_difficulty, mask_seed, penalty_wrong, penalty_slow, shuffle_remaining, random_start, random_start_max, duel_total_cards, duel_flip, duel_requeue, duel_max_rounds, duel_round_time, duel_grab_chances, duel_arrange_time, penalty_last, training, min_play_time, multi_audio_mode, created_at FROM rooms WHERE code = ?`,
 		code,
 	)
 	r := &model.Room{}
-	if err := row.Scan(&r.ID, &r.Code, &r.DeckID, &r.HostID, &r.Status, &r.IntervalSec, &r.Mode, &r.MaskEnabled, &r.MaskDifficulty, &r.MaskSeed, &r.PenaltyWrong, &r.PenaltySlow, &r.ShuffleRemaining, &r.RandomStart, &r.RandomStartMax, &r.CreatedAt); err != nil {
+	if err := row.Scan(&r.ID, &r.Code, &r.DeckID, &r.HostID, &r.Status, &r.IntervalSec, &r.Mode, &r.MaskEnabled, &r.MaskDifficulty, &r.MaskSeed, &r.PenaltyWrong, &r.PenaltySlow, &r.ShuffleRemaining, &r.RandomStart, &r.RandomStartMax, &r.DuelTotalCards, &r.DuelFlip, &r.DuelRequeue, &r.DuelMaxRounds, &r.DuelRoundTime, &r.DuelGrabChances, &r.DuelArrangeTime, &r.PenaltyLast, &r.Training, &r.MinPlayTime, &r.MultiAudioMode, &r.CreatedAt); err != nil {
 		return nil, fmt.Errorf("get room by code: %w", err)
 	}
 	return r, nil
@@ -49,11 +50,11 @@ func (s *RoomStore) GetByCode(code string) (*model.Room, error) {
 
 func (s *RoomStore) GetByID(id int64) (*model.Room, error) {
 	row := s.db.QueryRow(
-		`SELECT id, code, deck_id, host_id, status, interval_sec, mode, mask_enabled, mask_difficulty, mask_seed, penalty_wrong, penalty_slow, shuffle_remaining, random_start, random_start_max, created_at FROM rooms WHERE id = ?`,
+		`SELECT id, code, deck_id, host_id, status, interval_sec, mode, mask_enabled, mask_difficulty, mask_seed, penalty_wrong, penalty_slow, shuffle_remaining, random_start, random_start_max, duel_total_cards, duel_flip, duel_requeue, duel_max_rounds, duel_round_time, duel_grab_chances, duel_arrange_time, penalty_last, training, min_play_time, multi_audio_mode, created_at FROM rooms WHERE id = ?`,
 		id,
 	)
 	r := &model.Room{}
-	if err := row.Scan(&r.ID, &r.Code, &r.DeckID, &r.HostID, &r.Status, &r.IntervalSec, &r.Mode, &r.MaskEnabled, &r.MaskDifficulty, &r.MaskSeed, &r.PenaltyWrong, &r.PenaltySlow, &r.ShuffleRemaining, &r.RandomStart, &r.RandomStartMax, &r.CreatedAt); err != nil {
+	if err := row.Scan(&r.ID, &r.Code, &r.DeckID, &r.HostID, &r.Status, &r.IntervalSec, &r.Mode, &r.MaskEnabled, &r.MaskDifficulty, &r.MaskSeed, &r.PenaltyWrong, &r.PenaltySlow, &r.ShuffleRemaining, &r.RandomStart, &r.RandomStartMax, &r.DuelTotalCards, &r.DuelFlip, &r.DuelRequeue, &r.DuelMaxRounds, &r.DuelRoundTime, &r.DuelGrabChances, &r.DuelArrangeTime, &r.PenaltyLast, &r.Training, &r.MinPlayTime, &r.MultiAudioMode, &r.CreatedAt); err != nil {
 		return nil, fmt.Errorf("get room by id: %w", err)
 	}
 	return r, nil
@@ -77,7 +78,7 @@ func (s *RoomStore) UpdateMaskSeed(id int64, seed int64) error {
 
 func (s *RoomStore) ListPlayers(roomID int64) ([]*model.RoomPlayer, error) {
 	rows, err := s.db.Query(
-		`SELECT rp.room_id, rp.user_id, u.username, rp.role, rp.score, rp.joined_at
+		`SELECT rp.room_id, rp.user_id, u.username, COALESCE(u.avatar_path,''), rp.role, rp.score, rp.joined_at
 		 FROM room_players rp
 		 JOIN users u ON u.id = rp.user_id
 		 WHERE rp.room_id = ?
@@ -92,8 +93,12 @@ func (s *RoomStore) ListPlayers(roomID int64) ([]*model.RoomPlayer, error) {
 	var players []*model.RoomPlayer
 	for rows.Next() {
 		p := &model.RoomPlayer{}
-		if err := rows.Scan(&p.RoomID, &p.UserID, &p.Username, &p.Role, &p.Score, &p.JoinedAt); err != nil {
+		var avatarPath string
+		if err := rows.Scan(&p.RoomID, &p.UserID, &p.Username, &avatarPath, &p.Role, &p.Score, &p.JoinedAt); err != nil {
 			return nil, fmt.Errorf("scan player: %w", err)
+		}
+		if avatarPath != "" {
+			p.AvatarURL = storage.FileURL(avatarPath, "avatars")
 		}
 		players = append(players, p)
 	}
@@ -140,13 +145,15 @@ type RoomListItem struct {
 	DeckName    string `json:"deck_name"`
 	HostName    string `json:"host_name"`
 	PlayerCount int    `json:"player_count"`
+	Training    bool   `json:"training"`
 }
 
 func (s *RoomStore) ListActive() ([]*RoomListItem, error) {
 	rows, err := s.db.Query(`
 		SELECT r.id, r.code, r.status, r.interval_sec, r.mode,
 		       d.name, u.username,
-		       (SELECT COUNT(*) FROM room_players rp WHERE rp.room_id = r.id) AS player_count
+		       (SELECT COUNT(*) FROM room_players rp WHERE rp.room_id = r.id) AS player_count,
+		       r.training
 		FROM rooms r
 		JOIN decks d ON d.id = r.deck_id
 		JOIN users u ON u.id = r.host_id
@@ -163,7 +170,7 @@ func (s *RoomStore) ListActive() ([]*RoomListItem, error) {
 	for rows.Next() {
 		item := &RoomListItem{}
 		if err := rows.Scan(&item.ID, &item.Code, &item.Status, &item.IntervalSec, &item.Mode,
-			&item.DeckName, &item.HostName, &item.PlayerCount); err != nil {
+			&item.DeckName, &item.HostName, &item.PlayerCount, &item.Training); err != nil {
 			return nil, err
 		}
 		list = append(list, item)
@@ -245,6 +252,34 @@ func (s *RoomStore) GetPlayerRole(roomID, userID int64) string {
 	return role
 }
 
+func (s *RoomStore) UpdateDuelConfig(roomID int64, totalCards int, flip, requeue bool, maxRounds, roundTime, grabChances, arrangeTime int) error {
+	_, err := s.db.Exec(
+		`UPDATE rooms SET duel_total_cards=?, duel_flip=?, duel_requeue=?, duel_max_rounds=?, duel_round_time=?, duel_grab_chances=?, duel_arrange_time=? WHERE id=?`,
+		totalCards, flip, requeue, maxRounds, roundTime, grabChances, arrangeTime, roomID,
+	)
+	return err
+}
+
+func (s *RoomStore) UpdatePenaltyLast(roomID int64, penaltyLast int) error {
+	_, err := s.db.Exec(`UPDATE rooms SET penalty_last=? WHERE id=?`, penaltyLast, roomID)
+	return err
+}
+
+func (s *RoomStore) UpdateTraining(roomID int64, training bool) error {
+	_, err := s.db.Exec(`UPDATE rooms SET training=? WHERE id=?`, training, roomID)
+	return err
+}
+
+func (s *RoomStore) UpdateMinPlayTime(roomID int64, minPlayTime int) error {
+	_, err := s.db.Exec(`UPDATE rooms SET min_play_time=? WHERE id=?`, minPlayTime, roomID)
+	return err
+}
+
+func (s *RoomStore) UpdateMultiAudioMode(roomID int64, mode string) error {
+	_, err := s.db.Exec(`UPDATE rooms SET multi_audio_mode=? WHERE id=?`, mode, roomID)
+	return err
+}
+
 func (s *RoomStore) RemovePlayer(roomID, userID int64) error {
 	_, err := s.db.Exec(`DELETE FROM room_players WHERE room_id = ? AND user_id = ?`, roomID, userID)
 	return err
@@ -253,6 +288,22 @@ func (s *RoomStore) RemovePlayer(roomID, userID int64) error {
 func (s *RoomStore) SetPlayerRole(roomID, userID int64, role string) error {
 	_, err := s.db.Exec(`UPDATE room_players SET role = ? WHERE room_id = ? AND user_id = ?`, role, roomID, userID)
 	return err
+}
+
+func (s *RoomStore) ClaimSeat(roomID, userID int64, seatRole string) (bool, error) {
+	// Atomic: only succeeds if no one else has this seat AND user doesn't already have a seat
+	res, err := s.db.Exec(
+		`UPDATE room_players SET role = ?
+		 WHERE room_id = ? AND user_id = ?
+		   AND role NOT IN ('duel_p1', 'duel_p2')
+		   AND NOT EXISTS (SELECT 1 FROM room_players WHERE room_id = ? AND role = ?)`,
+		seatRole, roomID, userID, roomID, seatRole,
+	)
+	if err != nil {
+		return false, err
+	}
+	n, _ := res.RowsAffected()
+	return n > 0, nil
 }
 
 func (s *RoomStore) IsPlayerInRoom(roomID, userID int64) (bool, error) {

@@ -51,6 +51,7 @@ type GameSession struct {
 	resumeCh      chan struct{}
 	stopCh        chan struct{}
 	store         *store.Store
+	playStartTime time.Time
 
 	// judge mode
 	judgeMode      bool
@@ -220,6 +221,7 @@ func (gs *GameSession) runAutoMode() {
 			cardStartMsg["start_ratio"] = float64(rng.Intn(maxPct)) / 100.0
 		}
 		gs.hub.BroadcastJSON(cardStartMsg)
+		gs.playStartTime = time.Now()
 
 		if isLast {
 			if !gs.waitAudioOnly() {
@@ -647,6 +649,16 @@ func (gs *GameSession) NotifyAudioEnded() {
 	}
 }
 
+func (gs *GameSession) waitMinPlay() {
+	if gs.room.MinPlayTime > 0 {
+		elapsed := time.Since(gs.playStartTime)
+		remaining := time.Duration(gs.room.MinPlayTime)*time.Second - elapsed
+		if remaining > 0 {
+			time.Sleep(remaining)
+		}
+	}
+}
+
 func (gs *GameSession) waitAudioOnly() bool {
 	maxWait := time.Duration(gs.room.IntervalSec) * time.Second * 10
 	if maxWait < 60*time.Second {
@@ -654,11 +666,13 @@ func (gs *GameSession) waitAudioOnly() bool {
 	}
 	maxTimer := time.NewTimer(maxWait)
 	defer maxTimer.Stop()
+
 	for {
 		select {
 		case <-gs.stopCh:
 			return false
 		case <-gs.cardGrabbedCh:
+			gs.waitMinPlay()
 			select {
 			case <-gs.stopCh:
 				return false
@@ -666,6 +680,7 @@ func (gs *GameSession) waitAudioOnly() bool {
 			}
 			return true
 		case <-gs.audioEndedCh:
+			gs.waitMinPlay()
 			select {
 			case <-gs.stopCh:
 				return false
@@ -736,6 +751,7 @@ func (gs *GameSession) waitInterval() bool {
 	}
 
 afterAudio:
+	gs.waitMinPlay()
 	settleTimer := time.NewTimer(settle)
 	defer settleTimer.Stop()
 	for {
@@ -807,7 +823,8 @@ func (gs *GameSession) HandleGrab(userID, cardID int64) {
 			grabberName = u.Username
 		}
 		gs.wrongUsers[userID] = true
-		penalty := gs.room.PenaltyWrong
+		remaining := len(gs.playItems) - gs.currentIdx
+		penalty := gs.room.PenaltyWrong && (gs.room.PenaltyLast == 0 || remaining <= gs.room.PenaltyLast)
 		if penalty {
 			gs.penaltyCount[userID]++
 			_ = gs.store.Rooms.DeductScore(gs.room.ID, userID, 1)
@@ -869,6 +886,21 @@ func (gs *GameSession) HandleGrab(userID, cardID int64) {
 	gs.roundResults[currentItem.Index] = userID
 	gs.cardRemainingCount[cardID]--
 	remaining := gs.cardRemainingCount[cardID]
+
+	// "once" mode: exhaust card immediately and remove remaining items from queue
+	if gs.room.MultiAudioMode == "once" && remaining > 0 {
+		gs.cardRemainingCount[cardID] = 0
+		remaining = 0
+		// Remove future playItems with same cardID
+		filtered := gs.playItems[:gs.currentIdx+1]
+		for i := gs.currentIdx + 1; i < len(gs.playItems); i++ {
+			if gs.playItems[i].CardID != cardID {
+				filtered = append(filtered, gs.playItems[i])
+			}
+		}
+		gs.playItems = filtered
+	}
+
 	gs.lastCardWinner = userID
 
 	winnerName := ""

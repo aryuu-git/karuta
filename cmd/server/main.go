@@ -56,6 +56,8 @@ func main() {
 		}
 		stor = cosStorage
 		log.Printf("storage: COS enabled (bucket=%s, region=%s)", cfg.COSBucket, cfg.COSRegion)
+		// Background: fix cache headers on existing COS objects
+		go cosStorage.FixCacheHeaders(context.Background())
 	} else {
 		stor = storage.NewLocalStorage(cfg.UploadDir)
 		log.Printf("storage: local filesystem (%s)", cfg.UploadDir)
@@ -70,7 +72,7 @@ func main() {
 	hubManager := ws.NewHubManager()
 
 	// Handlers
-	authH := handler.NewAuthHandler(s, cfg.JWTSecret)
+	authH := handler.NewAuthHandler(s, stor, cfg.JWTSecret, cfg.InviteRequired)
 	deckH := handler.NewDeckHandler(s, cfg.UploadDir)
 	cardH := handler.NewCardHandler(s, cfg.UploadDir, stor)
 	roomH := handler.NewRoomHandler(s, hubManager)
@@ -89,13 +91,27 @@ func main() {
 	// Auth routes (no JWT required)
 	r.Post("/api/auth/register", authH.Register)
 	r.Post("/api/auth/login", authH.Login)
+	r.Post("/api/auth/guest", authH.GuestLogin)
+
+	// Public proxy (no auth needed)
+	bangumiPublic := handler.NewBangumiHandler(cfg.BangumiToken)
+	r.Get("/api/bangumi/image", bangumiPublic.ProxyImage)
 
 	// Protected routes
 	r.Group(func(r chi.Router) {
 		r.Use(authMiddleware)
 
 		r.Get("/api/me", authH.Me)
+		r.Patch("/api/me", authH.UpdateMe)
 		r.Get("/api/me/stats", authH.MyStats)
+		r.Post("/api/me/avatar", authH.UploadAvatar)
+		r.Post("/api/me/invites", authH.GenerateInvite)
+		r.Get("/api/me/invites", authH.ListMyInvites)
+		r.Get("/api/admin/users", authH.AdminListUsers)
+		r.Post("/api/admin/users/{id}/disable", authH.AdminToggleUser)
+		r.Post("/api/admin/users/{id}/admin", authH.AdminSetAdmin)
+		r.Post("/api/admin/invite-toggle", authH.AdminToggleInvite)
+		r.Get("/api/admin/invite-status", authH.AdminInviteStatus)
 
 		// Deck routes
 		r.Post("/api/decks", deckH.CreateDeck)
@@ -112,16 +128,23 @@ func main() {
 
 		// Card routes (library)
 		r.Get("/api/cards/mine", cardH.ListMyCards)
+		r.Get("/api/cards/tags", cardH.ListPublicTags)
 		r.Get("/api/cards/public", cardH.ListPublicCards)
 		r.Get("/api/cards/{id}", cardH.GetCard)
 		r.Post("/api/cards", cardH.CreateCard)
 		r.Patch("/api/cards/{id}", cardH.UpdateCard)
 		r.Delete("/api/cards/{id}", cardH.DeleteCard)
+		r.Post("/api/cards/batch-share", cardH.BatchUpdateShareLevel)
+		r.Post("/api/cards/{id}/clone", cardH.CloneCard)
+		r.Post("/api/cards/{id}/cover", cardH.UpdateCover)
 		r.Post("/api/cards/{id}/audios", cardH.AddAudio)
 		r.Patch("/api/cards/{id}/audios/{audioID}", cardH.UpdateAudio)
 		r.Delete("/api/cards/{id}/audios/{audioID}", cardH.DeleteAudio)
 
 		// Room routes
+		bangumiH := handler.NewBangumiHandler(cfg.BangumiToken)
+		r.Get("/api/bangumi/search", bangumiH.Search)
+
 		r.Get("/api/rooms", roomH.ListRooms)
 		r.Post("/api/rooms", roomH.CreateRoom)
 		r.Post("/api/rooms/join", roomH.JoinRoom)
@@ -130,6 +153,9 @@ func main() {
 		r.Post("/api/rooms/{id}/next-card", roomH.NextCard)
 		r.Post("/api/rooms/{id}/spectate", roomH.SetSpectate)
 		r.Post("/api/rooms/{id}/kick", roomH.KickPlayer)
+		r.Post("/api/rooms/{id}/claim-seat", roomH.ClaimSeat)
+		r.Post("/api/rooms/{id}/leave-seat", roomH.LeaveSeat)
+		r.Post("/api/rooms/{id}/kick-seat", roomH.KickFromSeat)
 		r.Post("/api/rooms/{id}/force-end", roomH.ForceEndRoom)
 		r.Post("/api/rooms/{id}/pause", roomH.PauseRoom)
 		r.Post("/api/rooms/{id}/resume", roomH.ResumeRoom)
@@ -151,7 +177,8 @@ func main() {
 		if cfg.COSEnabled {
 			cosURL := stor.URL(path)
 			if cosURL != "" {
-				w.Header().Set("Cache-Control", "public, max-age=86400")
+				w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+				w.Header().Set("CDN-Cache-Control", "max-age=31536000")
 				http.Redirect(w, req, cosURL, http.StatusFound)
 				return
 			}

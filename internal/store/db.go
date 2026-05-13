@@ -35,6 +35,11 @@ CREATE TABLE IF NOT EXISTS users (
     username TEXT UNIQUE NOT NULL,
     email TEXT UNIQUE NOT NULL,
     password TEXT NOT NULL,
+    invited_by INTEGER DEFAULT 0,
+    disabled BOOLEAN DEFAULT FALSE,
+    is_admin BOOLEAN DEFAULT FALSE,
+    is_guest BOOLEAN DEFAULT FALSE,
+    avatar_path TEXT DEFAULT '',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE IF NOT EXISTS decks (
@@ -58,6 +63,7 @@ CREATE TABLE IF NOT EXISTS cards (
     series TEXT DEFAULT '',
     tags TEXT DEFAULT '',
     is_shared BOOLEAN DEFAULT TRUE,
+    share_level TEXT DEFAULT 'playable',
     sort_order INTEGER DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -93,6 +99,25 @@ CREATE TABLE IF NOT EXISTS rooms (
     shuffle_remaining INTEGER DEFAULT 0,
     random_start BOOLEAN DEFAULT FALSE,
     random_start_max INTEGER DEFAULT 50,
+    duel_total_cards INTEGER DEFAULT 50,
+    duel_flip BOOLEAN DEFAULT TRUE,
+    duel_requeue BOOLEAN DEFAULT TRUE,
+    duel_max_rounds INTEGER DEFAULT 0,
+    duel_round_time INTEGER DEFAULT 30,
+    duel_grab_chances INTEGER DEFAULT 1,
+    duel_arrange_time INTEGER DEFAULT 60,
+    penalty_last INTEGER DEFAULT 0,
+    training BOOLEAN DEFAULT FALSE,
+    min_play_time INTEGER DEFAULT 0,
+    multi_audio_mode TEXT DEFAULT 'all',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS invites (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    code TEXT UNIQUE NOT NULL,
+    creator_id INTEGER NOT NULL REFERENCES users(id),
+    used_by INTEGER REFERENCES users(id),
+    used_at DATETIME,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE IF NOT EXISTS room_players (
@@ -136,9 +161,31 @@ CREATE TABLE IF NOT EXISTS game_records (
 	_, _ = db.Exec(`ALTER TABLE rooms ADD COLUMN shuffle_remaining INTEGER DEFAULT 0`)
 	_, _ = db.Exec(`ALTER TABLE rooms ADD COLUMN random_start BOOLEAN DEFAULT FALSE`)
 	_, _ = db.Exec(`ALTER TABLE rooms ADD COLUMN random_start_max INTEGER DEFAULT 50`)
+	_, _ = db.Exec(`ALTER TABLE rooms ADD COLUMN duel_total_cards INTEGER DEFAULT 50`)
+	_, _ = db.Exec(`ALTER TABLE rooms ADD COLUMN duel_flip BOOLEAN DEFAULT TRUE`)
+	_, _ = db.Exec(`ALTER TABLE rooms ADD COLUMN duel_requeue BOOLEAN DEFAULT TRUE`)
+	_, _ = db.Exec(`ALTER TABLE rooms ADD COLUMN duel_max_rounds INTEGER DEFAULT 0`)
+	_, _ = db.Exec(`ALTER TABLE rooms ADD COLUMN duel_round_time INTEGER DEFAULT 30`)
+	_, _ = db.Exec(`ALTER TABLE rooms ADD COLUMN duel_grab_chances INTEGER DEFAULT 1`)
+	_, _ = db.Exec(`ALTER TABLE rooms ADD COLUMN duel_arrange_time INTEGER DEFAULT 60`)
+	_, _ = db.Exec(`ALTER TABLE rooms ADD COLUMN penalty_last INTEGER DEFAULT 0`)
+	_, _ = db.Exec(`ALTER TABLE rooms ADD COLUMN training BOOLEAN DEFAULT FALSE`)
+	_, _ = db.Exec(`ALTER TABLE rooms ADD COLUMN min_play_time INTEGER DEFAULT 0`)
+	_, _ = db.Exec(`ALTER TABLE rooms ADD COLUMN multi_audio_mode TEXT DEFAULT 'all'`)
+	_, _ = db.Exec(`ALTER TABLE users ADD COLUMN invited_by INTEGER DEFAULT 0`)
+	_, _ = db.Exec(`ALTER TABLE users ADD COLUMN disabled BOOLEAN DEFAULT FALSE`)
+	_, _ = db.Exec(`ALTER TABLE users ADD COLUMN is_admin BOOLEAN DEFAULT FALSE`)
+	_, _ = db.Exec(`ALTER TABLE users ADD COLUMN avatar_path TEXT DEFAULT ''`)
+	_, _ = db.Exec(`ALTER TABLE users ADD COLUMN is_guest BOOLEAN DEFAULT FALSE`)
+	_, _ = db.Exec(`UPDATE users SET is_admin = TRUE WHERE username = 'aryuu'`)
 
 	// 存量数据兼容：旧的 is_public=TRUE 牌组同步到 share_level='playable'
 	_, _ = db.Exec(`UPDATE decks SET share_level = 'playable' WHERE is_public = TRUE AND share_level = 'private'`)
+
+	// cards share_level 字段迁移
+	_, _ = db.Exec(`ALTER TABLE cards ADD COLUMN share_level TEXT DEFAULT 'playable'`)
+	_, _ = db.Exec(`UPDATE cards SET share_level = 'playable' WHERE is_shared = TRUE AND share_level = 'playable'`)
+	_, _ = db.Exec(`UPDATE cards SET share_level = 'private' WHERE is_shared = FALSE`)
 
 	// 存量数据兼容：cards.owner_id 为 NULL 时从 deck 推导
 	_, _ = db.Exec(`
@@ -176,6 +223,7 @@ type Store struct {
 	DeckCards   *DeckCardStore
 	Rooms       *RoomStore
 	GameRecords *GameRecordStore
+	Invites     *InviteStore
 }
 
 func NewStore(db *sql.DB) *Store {
@@ -187,5 +235,6 @@ func NewStore(db *sql.DB) *Store {
 		DeckCards:   NewDeckCardStore(db),
 		Rooms:       NewRoomStore(db),
 		GameRecords: NewGameRecordStore(db),
+		Invites:     NewInviteStore(db),
 	}
 }

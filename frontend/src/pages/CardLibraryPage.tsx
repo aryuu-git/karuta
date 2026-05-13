@@ -17,12 +17,18 @@ export function CardLibraryPage() {
   const [search, setSearch] = useState('')
   const [deleteId, setDeleteId] = useState<number | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [cloneMsg, setCloneMsg] = useState<string | null>(null)
   const [selectMode, setSelectMode] = useState(false)
   const [selectedCards, setSelectedCards] = useState<Set<number>>(new Set())
   const [batchDeleting, setBatchDeleting] = useState(false)
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
   const [filterTag, setFilterTag] = useState('')
+  const [allPublicTags, setAllPublicTags] = useState<string[]>([])
+
+  useEffect(() => {
+    api.cards.listTags().then(setAllPublicTags).catch(() => {})
+  }, [])
   const PAGE_SIZE = 50
 
   const loadMyCards = useCallback(async () => {
@@ -34,10 +40,12 @@ export function CardLibraryPage() {
     finally { setLoading(false) }
   }, [])
 
-  const loadPublicCards = useCallback(async (query?: string, tag?: string, pageNum = 1) => {
+  const [filterOwner, setFilterOwner] = useState('')
+
+  const loadPublicCards = useCallback(async (query?: string, tag?: string, pageNum = 1, owner?: string) => {
     setLoading(true)
     try {
-      const cards = await api.cards.listPublic({ search: query || undefined, tag: tag || undefined, size: PAGE_SIZE, page: pageNum })
+      const cards = await api.cards.listPublic({ search: query || undefined, tag: tag || undefined, owner: owner || undefined, size: PAGE_SIZE, page: pageNum })
       setPublicCards(cards)
       setHasMore(cards.length >= PAGE_SIZE)
       setPage(pageNum)
@@ -49,13 +57,13 @@ export function CardLibraryPage() {
     if (tab === 'mine') {
       loadMyCards()
     } else {
-      loadPublicCards(search, filterTag, 1)
+      loadPublicCards(search, filterTag, 1, filterOwner)
     }
   }, [tab, filterTag])
 
   const handleSearch = () => {
     if (tab === 'public') {
-      loadPublicCards(search, filterTag, 1)
+      loadPublicCards(search, filterTag, 1, filterOwner)
     }
   }
 
@@ -178,24 +186,41 @@ export function CardLibraryPage() {
             </div>
             <div className="flex items-center gap-1.5 flex-wrap">
               {(() => {
-                const allTags = new Set<string>(['游戏', '动画'])
+                const tagCounts = new Map<string, number>()
                 const source = tab === 'mine' ? myCards : publicCards
                 source.forEach(c => {
-                  if (c.tags) c.tags.split(',').forEach(t => { if (t.trim()) allTags.add(t.trim()) })
+                  if (c.tags) c.tags.split(',').forEach(t => { const tag = t.trim(); if (tag) tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1) })
                 })
-                return ['', ...Array.from(allTags)].map(t => (
-                  <button key={t}
-                    onClick={() => setFilterTag(t)}
-                    className={`text-xs px-3 py-1.5 rounded-full transition-all ${
-                      filterTag === t
-                        ? 'bg-gradient-to-r from-gold/25 to-pink-500/15 text-gold border border-gold/40'
-                        : 'bg-white/5 text-white/40 border border-white/5 hover:border-pink-300/20 hover:text-pink-300/70'
-                    }`}>
-                    {t || '✦ 全部'}
-                  </button>
-                ))
+                // Use all public tags from API for public tab, local tags for mine tab
+                const allTags = tab === 'public'
+                  ? [...new Set(['游戏', '动画', ...allPublicTags])]
+                  : ['游戏', '动画', ...Array.from(tagCounts.keys()).filter(t => t !== '游戏' && t !== '动画')]
+                return ['', ...allTags].map(t => {
+                  const count = t ? (tagCounts.get(t) || 0) : source.length
+                  return (
+                    <button key={t}
+                      onClick={() => setFilterTag(t)}
+                      className={`text-xs px-3 py-1.5 rounded-full transition-all ${
+                        filterTag === t
+                          ? 'bg-gradient-to-r from-gold/25 to-pink-500/15 text-gold border border-gold/40'
+                          : 'bg-white/5 text-white/40 border border-white/5 hover:border-pink-300/20 hover:text-pink-300/70'
+                      }`}>
+                      {t || '✦ 全部'}{count > 0 ? ` (${count})` : ''}
+                    </button>
+                  )
+                })
               })()}
             </div>
+            {tab === 'public' && (
+              <div className="flex items-center gap-2 mt-2">
+                <span className="text-muted text-xs">创建人:</span>
+                <input type="text" value={filterOwner}
+                  onChange={e => setFilterOwner(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') loadPublicCards(search, filterTag, 1, filterOwner) }}
+                  className="text-xs px-2.5 py-1 rounded-lg bg-white/5 border border-white/5 text-white/70 w-28 placeholder:text-white/30 focus:border-gold/30 outline-none"
+                  placeholder="输入用户名" />
+              </div>
+            )}
           </div>
         )}
 
@@ -247,15 +272,35 @@ export function CardLibraryPage() {
                 已选中 <span className="text-gold font-bold">{selectedCards.size}</span> 张
               </span>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              {(['private', 'playable', 'editable'] as const).map(level => {
+                const labels = { private: '🔒 私有', playable: '👁 可使用', editable: '✏️ 可编辑' }
+                const colors = { private: 'rgba(150,150,150,', playable: 'rgba(74,144,217,', editable: 'rgba(34,197,94,' }
+                return (
+                  <button key={level}
+                    disabled={selectedCards.size === 0}
+                    onClick={async () => {
+                      try {
+                        await api.cards.batchShare([...selectedCards], level)
+                        setMyCards(prev => prev.map(c => selectedCards.has(c.id) ? { ...c, share_level: level, is_shared: level !== 'private' } : c))
+                        setCloneMsg(`✓ 已设为${labels[level]}`)
+                        setTimeout(() => setCloneMsg(null), 2000)
+                      } catch { }
+                    }}
+                    className="text-[10px] px-2 py-1 rounded-lg font-medium transition-all disabled:opacity-30 hover:scale-105"
+                    style={{ background: `${colors[level]}0.12)`, border: `1px solid ${colors[level]}0.35)`, color: `${colors[level]}0.9)` }}>
+                    {labels[level]}
+                  </button>
+                )
+              })}
               <button onClick={handleBatchDelete}
                 disabled={selectedCards.size === 0 || batchDeleting}
-                className="text-xs px-3 py-1.5 rounded-lg font-medium transition-all disabled:opacity-30 hover:scale-105"
+                className="text-[10px] px-2 py-1 rounded-lg font-medium transition-all disabled:opacity-30 hover:scale-105"
                 style={{ background: 'rgba(192,57,43,0.15)', border: '1px solid rgba(192,57,43,0.3)', color: 'rgba(192,57,43,0.9)' }}>
-                {batchDeleting ? '删除中…' : `🗑️ 删除选中`}
+                {batchDeleting ? '…' : '🗑️ 删除'}
               </button>
               <button onClick={() => { setSelectMode(false); setSelectedCards(new Set()) }}
-                className="text-xs px-3 py-1.5 rounded-lg text-muted hover:text-white transition-colors"
+                className="text-[10px] px-2 py-1 rounded-lg text-muted hover:text-white transition-colors"
                 style={{ border: '1px solid rgba(var(--accent-primary),0.1)' }}>
                 完成
               </button>
@@ -320,6 +365,26 @@ export function CardLibraryPage() {
                       ×
                     </button>
                   )}
+                  {/* Clone */}
+                  {tab === 'public' && (
+                    <button
+                      onClick={async (e) => {
+                        e.stopPropagation()
+                        try {
+                          await api.cards.clone(card.id)
+                          setCloneMsg('✓ 已复制到我的牌库！')
+                          setTimeout(() => setCloneMsg(null), 2000)
+                        } catch (err) {
+                          setCloneMsg((err as Error).message || '复制失败')
+                          setTimeout(() => setCloneMsg(null), 2000)
+                        }
+                      }}
+                      className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity
+                                 px-1.5 py-0.5 rounded flex items-center justify-center text-[9px] font-medium"
+                      style={{ background: 'rgba(0,0,0,0.7)', color: 'var(--color-gold)', border: '1px solid rgba(var(--glow-color),0.3)', backdropFilter: 'blur(4px)' }}>
+                      复制
+                    </button>
+                  )}
                 </motion.div>
               ))}
             </AnimatePresence>
@@ -329,12 +394,12 @@ export function CardLibraryPage() {
         {/* Pagination */}
         {!loading && tab === 'public' && cards.length > 0 && (
           <div className="flex items-center justify-center gap-2 mt-6">
-            <button onClick={() => { setPage(1); loadPublicCards(search, filterTag, 1) }}
+            <button onClick={() => { setPage(1); loadPublicCards(search, filterTag, 1, filterOwner) }}
               disabled={page <= 1}
               className="text-xs px-3 py-1.5 rounded-lg disabled:opacity-30 transition-all hover:bg-gold/10 text-muted hover:text-gold border border-white/5">
               首页
             </button>
-            <button onClick={() => { const p = page - 1; setPage(p); loadPublicCards(search, filterTag, p) }}
+            <button onClick={() => { const p = page - 1; setPage(p); loadPublicCards(search, filterTag, p, filterOwner) }}
               disabled={page <= 1}
               className="text-xs px-3 py-1.5 rounded-lg disabled:opacity-30 transition-all hover:bg-gold/10 text-muted hover:text-gold border border-white/5">
               ‹ 上一页
@@ -342,7 +407,7 @@ export function CardLibraryPage() {
             <span className="text-xs px-3 py-1.5 rounded-lg bg-gold/15 text-gold border border-gold/30 font-medium">
               第 {page} 页
             </span>
-            <button onClick={() => { const p = page + 1; setPage(p); loadPublicCards(search, filterTag, p) }}
+            <button onClick={() => { const p = page + 1; setPage(p); loadPublicCards(search, filterTag, p, filterOwner) }}
               disabled={!hasMore}
               className="text-xs px-3 py-1.5 rounded-lg disabled:opacity-30 transition-all hover:bg-gold/10 text-muted hover:text-gold border border-white/5">
               下一页 ›
@@ -374,6 +439,20 @@ export function CardLibraryPage() {
                 </button>
               </div>
             </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Clone feedback toast */}
+      <AnimatePresence>
+        {cloneMsg && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-lg text-sm"
+            style={{ background: 'rgba(0,0,0,0.85)', color: 'var(--color-gold)', border: '1px solid rgba(var(--accent-primary),0.3)' }}>
+            {cloneMsg}
           </motion.div>
         )}
       </AnimatePresence>

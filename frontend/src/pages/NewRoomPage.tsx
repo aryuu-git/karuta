@@ -17,7 +17,7 @@ export function NewRoomPage() {
     presetDeckId ? parseInt(presetDeckId, 10) : null
   )
   const [intervalSec, setIntervalSec] = useState(5)
-  const [selectedMode, setSelectedMode] = useState<'auto' | 'judge'>('auto')
+  const [selectedMode, setSelectedMode] = useState<'auto' | 'judge' | 'duel'>('auto')
   const [maskEnabled, setMaskEnabled] = useState(false)
   const [maskDifficulty, setMaskDifficulty] = useState<'easy' | 'normal' | 'hard'>('normal')
   const [penaltyWrong, setPenaltyWrong] = useState(false)
@@ -26,6 +26,18 @@ export function NewRoomPage() {
   const [shuffleRemaining, setShuffleRemaining] = useState(5)
   const [randomStart, setRandomStart] = useState(false)
   const [randomStartMax, setRandomStartMax] = useState(50)
+  // Duel mode config
+  const [duelTotalCards, setDuelTotalCards] = useState(50)
+  const [duelFlip, setDuelFlip] = useState(true)
+  const [duelRequeue, setDuelRequeue] = useState(true)
+  const [duelMaxRounds, setDuelMaxRounds] = useState(0)
+  const [duelRoundTime, setDuelRoundTime] = useState(30)
+  const [duelGrabChances, setDuelGrabChances] = useState(1)
+  const [duelArrangeTime, setDuelArrangeTime] = useState(60)
+  const [penaltyLast, setPenaltyLast] = useState(0)
+  const [training, setTraining] = useState(false)
+  const [minPlayTime, setMinPlayTime] = useState(0)
+  const [multiAudioMode, setMultiAudioMode] = useState<'all' | 'once'>('all')
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [createdRoom, setCreatedRoom] = useState<Room | null>(null)
@@ -49,7 +61,16 @@ export function NewRoomPage() {
     setCreating(true)
     setError(null)
     try {
-      const room = await api.rooms.create(selectedDeckId, intervalSec, selectedMode, maskEnabled, maskDifficulty, penaltyWrong, penaltySlow, shuffleEnabled ? shuffleRemaining : 0, randomStart, randomStartMax)
+      const duelConfig = selectedMode === 'duel' ? {
+        total_cards: duelTotalCards,
+        flip: duelFlip,
+        requeue: duelRequeue,
+        max_rounds: duelMaxRounds,
+        round_time: duelRoundTime,
+        grab_chances: duelGrabChances,
+        arrange_time: duelArrangeTime,
+      } : undefined
+      const room = await api.rooms.create(selectedDeckId, intervalSec, selectedMode, maskEnabled, maskDifficulty, penaltyWrong, penaltySlow, shuffleEnabled ? shuffleRemaining : 0, randomStart, randomStartMax, duelConfig, penaltyLast, training, minPlayTime, multiAudioMode)
       setCreatedRoom(room)
     } catch (err) {
       setError(err instanceof Error ? err.message : '战场开辟失败了… (；′⌒`) 再试一次吧！')
@@ -219,7 +240,7 @@ export function NewRoomPage() {
                   <label className="text-gold/70 text-xs block mb-3 tracking-widest font-serif">
                     🎭 游戏模式
                   </label>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-3 gap-2">
                     <button
                       type="button"
                       onClick={() => setSelectedMode('auto')}
@@ -232,7 +253,7 @@ export function NewRoomPage() {
                     >
                       <span className="text-xl">🤖</span>
                       <span className="text-xs font-medium">自动模式</span>
-                      <span className="text-xs text-muted text-center leading-relaxed">系统自动按间隔播放</span>
+                      <span className="text-xs text-muted text-center leading-relaxed">系统自动播放</span>
                     </button>
                     <button
                       type="button"
@@ -246,10 +267,168 @@ export function NewRoomPage() {
                     >
                       <span className="text-xl">👑</span>
                       <span className="text-xs font-medium">裁判模式</span>
-                      <span className="text-xs text-muted text-center leading-relaxed">房主手动选每一首</span>
+                      <span className="text-xs text-muted text-center leading-relaxed">房主手动选牌</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedMode('duel')}
+                      className={[
+                        'flex flex-col items-center gap-1.5 px-3 py-3 rounded-lg border text-left transition-all',
+                        selectedMode === 'duel'
+                          ? 'border-gold bg-gold/10 text-white'
+                          : 'border-border hover:border-gold/40 text-white/70 hover:text-white',
+                      ].join(' ')}
+                    >
+                      <span className="text-xl">⚔️</span>
+                      <span className="text-xs font-medium">对阵模式 <span className="text-[9px] px-1 py-0.5 rounded bg-crimson/20 text-crimson/80 ml-0.5">内测</span></span>
+                      <span className="text-xs text-muted text-center leading-relaxed">1v1 花牌决斗</span>
                     </button>
                   </div>
                 </div>
+
+                {/* Duel mode config */}
+                {selectedMode === 'duel' && (
+                  <div className="rounded-xl p-4"
+                    style={{ background: 'linear-gradient(135deg, rgba(var(--accent-bg),0.15), rgba(var(--accent-bg-mid),0.4))', border: '1px solid rgba(var(--accent-primary),0.12)' }}>
+                    <h3 className="text-gold/80 text-xs font-serif mb-3">⚔️ 对阵配置</h3>
+                    <div className="space-y-3">
+                      {/* 总牌数 */}
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-xs text-white/70">总牌数</p>
+                          <p className="text-[10px] text-muted/50">每人分到一半</p>
+                        </div>
+                        <div className="flex items-center rounded-lg overflow-hidden" style={{ border: '1px solid rgba(var(--accent-primary),0.2)' }}>
+                          <button type="button" onClick={() => setDuelTotalCards(Math.max(10, duelTotalCards - 10))}
+                            className="px-2.5 py-1 text-gold/70 hover:text-gold hover:bg-gold/10 transition-colors text-sm font-bold">-</button>
+                          <span className="w-10 text-center text-sm text-white/90 font-medium py-1"
+                            style={{ background: 'rgba(var(--accent-primary),0.05)' }}>{duelTotalCards}</span>
+                          <button type="button" onClick={() => setDuelTotalCards(Math.min(100, duelTotalCards + 10))}
+                            className="px-2.5 py-1 text-gold/70 hover:text-gold hover:bg-gold/10 transition-colors text-sm font-bold">+</button>
+                        </div>
+                      </div>
+                      {/* 每轮时间 */}
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-xs text-white/70">每轮时间</p>
+                          <p className="text-[10px] text-muted/50">超时则无人得牌</p>
+                        </div>
+                        <div className="flex items-center rounded-lg overflow-hidden" style={{ border: '1px solid rgba(var(--accent-primary),0.2)' }}>
+                          <button type="button" onClick={() => setDuelRoundTime(Math.max(30, duelRoundTime - 10))}
+                            className="px-2.5 py-1 text-gold/70 hover:text-gold hover:bg-gold/10 transition-colors text-sm font-bold">-</button>
+                          <span className="w-10 text-center text-sm text-white/90 font-medium py-1"
+                            style={{ background: 'rgba(var(--accent-primary),0.05)' }}>{duelRoundTime}s</span>
+                          <button type="button" onClick={() => setDuelRoundTime(Math.min(120, duelRoundTime + 10))}
+                            className="px-2.5 py-1 text-gold/70 hover:text-gold hover:bg-gold/10 transition-colors text-sm font-bold">+</button>
+                        </div>
+                      </div>
+                      {/* 拍牌次数 */}
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-xs text-white/70">拍牌次数</p>
+                          <p className="text-[10px] text-muted/50">每轮可拍错几次</p>
+                        </div>
+                        <div className="flex items-center rounded-lg overflow-hidden" style={{ border: '1px solid rgba(var(--accent-primary),0.2)' }}>
+                          <button type="button" onClick={() => setDuelGrabChances(Math.max(1, duelGrabChances - 1))}
+                            className="px-2.5 py-1 text-gold/70 hover:text-gold hover:bg-gold/10 transition-colors text-sm font-bold">-</button>
+                          <span className="w-10 text-center text-sm text-white/90 font-medium py-1"
+                            style={{ background: 'rgba(var(--accent-primary),0.05)' }}>{duelGrabChances}</span>
+                          <button type="button" onClick={() => setDuelGrabChances(Math.min(5, duelGrabChances + 1))}
+                            className="px-2.5 py-1 text-gold/70 hover:text-gold hover:bg-gold/10 transition-colors text-sm font-bold">+</button>
+                        </div>
+                      </div>
+                      {/* 最大轮次 */}
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-xs text-white/70">最大轮次</p>
+                          <p className="text-[10px] text-muted/50">0 = 无限</p>
+                        </div>
+                        <div className="flex items-center rounded-lg overflow-hidden" style={{ border: '1px solid rgba(var(--accent-primary),0.2)' }}>
+                          <button type="button" onClick={() => setDuelMaxRounds(Math.max(0, duelMaxRounds - 5))}
+                            className="px-2.5 py-1 text-gold/70 hover:text-gold hover:bg-gold/10 transition-colors text-sm font-bold">-</button>
+                          <span className="w-10 text-center text-sm text-white/90 font-medium py-1"
+                            style={{ background: 'rgba(var(--accent-primary),0.05)' }}>{duelMaxRounds || '∞'}</span>
+                          <button type="button" onClick={() => setDuelMaxRounds(duelMaxRounds + 5)}
+                            className="px-2.5 py-1 text-gold/70 hover:text-gold hover:bg-gold/10 transition-colors text-sm font-bold">+</button>
+                        </div>
+                      </div>
+                      {/* 排阵时间 */}
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-xs text-white/70">排阵时间</p>
+                          <p className="text-[10px] text-muted/50">开局前调整布局(秒)</p>
+                        </div>
+                        <div className="flex items-center rounded-lg overflow-hidden" style={{ border: '1px solid rgba(var(--accent-primary),0.2)' }}>
+                          <button type="button" onClick={() => setDuelArrangeTime(Math.max(10, duelArrangeTime - 10))}
+                            className="px-2.5 py-1 text-gold/70 hover:text-gold hover:bg-gold/10 transition-colors text-sm font-bold">-</button>
+                          <span className="w-12 text-center text-sm text-white/90 font-medium py-1"
+                            style={{ background: 'rgba(var(--accent-primary),0.05)' }}>{duelArrangeTime}s</span>
+                          <button type="button" onClick={() => setDuelArrangeTime(Math.min(300, duelArrangeTime + 10))}
+                            className="px-2.5 py-1 text-gold/70 hover:text-gold hover:bg-gold/10 transition-colors text-sm font-bold">+</button>
+                        </div>
+                      </div>
+                      {/* 开关项 */}
+                      <div className="space-y-2 pt-1">
+                        <div onClick={() => setDuelFlip(!duelFlip)}
+                          className={`flex items-center gap-3 p-2.5 rounded-lg cursor-pointer transition-all ${
+                            duelFlip ? 'bg-gold/10 border border-gold/25' : 'bg-white/5 border border-white/5'
+                          }`}>
+                          <div className={`w-8 h-4 rounded-full transition-all duration-200 relative shrink-0 ${
+                            duelFlip ? 'bg-gold/50' : 'bg-white/10'
+                          }`}>
+                            <div className={`absolute top-0.5 w-3 h-3 rounded-full transition-all duration-200 ${
+                              duelFlip ? 'left-[17px] bg-gold' : 'left-0.5 bg-white/30'
+                            }`} />
+                          </div>
+                          <div>
+                            <p className={`text-xs font-medium ${duelFlip ? 'text-white/80' : 'text-white/40'}`}>
+                              🙃 对方区牌面倒置
+                            </p>
+                            <p className="text-[10px] text-muted/50">增加辨认难度！</p>
+                          </div>
+                        </div>
+                        <div onClick={() => setDuelRequeue(!duelRequeue)}
+                          className={`flex items-center gap-3 p-2.5 rounded-lg cursor-pointer transition-all ${
+                            duelRequeue ? 'bg-gold/10 border border-gold/25' : 'bg-white/5 border border-white/5'
+                          }`}>
+                          <div className={`w-8 h-4 rounded-full transition-all duration-200 relative shrink-0 ${
+                            duelRequeue ? 'bg-gold/50' : 'bg-white/10'
+                          }`}>
+                            <div className={`absolute top-0.5 w-3 h-3 rounded-full transition-all duration-200 ${
+                              duelRequeue ? 'left-[17px] bg-gold' : 'left-0.5 bg-white/30'
+                            }`} />
+                          </div>
+                          <div>
+                            <p className={`text-xs font-medium ${duelRequeue ? 'text-white/80' : 'text-white/40'}`}>
+                              🔄 歌曲重入队
+                            </p>
+                            <p className="text-[10px] text-muted/50">超时未抢的歌会再次出现</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Training mode (auto only) */}
+                {selectedMode === 'auto' && (
+                  <div onClick={() => setTraining(!training)}
+                    className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all duration-200 ${
+                      training ? 'border border-orange-400/30 bg-orange-400/5' : 'border border-white/10 bg-white/5 hover:border-white/20'
+                    }`}>
+                    <div className={`w-9 h-5 rounded-full transition-all duration-200 relative ${training ? 'bg-orange-400/50' : 'bg-white/10'}`}>
+                      <div className={`absolute top-0.5 w-4 h-4 rounded-full transition-all duration-200 ${training ? 'left-[18px] bg-orange-400' : 'left-0.5 bg-white/40'}`} />
+                    </div>
+                    <div>
+                      <p className={`text-sm font-medium ${training ? 'text-orange-300/90' : 'text-white/50'}`}>
+                        {training ? '🏋️ 训练模式' : '👥 多人模式'}
+                      </p>
+                      <p className="text-[10px] text-muted/50">
+                        {training ? '仅自己可进，不允许其他玩家加入' : '其他玩家可通过邀请码或大厅加入'}
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 {/* Mask (blur) option */}
                 <div>
@@ -337,10 +516,27 @@ export function NewRoomPage() {
                     ))}
                   </div>
                   <p className="text-muted/40 text-[10px] mt-2 text-center font-serif">关闭后仅禁止本轮继续抢，不扣分 ♪</p>
+                  {/* 倒数N首开启惩罚 */}
+                  {selectedMode !== 'duel' && penaltyWrong && (
+                    <div className="flex items-center justify-between mt-3 pt-3" style={{ borderTop: '1px solid rgba(var(--accent-primary),0.08)' }}>
+                      <div>
+                        <p className="text-xs text-white/70">倒数N首开启</p>
+                        <p className="text-[10px] text-muted/50">0=全程扣分</p>
+                      </div>
+                      <div className="flex items-center rounded-lg overflow-hidden" style={{ border: '1px solid rgba(var(--accent-primary),0.2)' }}>
+                        <button type="button" onClick={() => setPenaltyLast(Math.max(0, penaltyLast - 5))}
+                          className="px-2.5 py-1 text-gold/70 hover:text-gold hover:bg-gold/10 transition-colors text-sm font-bold">-</button>
+                        <span className="w-12 text-center text-sm text-white/90 font-medium py-1"
+                          style={{ background: 'rgba(var(--accent-primary),0.05)' }}>{penaltyLast || '全程'}</span>
+                        <button type="button" onClick={() => setPenaltyLast(penaltyLast + 5)}
+                          className="px-2.5 py-1 text-gold/70 hover:text-gold hover:bg-gold/10 transition-colors text-sm font-bold">+</button>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
-                {/* 牌面打乱 */}
-                <div className="rounded-xl p-4"
+                {/* 牌面打乱（对阵模式不需要） */}
+                {selectedMode !== 'duel' && <div className="rounded-xl p-4"
                   style={{ background: 'linear-gradient(135deg, rgba(var(--accent-bg),0.15), rgba(var(--accent-bg-mid),0.4))', border: '1px solid rgba(var(--accent-primary),0.12)' }}>
                   <h3 className="text-gold/80 text-xs font-serif mb-3">🔀 牌面打乱</h3>
                   <div onClick={() => setShuffleEnabled(!shuffleEnabled)}
@@ -377,7 +573,53 @@ export function NewRoomPage() {
                       <span className="text-muted text-xs">张时开始打乱</span>
                     </div>
                   )}
+                </div>}
+
+                {/* 多音频牌模式 */}
+                <div className="rounded-xl p-4"
+                  style={{ background: 'linear-gradient(135deg, rgba(var(--accent-bg),0.15), rgba(var(--accent-bg-mid),0.4))', border: '1px solid rgba(var(--accent-primary),0.12)' }}>
+                  <h3 className="text-gold/80 text-xs font-serif mb-3">🎵 多音频牌</h3>
+                  <div className="flex gap-2">
+                    <button type="button" onClick={() => setMultiAudioMode('all')}
+                      className="flex-1 p-2.5 rounded-lg text-center transition-all"
+                      style={{
+                        background: multiAudioMode === 'all' ? 'rgba(var(--accent-primary),0.1)' : 'rgba(255,255,255,0.03)',
+                        border: multiAudioMode === 'all' ? '1px solid rgba(var(--accent-primary),0.4)' : '1px solid rgba(255,255,255,0.08)',
+                      }}>
+                      <p className={`text-xs font-medium ${multiAudioMode === 'all' ? 'text-gold' : 'text-white/50'}`}>全部播完</p>
+                      <p className="text-[9px] text-muted/50 mt-0.5">N首全抢完才消失</p>
+                    </button>
+                    <button type="button" onClick={() => setMultiAudioMode('once')}
+                      className="flex-1 p-2.5 rounded-lg text-center transition-all"
+                      style={{
+                        background: multiAudioMode === 'once' ? 'rgba(var(--accent-primary),0.1)' : 'rgba(255,255,255,0.03)',
+                        border: multiAudioMode === 'once' ? '1px solid rgba(var(--accent-primary),0.4)' : '1px solid rgba(255,255,255,0.08)',
+                      }}>
+                      <p className={`text-xs font-medium ${multiAudioMode === 'once' ? 'text-gold' : 'text-white/50'}`}>拍一次消失</p>
+                      <p className="text-[9px] text-muted/50 mt-0.5">抢到第一首就消失</p>
+                    </button>
+                  </div>
                 </div>
+
+                {/* 最短播放时间 */}
+                {selectedMode !== 'duel' && (
+                  <div className="rounded-xl p-4"
+                    style={{ background: 'linear-gradient(135deg, rgba(var(--accent-bg),0.15), rgba(var(--accent-bg-mid),0.4))', border: '1px solid rgba(var(--accent-primary),0.12)' }}>
+                    <h3 className="text-gold/80 text-xs font-serif mb-3">⏱️ 最短播放时间</h3>
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs text-white/60">短歌也要播够这么久才能进入下一首</p>
+                      <div className="flex items-center rounded-lg overflow-hidden" style={{ border: '1px solid rgba(var(--accent-primary),0.2)' }}>
+                        <button type="button" onClick={() => setMinPlayTime(minPlayTime <= 10 ? 0 : minPlayTime - 5)}
+                          className="px-2.5 py-1 text-gold/70 hover:text-gold hover:bg-gold/10 transition-colors text-sm font-bold">-</button>
+                        <span className="w-12 text-center text-sm text-white/90 font-medium py-1"
+                          style={{ background: 'rgba(var(--accent-primary),0.05)' }}>{minPlayTime || '关闭'}</span>
+                        <button type="button" onClick={() => setMinPlayTime(minPlayTime === 0 ? 10 : Math.min(60, minPlayTime + 5))}
+                          className="px-2.5 py-1 text-gold/70 hover:text-gold hover:bg-gold/10 transition-colors text-sm font-bold">+</button>
+                      </div>
+                    </div>
+                    {minPlayTime > 0 && <p className="text-muted/40 text-[10px] mt-2">即使歌曲不到 {minPlayTime}s，也会等到 {minPlayTime}s 再进入间隔</p>}
+                  </div>
+                )}
 
                 {/* 随机片段播放 */}
                 <div className="rounded-xl p-4"

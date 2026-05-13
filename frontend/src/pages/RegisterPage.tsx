@@ -3,7 +3,6 @@ import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useAuth } from '../hooks/useAuth'
 
-const SECRET_CODE = '33989'
 
 export function RegisterPage() {
   const { register } = useAuth()
@@ -35,9 +34,8 @@ export function RegisterPage() {
       return
     }
 
-    // 神秘代号校验
-    if (secretCode.trim() !== SECRET_CODE) {
-      setError('神秘代号不对哦！没有邀请码无法注册 (；′⌒`)')
+    if (!secretCode.trim()) {
+      setError('需要邀请码才能注册哦！找朋友要一个吧 (；′⌒`)')
       return
     }
 
@@ -53,7 +51,7 @@ export function RegisterPage() {
 
     setLoading(true)
     try {
-      await register(trimName, password)
+      await register(trimName, password, secretCode.trim())
       navigate('/')
     } catch (err) {
       setError(err instanceof Error ? err.message : '注册失败了… (；′⌒`) 再试试吧！')

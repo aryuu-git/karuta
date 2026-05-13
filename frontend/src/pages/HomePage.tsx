@@ -16,7 +16,7 @@ const STATUS_LABEL: Record<string, { text: string; color: string }> = {
 export function HomePage() {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const isAdmin = user?.username === 'aryuu'
+  const isAdmin = !!user?.is_admin
 
   const [rooms, setRooms] = useState<RoomListItem[]>([])
   const [roomsLoading, setRoomsLoading] = useState(true)
@@ -135,6 +135,24 @@ export function HomePage() {
           </div>
         )}
 
+        {/* 桌面版下载 */}
+        <a href="https://karuta-1321249409.cos-website.ap-shanghai.myqcloud.com/Karuta.exe"
+          className="flex items-center gap-2 mb-4 px-4 py-2.5 rounded-xl transition-all hover:scale-[1.01]"
+          style={{ background: 'rgba(var(--accent-primary),0.06)', border: '1px solid rgba(var(--accent-primary),0.15)' }}>
+          <span className="text-sm">💻</span>
+          <span className="text-xs text-white/70">下载桌面版（音频本地缓存，省流量更流畅）</span>
+          <span className="ml-auto text-[10px] text-gold/60">Windows</span>
+        </a>
+
+        {/* GitHub */}
+        <a href="https://github.com/aryuu-git/karuta" target="_blank" rel="noopener noreferrer"
+          className="flex items-center gap-2 mb-4 px-4 py-2 rounded-xl transition-all hover:scale-[1.01]"
+          style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)' }}>
+          <span className="text-sm">⭐</span>
+          <span className="text-xs text-white/50">GitHub 开源仓库</span>
+          <span className="ml-auto text-[10px] text-muted/40">aryuu-git/karuta</span>
+        </a>
+
         {/* 战场大厅 */}
         <div className="rounded-2xl overflow-hidden mb-8"
           style={{ background: 'linear-gradient(180deg, rgba(var(--accent-bg-end),0.4) 0%, rgba(var(--accent-bg-mid),0.7) 100%)', border: '1px solid rgba(var(--accent-primary),0.12)' }}>
@@ -171,7 +189,7 @@ export function HomePage() {
                     initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: i * 0.03 }}
                     className="flex items-center gap-3 px-5 py-3 transition-colors group hover:bg-gold/5 cursor-pointer"
-                    onClick={() => !isAdmin && doJoin(room.code)}>
+                    onClick={() => doJoin(room.code)}>
                     <div className={`w-2 h-2 rounded-full shrink-0 ${
                       room.status === 'waiting' ? 'bg-green-400' :
                       room.status === 'reading' ? 'bg-gold animate-pulse' : 'bg-muted'
@@ -185,23 +203,26 @@ export function HomePage() {
                         👑 {room.host_name} · {room.player_count} 位战士
                       </div>
                     </div>
-                    {!isAdmin && room.status !== 'end' ? (
-                      <span className={`text-xs shrink-0 group-hover:text-gold transition-all ${room.status === 'waiting' ? 'text-gold/60' : 'text-muted'}`}>
-                        {room.status === 'waiting' ? '加入 →' : '旁观 →'}
-                      </span>
-                    ) : isAdmin && room.status !== 'end' ? (
-                      <button
-                        onClick={async e => {
-                          e.stopPropagation()
-                          if (!confirm(`强制结束「${room.deck_name}」对局？`)) return
-                          await api.rooms.forceEnd(room.id).catch(() => null)
-                          loadRooms()
-                        }}
-                        className="text-xs px-2 py-1 rounded shrink-0 transition-all hover:scale-105"
-                        style={{ background: 'rgba(255,165,0,0.12)', border: '1px solid rgba(255,165,0,0.35)', color: 'rgba(255,165,0,0.9)' }}>
-                        ⚡ 强制结束
-                      </button>
-                    ) : null}
+                    {room.status !== 'end' && (
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className={`text-xs group-hover:text-gold transition-all ${room.training ? 'text-orange-400/60' : room.status === 'waiting' ? 'text-gold/60' : 'text-muted'}`}>
+                          {room.training ? '🏋️ 旁观 →' : room.status === 'waiting' ? '加入 →' : '旁观 →'}
+                        </span>
+                        {isAdmin && (
+                          <button
+                            onClick={async e => {
+                              e.stopPropagation()
+                              if (!confirm(`强制结束「${room.deck_name}」对局？`)) return
+                              await api.rooms.forceEnd(room.id).catch(() => null)
+                              loadRooms()
+                            }}
+                            className="text-[10px] px-1.5 py-0.5 rounded transition-all hover:scale-105"
+                            style={{ background: 'rgba(255,165,0,0.12)', border: '1px solid rgba(255,165,0,0.35)', color: 'rgba(255,165,0,0.9)' }}>
+                            ⚡结束
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </motion.div>
                 )
               })}

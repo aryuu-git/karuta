@@ -27,11 +27,20 @@ export function CardCreatePage() {
   const [coverFile, setCoverFile] = useState<File | null>(null)
   const [coverPreview, setCoverPreview] = useState<string | null>(null)
   const [audioFile, setAudioFile] = useState<File | null>(null)
+  const [createAudioFiles, setCreateAudioFiles] = useState<File[]>([])
   const [displayText, setDisplayText] = useState('')
   const [series, setSeries] = useState('')
   const [tags, setTags] = useState('')
   const [hintText, setHintText] = useState('')
   const [isShared, setIsShared] = useState(true)
+  const [shareLevel, setShareLevel] = useState<'private' | 'playable' | 'editable'>('playable')
+
+  // Bangumi search
+  const [bangumiQuery, setBangumiQuery] = useState('')
+  const [bangumiResults, setBangumiResults] = useState<Array<{ id: number; name: string; name_cn: string; type: number; images?: { large?: string; common?: string } }>>([])
+  const [bangumiLoading, setBangumiLoading] = useState(false)
+  const [showBangumi, setShowBangumi] = useState(false)
+  const bangumiTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Audio processing
   const [audioOptions, setAudioOptions] = useState<ProcessOptions>({ compress: false, trim: 'none' })
@@ -65,12 +74,11 @@ export function CardCreatePage() {
   const [playingAudioId, setPlayingAudioId] = useState<number | null>(null)
   const previewAudioRef = useRef<HTMLAudioElement | null>(null)
 
-  // New audio for edit mode
-  const [newAudioFile, setNewAudioFile] = useState<File | null>(null)
+  // New audio for edit mode (multi-file)
+  const [newAudioFiles, setNewAudioFiles] = useState<File[]>([])
+  const [uploadProgress, setUploadProgress] = useState(0)
   const [newHintText, setNewHintText] = useState('')
-  const [newAudioOptions, setNewAudioOptions] = useState<ProcessOptions>({ compress: false, trim: 'none' })
-  const [newProcessing, setNewProcessing] = useState(false)
-  const [newProcessProgress, setNewProcessProgress] = useState(0)
+  const [newProcessing] = useState(false)
 
   // Delete audio confirm
   const [deleteAudioId, setDeleteAudioId] = useState<number | null>(null)
@@ -87,6 +95,10 @@ export function CardCreatePage() {
     if (isEdit && cardId) {
       loadCard()
     }
+    // Load all public tags + my own tags
+    api.cards.listTags().then(tags => {
+      setCustomTags(prev => [...new Set([...prev, ...tags.filter(t => !DEFAULT_TAGS.includes(t))])])
+    }).catch(() => {})
   }, [cardId])
 
   const loadCard = async () => {
@@ -101,6 +113,7 @@ export function CardCreatePage() {
       const existingTags = (data.card.tags || '').split(',').map((t: string) => t.trim()).filter(Boolean)
       setCustomTags(existingTags.filter((t: string) => !DEFAULT_TAGS.includes(t)))
       setIsShared(data.card.is_shared)
+      setShareLevel((data.card.share_level as any) || (data.card.is_shared ? 'playable' : 'private'))
       if (data.card.cover_url) {
         setCoverPreview(data.card.cover_url)
       }
@@ -123,17 +136,6 @@ export function CardCreatePage() {
     setCoverPreview(URL.createObjectURL(file))
   }, [])
 
-  const handleAudioDrop = useCallback((e: DragEvent) => {
-    e.preventDefault()
-    setDragOverAudio(false)
-    const file = e.dataTransfer.files[0]
-    if (!file || !file.type.startsWith('audio/')) return
-    if (file.size > 20 * 1024 * 1024) {
-      setUploadError('音频文件超过 20MB 啦！(>_<)')
-      return
-    }
-    setAudioFile(file)
-  }, [])
 
   const handleCreate = async (e: FormEvent) => {
     e.preventDefault()
@@ -141,7 +143,7 @@ export function CardCreatePage() {
     setUploading(true)
     setUploadError(null)
     try {
-      // Process audio
+      // Process first audio
       let finalAudio: File = audioFile
       if (audioOptions.compress || audioOptions.trim !== 'none') {
         setProcessing(true)
@@ -161,7 +163,17 @@ export function CardCreatePage() {
       formData.append('is_shared', String(isShared))
       if (hintText.trim()) formData.append('hint_text', hintText.trim())
 
-      await api.cards.create(formData)
+      const newCard = await api.cards.create(formData)
+
+      // Upload remaining audio files (if multiple selected)
+      if (createAudioFiles.length > 1) {
+        for (let i = 1; i < createAudioFiles.length; i++) {
+          const fd = new FormData()
+          fd.append('audio', createAudioFiles[i])
+          await api.cards.addAudio(newCard.id, fd)
+        }
+      }
+
       navigate('/cards')
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : '上传失败了 (>_<)')
@@ -179,39 +191,33 @@ export function CardCreatePage() {
         display_text: displayText.trim(),
         series: series.trim(),
         tags: tags.trim(),
-        is_shared: isShared,
+        is_shared: shareLevel !== 'private',
+        share_level: shareLevel,
       })
       navigate('/cards')
     } catch { /* ignore */ }
     finally { setSaving(false) }
   }
 
-  const handleAddAudio = async () => {
-    if (!newAudioFile) return
+
+  const handleAddAudios = async () => {
+    if (newAudioFiles.length === 0) return
     setAddingAudio(true)
+    setUploadProgress(0)
     try {
-      let finalAudio: File = newAudioFile
-      if (newAudioOptions.compress || newAudioOptions.trim !== 'none') {
-        setNewProcessing(true)
-        setNewProcessProgress(0)
-        try {
-          finalAudio = await processAudio(newAudioFile, newAudioOptions, setNewProcessProgress)
-        } catch { /* fallback */ }
-        finally { setNewProcessing(false) }
+      for (let i = 0; i < newAudioFiles.length; i++) {
+        setUploadProgress(i + 1)
+        const formData = new FormData()
+        formData.append('audio', newAudioFiles[i])
+        if (newHintText.trim()) formData.append('hint_text', newHintText.trim())
+        const newAudio = await api.cards.addAudio(cardId, formData)
+        setAudios(prev => [...prev, newAudio])
       }
-
-      const formData = new FormData()
-      formData.append('audio', finalAudio)
-      if (newHintText.trim()) formData.append('hint_text', newHintText.trim())
-
-      const newAudio = await api.cards.addAudio(cardId, formData)
-      setAudios(prev => [...prev, newAudio])
-      setNewAudioFile(null)
+      setNewAudioFiles([])
       setNewHintText('')
-      setNewAudioOptions({ compress: false, trim: 'none' })
       if (newAudioInputRef.current) newAudioInputRef.current.value = ''
     } catch { /* ignore */ }
-    finally { setAddingAudio(false); setNewProcessing(false) }
+    finally { setAddingAudio(false) }
   }
 
   const handleDeleteAudio = async (audioId: number) => {
@@ -327,7 +333,12 @@ export function CardCreatePage() {
           <div className="absolute top-0 right-0 w-24 h-24 opacity-10 pointer-events-none"
             style={{ background: 'radial-gradient(circle, rgba(var(--glow-color),0.8), transparent 70%)' }} />
           <div className="flex items-center gap-3 relative">
-            <button onClick={() => navigate('/cards')}
+            <button onClick={() => {
+              if (!isEdit && (audioFile || coverFile || displayText.trim())) {
+                if (!confirm('确定放弃制作这张牌吗？已填内容不会保存 (；′⌒`)')) return
+              }
+              navigate('/cards')
+            }}
               className="text-pink-300/50 hover:text-gold transition-all duration-200 text-sm shrink-0 hover:scale-110">
               ← 撤退
             </button>
@@ -383,8 +394,24 @@ export function CardCreatePage() {
             {/* Edit mode: show existing cover (small) */}
             {isEdit && coverPreview && (
               <div>
-                <label className="text-muted text-xs block mb-1.5">🖼️ 封面</label>
-                <img src={coverPreview} alt="cover" className="w-24 rounded-lg object-cover" style={{ aspectRatio: '3/4' }} />
+                <label className="text-muted text-xs block mb-1.5">🖼️ 封面（点击更换）</label>
+                <div className="relative w-24 cursor-pointer group" onClick={() => coverInputRef.current?.click()}>
+                  <img src={coverPreview} alt="cover" className="w-24 rounded-lg object-cover group-hover:opacity-70 transition-opacity" style={{ aspectRatio: '3/4' }} />
+                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <span className="text-white text-xs bg-black/60 px-2 py-1 rounded">换封面</span>
+                  </div>
+                </div>
+                <input ref={coverInputRef} type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                  const file = e.target.files?.[0]
+                  if (!file || !cardId) return
+                  setCoverPreview(URL.createObjectURL(file))
+                  try {
+                    const fd = new FormData()
+                    fd.append('cover', file)
+                    const updated = await api.cards.updateCover(cardId, fd)
+                    if (updated.cover_url) setCoverPreview(updated.cover_url)
+                  } catch { /* ignore */ }
+                }} />
               </div>
             )}
 
@@ -402,8 +429,17 @@ export function CardCreatePage() {
                   onClick={() => audioInputRef.current?.click()}
                   onDragOver={e => { e.preventDefault(); setDragOverAudio(true) }}
                   onDragLeave={() => setDragOverAudio(false)}
-                  onDrop={handleAudioDrop}>
-                  {audioFile ? (
+                  onDrop={e => {
+                    e.preventDefault(); setDragOverAudio(false)
+                    const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('audio/'))
+                    if (files.length > 0) { setAudioFile(files[0]); setCreateAudioFiles(files) }
+                  }}>
+                  {createAudioFiles.length > 0 ? (
+                    <div className="text-xs">
+                      <div className="text-gold font-medium">{createAudioFiles.length} 首音频已选</div>
+                      <div className="text-muted mt-0.5 max-h-12 overflow-y-auto">{createAudioFiles.map(f => f.name).join(', ')}</div>
+                    </div>
+                  ) : audioFile ? (
                     <div className="text-xs">
                       <div className="text-gold font-medium truncate">{audioFile.name}</div>
                       <div className="text-muted mt-0.5">{formatBytes(audioFile.size)} · 准备就绪 ✓</div>
@@ -411,13 +447,16 @@ export function CardCreatePage() {
                   ) : (
                     <div className="flex flex-col items-center gap-1 text-muted">
                       <span className="text-xl">{dragOverAudio ? '✨' : '🎵'}</span>
-                      <span className="text-xs">{dragOverAudio ? '松开即可上传！' : '点击或拖拽音频'}</span>
+                      <span className="text-xs">{dragOverAudio ? '松开即可上传！' : '点击或拖拽音频（支持多选）'}</span>
                       <span className="text-xs text-muted/40">mp3 / wav / flac 等 · ≤20MB</span>
                     </div>
                   )}
                 </div>
-                <input ref={audioInputRef} type="file" accept="audio/*" className="hidden"
-                  onChange={e => setAudioFile(e.target.files?.[0] ?? null)} />
+                <input ref={audioInputRef} type="file" accept="audio/*" multiple className="hidden"
+                  onChange={e => {
+                    const files = Array.from(e.target.files ?? [])
+                    if (files.length > 0) { setAudioFile(files[0]); setCreateAudioFiles(files) }
+                  }} />
               </div>
             )}
 
@@ -438,11 +477,100 @@ export function CardCreatePage() {
                 className="input-dark text-sm" placeholder="例：春晓" required />
             </div>
 
-            {/* Series */}
-            <div>
+            {/* Series + Bangumi search */}
+            <div className="relative">
               <label className="text-muted text-xs block mb-1.5">📺 作品名（选填）</label>
-              <input type="text" value={series} onChange={e => setSeries(e.target.value)}
-                className="input-dark text-sm" placeholder="例：Fate/stay night" />
+              <div className="flex gap-2">
+                <input type="text" value={series} onChange={e => setSeries(e.target.value)}
+                  className="input-dark text-sm flex-1" placeholder="例：Fate/stay night" />
+                <button type="button" onClick={() => { setShowBangumi(!showBangumi); setBangumiQuery(series) }}
+                  className="px-2.5 py-1.5 rounded-lg text-[10px] font-medium shrink-0 transition-all hover:scale-105"
+                  style={{ background: 'rgba(74,144,217,0.15)', border: '1px solid rgba(74,144,217,0.3)', color: 'rgba(74,144,217,0.9)' }}>
+                  🔍 Bangumi
+                </button>
+              </div>
+              {/* Bangumi search panel */}
+              {showBangumi && (
+                <div className="absolute z-20 left-0 right-0 mt-2 rounded-xl overflow-hidden"
+                  style={{ background: 'var(--color-ink-deep)', border: '1px solid rgba(var(--accent-primary),0.2)', boxShadow: '0 8px 32px rgba(0,0,0,0.5)', maxHeight: '320px' }}>
+                  <div className="p-3 flex gap-2" style={{ borderBottom: '1px solid rgba(var(--accent-primary),0.1)' }}>
+                    <input type="text" value={bangumiQuery}
+                      onChange={e => {
+                        setBangumiQuery(e.target.value)
+                        if (bangumiTimerRef.current) clearTimeout(bangumiTimerRef.current)
+                        bangumiTimerRef.current = setTimeout(async () => {
+                          if (!e.target.value.trim()) return
+                          setBangumiLoading(true)
+                          try {
+                            const res = await api.bangumi.search(e.target.value.trim(), '2,4')
+                            setBangumiResults(res.data ?? [])
+                          } catch { setBangumiResults([]) }
+                          finally { setBangumiLoading(false) }
+                        }, 500)
+                      }}
+                      onKeyDown={async e => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault()
+                          if (!bangumiQuery.trim()) return
+                          setBangumiLoading(true)
+                          try {
+                            const res = await api.bangumi.search(bangumiQuery.trim(), '2,4')
+                            setBangumiResults(res.data ?? [])
+                          } catch { setBangumiResults([]) }
+                          finally { setBangumiLoading(false) }
+                        }
+                      }}
+                      className="input-dark text-xs flex-1" placeholder="搜索动画/游戏名…" autoFocus />
+                    <button type="button" onClick={() => setShowBangumi(false)}
+                      className="text-muted text-xs hover:text-white px-1">✕</button>
+                  </div>
+                  <div className="overflow-y-auto" style={{ maxHeight: '260px' }}>
+                    {bangumiLoading && <p className="text-center text-muted text-xs py-4 animate-pulse">搜索中…</p>}
+                    {!bangumiLoading && bangumiResults.length === 0 && bangumiQuery && (
+                      <p className="text-center text-muted text-xs py-4">无结果</p>
+                    )}
+                    {bangumiResults.map(item => (
+                      <div key={item.id}
+                        onClick={() => {
+                          setSeries(item.name_cn || item.name)
+                          const typeTag = item.type === 2 ? '动画' : item.type === 4 ? '游戏' : ''
+                          if (typeTag) {
+                            setTags(prev => {
+                              const existing = prev.split(',').map(t => t.trim()).filter(Boolean)
+                              if (!existing.includes(typeTag)) existing.push(typeTag)
+                              return existing.join(',')
+                            })
+                          }
+                          if (item.images?.large) {
+                            const proxyUrl = `/api/bangumi/image?url=${encodeURIComponent(item.images.large)}`
+                            setCoverPreview(proxyUrl)
+                            fetch(proxyUrl).then(r => r.blob()).then(blob => {
+                              const file = new File([blob], 'cover.jpg', { type: blob.type || 'image/jpeg' })
+                              setCoverFile(file)
+                            }).catch(() => {})
+                          }
+                          setShowBangumi(false)
+                        }}
+                        className="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-white/5 transition-colors"
+                        style={{ borderBottom: '1px solid rgba(var(--accent-primary),0.05)' }}>
+                        <div className="w-10 h-14 rounded shrink-0 overflow-hidden bg-black/30">
+                          {item.images?.common && <img src={item.images.common} alt="" className="w-full h-full object-cover" />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-white/80 text-xs truncate">{item.name_cn || item.name}</p>
+                          {item.name_cn && item.name !== item.name_cn && (
+                            <p className="text-muted/50 text-[10px] truncate">{item.name}</p>
+                          )}
+                          <span className="text-[9px] px-1.5 py-0.5 rounded mt-0.5 inline-block"
+                            style={{ background: item.type === 2 ? 'rgba(74,144,217,0.15)' : 'rgba(34,197,94,0.15)', color: item.type === 2 ? 'rgba(74,144,217,0.8)' : 'rgba(34,197,94,0.8)' }}>
+                            {item.type === 2 ? '动画' : item.type === 4 ? '游戏' : '其他'}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Tags */}
@@ -493,29 +621,32 @@ export function CardCreatePage() {
               </div>
             )}
 
-            {/* Is shared (only owner can toggle) */}
+            {/* Share level (only owner can toggle) */}
             {(!isEdit || (card && user && card.owner_id === user.id)) && (
-              <div
-                onClick={() => setIsShared(!isShared)}
-                className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all duration-200 ${
-                  isShared
-                    ? 'border border-green-500/30 bg-green-500/5'
-                    : 'border border-white/10 bg-white/5 hover:border-white/20'
-                }`}>
-                <div className={`w-9 h-5 rounded-full transition-all duration-200 relative ${
-                  isShared ? 'bg-green-500/50' : 'bg-white/10'
-                }`}>
-                  <div className={`absolute top-0.5 w-4 h-4 rounded-full transition-all duration-200 ${
-                    isShared ? 'left-[18px] bg-green-400' : 'left-0.5 bg-white/40'
-                  }`} />
-                </div>
-                <div>
-                  <p className={`text-sm font-medium ${isShared ? 'text-green-300/90' : 'text-white/50'}`}>
-                    {isShared ? '🌐 公开共享中' : '🔒 仅自己可见'}
-                  </p>
-                  <p className="text-[10px] text-muted/50">
-                    {isShared ? '其他玩家可在公共牌库中找到此牌' : '牌不会出现在公共牌库'}
-                  </p>
+              <div>
+                <label className="text-muted text-xs block mb-1.5">🔐 权限</label>
+                <div className="flex gap-2">
+                  {([
+                    { value: 'private', label: '🔒 私有', desc: '仅自己可见' },
+                    { value: 'playable', label: '👁 可使用', desc: '他人可用不可改' },
+                    { value: 'editable', label: '✏️ 可编辑', desc: '他人可编辑' },
+                  ] as const).map(opt => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => { setShareLevel(opt.value); setIsShared(opt.value !== 'private') }}
+                      className="flex-1 p-2.5 rounded-lg text-center transition-all duration-200"
+                      style={{
+                        background: shareLevel === opt.value ? 'rgba(var(--accent-primary),0.1)' : 'rgba(255,255,255,0.03)',
+                        border: shareLevel === opt.value ? '1px solid rgba(var(--accent-primary),0.4)' : '1px solid rgba(255,255,255,0.08)',
+                      }}
+                    >
+                      <p className={`text-xs font-medium ${shareLevel === opt.value ? 'text-gold' : 'text-white/50'}`}>
+                        {opt.label}
+                      </p>
+                      <p className="text-[9px] text-muted/50 mt-0.5">{opt.desc}</p>
+                    </button>
+                  ))}
                 </div>
               </div>
             )}
@@ -530,7 +661,7 @@ export function CardCreatePage() {
 
             {/* Submit button */}
             <button type="submit"
-              disabled={uploading || processing || (!isEdit && (!audioFile || !coverFile))}
+              disabled={uploading || processing || (!isEdit && (createAudioFiles.length === 0 && !audioFile || !coverFile))}
               className="btn-gold w-full disabled:opacity-50 transition-all duration-200 hover:scale-[1.02]">
               {processing ? (
                 <span className="flex items-center justify-center gap-2">
@@ -607,28 +738,48 @@ export function CardCreatePage() {
             <div className="mt-4 bg-surface border border-border rounded-xl p-4">
               <h3 className="text-gold/80 text-xs font-medium mb-3">➕ 添加新音频</h3>
               <div className="flex flex-col gap-3">
-                <div className="flex gap-2">
-                  <button type="button" onClick={() => newAudioInputRef.current?.click()}
-                    className="btn-outline text-xs flex-1">
-                    {newAudioFile ? `✓ ${newAudioFile.name}` : '🎵 选择音频文件'}
-                  </button>
-                  <input ref={newAudioInputRef} type="file" accept="audio/*" className="hidden"
-                    onChange={e => setNewAudioFile(e.target.files?.[0] ?? null)} />
+                {/* Drop zone + file selector */}
+                <div
+                  className="border border-dashed rounded-lg p-4 text-center cursor-pointer transition-all duration-200 hover:border-gold/40"
+                  style={{ borderColor: 'rgba(var(--accent-primary),0.3)' }}
+                  onClick={() => newAudioInputRef.current?.click()}
+                  onDragOver={e => { e.preventDefault(); e.currentTarget.style.borderColor = 'rgba(var(--accent-primary),0.8)'; e.currentTarget.style.background = 'rgba(var(--accent-primary),0.05)' }}
+                  onDragLeave={e => { e.currentTarget.style.borderColor = ''; e.currentTarget.style.background = '' }}
+                  onDrop={e => {
+                    e.preventDefault()
+                    e.currentTarget.style.borderColor = ''
+                    e.currentTarget.style.background = ''
+                    const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('audio/'))
+                    if (files.length > 0) {
+                      setNewAudioFiles(files)
+                    }
+                  }}
+                >
+                  {newAudioFiles.length > 0 ? (
+                    <p className="text-gold/80 text-xs">✓ 已选 {newAudioFiles.length} 个文件</p>
+                  ) : (
+                    <>
+                      <p className="text-muted text-xs">🎵 拖拽音频到这里，或点击选择</p>
+                      <p className="text-muted/40 text-[10px] mt-1">支持同时选择多个文件</p>
+                    </>
+                  )}
                 </div>
-                {newAudioFile && (
+                <input ref={newAudioInputRef} type="file" accept="audio/*" multiple className="hidden"
+                  onChange={e => {
+                    const files = Array.from(e.target.files ?? [])
+                    if (files.length > 0) setNewAudioFiles(files)
+                  }} />
+                {newAudioFiles.length > 0 && (
                   <>
-                    <AudioUploadOptions
-                      audioFile={newAudioFile}
-                      onChange={setNewAudioOptions}
-                      processing={newProcessing}
-                      progress={newProcessProgress}
-                    />
+                    <div className="text-xs text-muted space-y-1 max-h-20 overflow-y-auto">
+                      {newAudioFiles.map((f, i) => <p key={i} className="truncate">♪ {f.name}</p>)}
+                    </div>
                     <input type="text" value={newHintText} onChange={e => setNewHintText(e.target.value)}
-                      className="input-dark text-sm" placeholder="播放提示（选填）" />
-                    <button type="button" onClick={handleAddAudio}
+                      className="input-dark text-sm" placeholder="播放提示（选填，多首共用）" />
+                    <button type="button" onClick={handleAddAudios}
                       disabled={addingAudio || newProcessing}
                       className="btn-gold text-sm disabled:opacity-50 transition-all duration-200 hover:scale-[1.02]">
-                      {addingAudio ? '添加中…' : '➕ 添加音频'}
+                      {addingAudio ? `添加中… (${uploadProgress}/${newAudioFiles.length})` : `➕ 添加 ${newAudioFiles.length} 首音频`}
                     </button>
                   </>
                 )}

@@ -75,16 +75,20 @@ func (s *DeckStore) UpdateShareLevel(id int64, shareLevel, editLevel string) err
 	return err
 }
 
-func (s *DeckStore) ListPublicByShareLevel() ([]*model.Deck, error) {
-	rows, err := s.db.Query(
-		`SELECT d.id, d.owner_id, d.name, d.description, d.is_public, d.share_level, d.edit_level, d.created_at,
+func (s *DeckStore) ListPublicByShareLevel(owner string) ([]*model.Deck, error) {
+	query := `SELECT d.id, d.owner_id, d.name, d.description, d.is_public, d.share_level, d.edit_level, d.created_at,
 		        (SELECT COUNT(*) FROM deck_cards dc WHERE dc.deck_id = d.id) AS card_count,
 		        COALESCE(u.username, '') AS owner_name
 		 FROM decks d
 		 LEFT JOIN users u ON u.id = d.owner_id
-		 WHERE d.share_level IN ('playable', 'editable')
-		 ORDER BY d.created_at DESC`,
-	)
+		 WHERE d.share_level IN ('playable', 'editable')`
+	args := []interface{}{}
+	if owner != "" {
+		query += ` AND u.username LIKE ?`
+		args = append(args, "%"+owner+"%")
+	}
+	query += ` ORDER BY d.created_at DESC`
+	rows, err := s.db.Query(query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("list public decks by share level: %w", err)
 	}

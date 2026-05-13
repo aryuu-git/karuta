@@ -56,11 +56,22 @@ func (h *CardHandler) ListMyCards(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, cards)
 }
 
+// GET /api/cards/tags — 获取所有公开牌的标签列表
+func (h *CardHandler) ListPublicTags(w http.ResponseWriter, r *http.Request) {
+	tags, err := h.store.Cards.ListPublicTags()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to list tags")
+		return
+	}
+	writeJSON(w, http.StatusOK, tags)
+}
+
 // GET /api/cards/public
 func (h *CardHandler) ListPublicCards(w http.ResponseWriter, r *http.Request) {
 	search := r.URL.Query().Get("search")
 	series := r.URL.Query().Get("series")
 	tag := r.URL.Query().Get("tag")
+	owner := r.URL.Query().Get("owner")
 
 	page := 1
 	if p, err := strconv.Atoi(r.URL.Query().Get("page")); err == nil && p > 0 {
@@ -72,7 +83,7 @@ func (h *CardHandler) ListPublicCards(w http.ResponseWriter, r *http.Request) {
 	}
 	offset := (page - 1) * size
 
-	cards, err := h.store.Cards.ListPublic(search, series, tag, size, offset)
+	cards, err := h.store.Cards.ListPublic(search, series, tag, owner, size, offset)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to list public cards")
 		return
@@ -303,6 +314,7 @@ func (h *CardHandler) UpdateCard(w http.ResponseWriter, r *http.Request) {
 		Series      *string `json:"series"`
 		Tags        *string `json:"tags"`
 		IsShared    *bool   `json:"is_shared"`
+		ShareLevel  *string `json:"share_level"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "invalid request body")
@@ -321,12 +333,21 @@ func (h *CardHandler) UpdateCard(w http.ResponseWriter, r *http.Request) {
 	if req.Tags != nil {
 		tags = *req.Tags
 	}
-	isShared := card.IsShared
+	shareLevel := card.ShareLevel
+	if req.ShareLevel != nil {
+		shareLevel = *req.ShareLevel
+	}
+	isShared := shareLevel != "private"
 	if req.IsShared != nil {
 		isShared = *req.IsShared
+		if isShared && shareLevel == "private" {
+			shareLevel = "playable"
+		} else if !isShared {
+			shareLevel = "private"
+		}
 	}
 
-	if err := h.store.Cards.Update(cardID, displayText, series, tags, isShared); err != nil {
+	if err := h.store.Cards.Update(cardID, displayText, series, tags, isShared, shareLevel); err != nil {
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to update card")
 		return
 	}
@@ -389,6 +410,155 @@ func (h *CardHandler) DeleteCard(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// POST /api/cards/batch-share — 批量修改牌权限
+func (h *CardHandler) BatchUpdateShareLevel(w http.ResponseWriter, r *http.Request) {
+	userID, ok := middleware.GetUserID(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "not authenticated")
+		return
+	}
+	var req struct {
+		CardIDs    []int64 `json:"card_ids"`
+		ShareLevel string  `json:"share_level"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || len(req.CardIDs) == 0 {
+		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "card_ids and share_level required")
+		return
+	}
+	if req.ShareLevel != "private" && req.ShareLevel != "playable" && req.ShareLevel != "editable" {
+		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "share_level must be private, playable, or editable")
+		return
+	}
+	// Verify ownership
+	for _, id := range req.CardIDs {
+		card, err := h.store.Cards.GetByID(id)
+		if err != nil || card.OwnerID != userID {
+			writeError(w, http.StatusForbidden, "FORBIDDEN", "you can only change your own cards")
+			return
+		}
+	}
+	if err := h.store.Cards.BatchUpdateShareLevel(req.CardIDs, req.ShareLevel); err != nil {
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to update share level")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+// POST /api/cards/{id}/clone — 复制一张公开牌到自己名下
+func (h *CardHandler) CloneCard(w http.ResponseWriter, r *http.Request) {
+	userID, ok := middleware.GetUserID(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "not authenticated")
+		return
+	}
+	cardID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "invalid card id")
+		return
+	}
+	srcCard, err := h.store.Cards.GetByID(cardID)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "NOT_FOUND", "card not found")
+		return
+	}
+	if srcCard.ShareLevel == "private" && srcCard.OwnerID != userID {
+		writeError(w, http.StatusForbidden, "FORBIDDEN", "card is not shared")
+		return
+	}
+	username := ""
+	if u, err2 := h.store.Users.GetByID(userID); err2 == nil {
+		username = u.Username
+	}
+	newCard, err := h.store.Cards.CreateCard(userID, srcCard.CoverPath, srcCard.DisplayText+"_"+username, srcCard.Series, srcCard.Tags, true)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to clone card")
+		return
+	}
+	// Copy audios
+	audios, _ := h.store.CardAudios.ListByCardID(srcCard.ID)
+	for _, a := range audios {
+		_, _ = h.store.CardAudios.Create(newCard.ID, a.AudioPath, a.HintText, a.SortOrder)
+	}
+	newCard.AudioCount = len(audios)
+	writeJSON(w, http.StatusOK, newCard)
+}
+
+// POST /api/cards/{id}/cover — 更换封面
+func (h *CardHandler) UpdateCover(w http.ResponseWriter, r *http.Request) {
+	userID, ok := middleware.GetUserID(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "not authenticated")
+		return
+	}
+	cardID, err := parseCardID(r)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "invalid card id")
+		return
+	}
+	card, err := h.store.Cards.GetByID(cardID)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "NOT_FOUND", "card not found")
+		return
+	}
+	if card.OwnerID != userID {
+		writeError(w, http.StatusForbidden, "FORBIDDEN", "access denied")
+		return
+	}
+	if err := r.ParseMultipartForm(10 * 1024 * 1024); err != nil {
+		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "failed to parse form")
+		return
+	}
+	coverFile, coverHeader, err := r.FormFile("cover")
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "cover file is required")
+		return
+	}
+	defer coverFile.Close()
+
+	if coverHeader.Size > 5*1024*1024 {
+		writeError(w, http.StatusBadRequest, "FILE_TOO_LARGE", "cover must be <= 5MB")
+		return
+	}
+
+	coverBytes, err := io.ReadAll(io.LimitReader(coverFile, 5*1024*1024+1))
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to read cover")
+		return
+	}
+
+	coverExt, ok2 := detectImageFormat(coverBytes)
+	if !ok2 {
+		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "unsupported image format (jpg/png/webp only)")
+		return
+	}
+	coverKey := "covers/" + uuid.New().String() + "." + coverExt
+	contentType := "image/" + coverExt
+	if coverExt == "jpg" {
+		contentType = "image/jpeg"
+	}
+
+	if err := h.storage.Put(context.Background(), coverKey, bytes.NewReader(coverBytes), int64(len(coverBytes)), contentType); err != nil {
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to upload cover")
+		return
+	}
+
+	// Delete old cover
+	if card.CoverPath != "" {
+		_ = h.storage.Delete(context.Background(), storage.PathToKey(card.CoverPath))
+	}
+
+	if err := h.store.Cards.UpdateCover(cardID, coverKey); err != nil {
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to update cover")
+		return
+	}
+
+	updated, _ := h.store.Cards.GetByID(cardID)
+	if updated != nil {
+		updated.CoverURL = storage.FileURL(updated.CoverPath, "covers")
+	}
+	writeJSON(w, http.StatusOK, updated)
 }
 
 // POST /api/cards/{id}/audios

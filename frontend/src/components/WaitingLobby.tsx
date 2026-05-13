@@ -2,6 +2,12 @@ import { useState, useEffect, useRef, type RefObject } from 'react'
 import { motion } from 'framer-motion'
 import type { Room, RoomPlayer } from '../api/types'
 import { api } from '../api/client'
+import { Avatar } from './Avatar'
+
+interface DuelSeats {
+  seat1: { user_id: number; username: string } | null
+  seat2: { user_id: number; username: string } | null
+}
 
 interface WaitingLobbyProps {
   room: Room
@@ -10,6 +16,10 @@ interface WaitingLobbyProps {
   onRoleChange?: (isSpectator: boolean) => void
   onKick?: (userId: number) => void
   preloadProgress?: { loaded: number; total: number } | null
+  duelSeats?: DuelSeats
+  onClaimSeat?: (seat: 1 | 2) => void
+  onLeaveSeat?: () => void
+  onKickSeat?: (userId: number) => void
 }
 
 interface Particle {
@@ -83,7 +93,7 @@ function useAmbientParticles(canvasRef: RefObject<HTMLCanvasElement>) {
   }, [canvasRef])
 }
 
-export function WaitingLobby({ room, players, currentUserId, onRoleChange, onKick, preloadProgress }: WaitingLobbyProps) {
+export function WaitingLobby({ room, players, currentUserId, onRoleChange, onKick, preloadProgress, duelSeats, onClaimSeat, onLeaveSeat, onKickSeat }: WaitingLobbyProps) {
   const [copied, setCopied] = useState(false)
   const [starting, setStarting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -191,13 +201,94 @@ export function WaitingLobby({ room, players, currentUserId, onRoleChange, onKic
           </div>
         )}
 
+        {/* Duel Seats */}
+        {room.mode === 'duel' && duelSeats && (
+          <div className="w-full">
+            <p className="text-pink-300/40 text-xs tracking-widest mb-3 text-center font-serif">
+              ⚔ 选手席位 · 点击入座 ⚔
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              {([1, 2] as const).map((seatNum) => {
+                const seat = seatNum === 1 ? duelSeats.seat1 : duelSeats.seat2
+                const isMySeat = seat?.user_id === currentUserId
+                return (
+                  <motion.div
+                    key={seatNum}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: seatNum * 0.1 }}
+                    className="flex flex-col items-center gap-2 p-4 rounded-xl border"
+                    style={{
+                      background: seat
+                        ? 'rgba(var(--accent-primary),0.08)'
+                        : 'rgba(255,255,255,0.02)',
+                      border: seat
+                        ? '1px solid rgba(var(--accent-primary),0.3)'
+                        : '1px dashed rgba(255,255,255,0.15)',
+                    }}
+                  >
+                    <span className="text-xs text-muted font-serif">
+                      P{seatNum}
+                    </span>
+                    {seat ? (
+                      <>
+                        <div className="w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold"
+                          style={{
+                            background: 'linear-gradient(135deg, rgba(var(--accent-primary),0.2), rgba(var(--accent-primary),0.05))',
+                            border: '2px solid rgba(var(--accent-primary),0.4)',
+                            color: 'var(--color-gold)',
+                          }}>
+                          {seat.username.charAt(0).toUpperCase()}
+                        </div>
+                        <span className="text-sm text-gold font-serif truncate max-w-full">
+                          {seat.username}
+                        </span>
+                        {isMySeat && (
+                          <button onClick={onLeaveSeat}
+                            className="text-xs text-muted hover:text-crimson transition-colors">
+                            离开席位
+                          </button>
+                        )}
+                        {!isMySeat && isHost && onKickSeat && (
+                          <button onClick={() => onKickSeat(seat.user_id)}
+                            className="text-xs text-muted hover:text-crimson transition-colors">
+                            踢下席位
+                          </button>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <div className="w-10 h-10 rounded-full flex items-center justify-center border border-dashed border-white/20">
+                          <span className="text-white/20 text-lg">?</span>
+                        </div>
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => onClaimSeat?.(seatNum)}
+                          className="text-xs px-3 py-1 rounded-lg transition-all"
+                          style={{
+                            background: 'rgba(var(--accent-primary),0.1)',
+                            border: '1px solid rgba(var(--accent-primary),0.3)',
+                            color: 'var(--color-gold)',
+                          }}>
+                          入座
+                        </motion.button>
+                      </>
+                    )}
+                  </motion.div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Divider */}
         <div className="w-full h-px bg-gradient-to-r from-transparent via-border to-transparent" />
 
         {/* Players */}
         <div className="w-full">
           <p className="text-pink-300/40 text-xs tracking-widest mb-3 text-center font-serif">
-            ✦ 集结中的勇者们 · 已到场 {players.length} 位英杰 ✦
+            {room.mode === 'duel' ? '✦ 旁观席 ✦' : `✦ 集结中的勇者们 · 已到场 ${players.length} 位英杰 ✦`}
           </p>
           <div className="grid grid-cols-2 gap-2">
             {players.map((player, i) => (
@@ -213,17 +304,8 @@ export function WaitingLobby({ room, players, currentUserId, onRoleChange, onKic
                     : 'border-border bg-surface',
                 ].join(' ')}
               >
-                {/* Avatar placeholder */}
-                <div
-                  className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-xs font-bold"
-                  style={{
-                    background: 'linear-gradient(135deg, var(--color-surface), var(--color-surface))',
-                    border: '1px solid rgba(var(--accent-primary),0.3)',
-                    color: 'var(--color-gold)',
-                  }}
-                >
-                  {player.username.charAt(0).toUpperCase()}
-                </div>
+                {/* Avatar */}
+                <Avatar username={player.username} avatarUrl={(player as any).avatar_url} size={24} />
                 <span
                   className={`text-sm truncate flex-1 ${
                     player.user_id === currentUserId ? 'text-gold' : 'text-white/80'
@@ -279,8 +361,8 @@ export function WaitingLobby({ room, players, currentUserId, onRoleChange, onKic
           </p>
         )}
 
-        {/* 旁观切换（非房主可切换） */}
-        {!isHost && (
+        {/* 旁观切换（非房主可切换，duel 模式通过席位管理） */}
+        {!isHost && room.mode !== 'duel' && (
           <div className="flex justify-center">
             <motion.button
               whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
@@ -303,7 +385,7 @@ export function WaitingLobby({ room, players, currentUserId, onRoleChange, onKic
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={handleStart}
-            disabled={starting || players.length < 1}
+            disabled={starting || players.length < 1 || (room.mode === 'duel' && (!duelSeats?.seat1 || !duelSeats?.seat2))}
             className="btn-gold w-full text-lg py-4 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
             style={{ animation: !starting ? 'glowPulse 2s ease-in-out infinite' : 'none' }}
           >

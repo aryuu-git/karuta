@@ -83,3 +83,54 @@ func (s *COSStorage) Exists(ctx context.Context, key string) bool {
 	ok, _ := s.client.Object.IsExist(ctx, key)
 	return ok
 }
+
+// FixCacheHeaders iterates all objects and sets Cache-Control if missing.
+func (s *COSStorage) FixCacheHeaders(ctx context.Context) {
+	prefixes := []string{"audio/", "covers/"}
+	cacheControl := "public, max-age=31536000, immutable"
+
+	for _, prefix := range prefixes {
+		marker := ""
+		for {
+			opt := &cos.BucketGetOptions{
+				Prefix:  prefix,
+				Marker:  marker,
+				MaxKeys: 200,
+			}
+			result, _, err := s.client.Bucket.Get(ctx, opt)
+			if err != nil {
+				fmt.Printf("[cos-fix] list %s error: %v\n", prefix, err)
+				break
+			}
+			for _, obj := range result.Contents {
+				// Check current headers
+				resp, err := s.client.Object.Head(ctx, obj.Key, nil)
+				if err != nil {
+					continue
+				}
+				cc := resp.Header.Get("Cache-Control")
+				if cc != "" && cc != "no-cache" {
+					continue // already has cache header
+				}
+				// Copy object to itself with new metadata
+				srcURL := fmt.Sprintf("%s/%s", s.baseURL, obj.Key)
+				_, _, err = s.client.Object.Copy(ctx, obj.Key, srcURL, &cos.ObjectCopyOptions{
+					ObjectCopyHeaderOptions: &cos.ObjectCopyHeaderOptions{
+						CacheControl:        cacheControl,
+						XCosMetadataDirective: "Replaced",
+					},
+				})
+				if err != nil {
+					fmt.Printf("[cos-fix] fix %s error: %v\n", obj.Key, err)
+				} else {
+					fmt.Printf("[cos-fix] fixed %s\n", obj.Key)
+				}
+			}
+			if !result.IsTruncated {
+				break
+			}
+			marker = result.NextMarker
+		}
+	}
+	fmt.Println("[cos-fix] done")
+}

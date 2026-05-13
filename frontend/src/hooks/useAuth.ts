@@ -15,7 +15,8 @@ interface AuthContextValue {
   token: string | null
   loading: boolean
   login: (username: string, password: string) => Promise<void>
-  register: (username: string, password: string) => Promise<void>
+  register: (username: string, password: string, inviteCode?: string) => Promise<void>
+  guestLogin: (username: string) => Promise<void>
   logout: () => void
 }
 
@@ -58,8 +59,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const register = useCallback(
-    async (username: string, password: string) => {
-      const res = await api.auth.register(username, password)
+    async (username: string, password: string, inviteCode?: string) => {
+      const res = await api.auth.register(username, password, inviteCode)
+      localStorage.setItem(TOKEN_KEY, res.token)
+      setToken(res.token)
+      setUser(res.user)
+    },
+    []
+  )
+
+  const guestLogin = useCallback(
+    async (username: string) => {
+      const res = await api.auth.guestLogin(username)
       localStorage.setItem(TOKEN_KEY, res.token)
       setToken(res.token)
       setUser(res.user)
@@ -75,7 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return createElement(
     AuthContext.Provider,
-    { value: { user, token, loading, login, register, logout } },
+    { value: { user, token, loading, login, register, guestLogin, logout } },
     children
   )
 }

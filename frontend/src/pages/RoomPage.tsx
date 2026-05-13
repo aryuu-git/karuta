@@ -10,10 +10,13 @@ import { GameOver } from '../components/GameOver'
 import { JudgePanel } from '../components/JudgePanel'
 import { ChatRoom } from '../components/ChatRoom'
 import { EggAnimation } from '../components/EggAnimation'
+import { DuelBoard } from '../components/DuelBoard'
+import { DuelGameOver } from '../components/DuelGameOver'
+import { DuelGiveModal } from '../components/DuelGiveModal'
 import { useRoomSocket } from '../hooks/useRoomSocket'
 import { useAuth } from '../hooks/useAuth'
 import { api } from '../api/client'
-import type { RoomState, Card, RoomPlayer, WSEvent } from '../api/types'
+import type { RoomState, Card, RoomPlayer, WSEvent, DuelState } from '../api/types'
 
 interface CurrentReading { cardId: number; cardAudioId: number; audioUrl: string; hintText: string; startRatio?: number }
 interface GrabbedCard { id: number; display_text: string; cover_url: string; hint_text: string }
@@ -131,6 +134,29 @@ export function RoomPage() {
   const [preloadProgress, setPreloadProgress] = useState<{ loaded: number; total: number } | null>(null)
   const preloadStartedRef = useRef(false)
 
+  // Duel mode state
+  const [duelState, setDuelState] = useState<DuelState | null>(null)
+  const [duelCurrentCardId, setDuelCurrentCardId] = useState<number | null>(null)
+  const [duelGiveCards, setDuelGiveCards] = useState<Array<{ id: number; display_text: string; cover_url: string }> | null>(null)
+  const [duelRound, setDuelRound] = useState(0)
+  const [duelRoundTimer, setDuelRoundTimer] = useState<number | null>(null)
+  const [duelEndData, setDuelEndData] = useState<{
+    winner: string; winnerId: number; isTie: boolean; rounds: number
+    p1: { id: number; username: string; grabbed: Array<{ id: number; display_text: string; cover_url: string }>; remaining: Array<{ id: number; display_text: string; cover_url: string }> }
+    p2: { id: number; username: string; grabbed: Array<{ id: number; display_text: string; cover_url: string }>; remaining: Array<{ id: number; display_text: string; cover_url: string }> }
+  } | null>(null)
+  const duelTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  // Duel seat state
+  const [duelSeats, setDuelSeats] = useState<{ seat1: { user_id: number; username: string } | null; seat2: { user_id: number; username: string } | null }>({ seat1: null, seat2: null })
+
+  // Duel arranging state
+  const [duelArranging, setDuelArranging] = useState(false)
+  const [arrangeTimeout, setArrangeTimeout] = useState<number | null>(null)
+  const [arrangeP1Ready, setArrangeP1Ready] = useState(false)
+  const [arrangeP2Ready, setArrangeP2Ready] = useState(false)
+  const arrangeTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
   // 聊天室
   interface ChatMsg { id: number; user_id: number; username: string; role: string; text: string; isEgg?: boolean; fromName?: string; targetName?: string }
   const [chatMessages, setChatMessages] = useState<ChatMsg[]>([])
@@ -199,6 +225,16 @@ export function RoomPage() {
         // 检查自己是否是旁观者
         const me = (state.players ?? []).find((p: any) => p.user_id === user?.id)
         if (me && (me as any).role === 'spectator') setIsSpectator(true)
+        // 初始化 duel 席位
+        if (state.room.mode === 'duel') {
+          let s1: { user_id: number; username: string } | null = null
+          let s2: { user_id: number; username: string } | null = null
+          for (const p of (state.players ?? []) as any[]) {
+            if (p.role === 'duel_p1') s1 = { user_id: p.user_id, username: p.username }
+            if (p.role === 'duel_p2') s2 = { user_id: p.user_id, username: p.username }
+          }
+          setDuelSeats({ seat1: s1, seat2: s2 })
+        }
         if (state.cards?.length) {
           const shuffled = shuffleCards(state.cards, displayOrderRef)
           setCards(shuffled)
@@ -223,25 +259,22 @@ export function RoomPage() {
       .finally(() => setLoading(false))
   }, [roomId])
 
-  // 牌面打乱：cardRemaining 变化时检查是否需要打乱
+  // 牌面打乱：改为 card_start 时执行
   const shuffleThreshold = roomState?.room?.shuffle_remaining ?? 0
-  const prevRemainingRef = useRef<number>(-1)
+  const [shufflePending, setShufflePending] = useState(false)
+  const [shuffleBlocking, setShuffleBlocking] = useState(false)
+  const prevBoardCountRef = useRef<number>(-1)
+
+  // 检测 boardCount 变化，标记下一首需要打乱
   useEffect(() => {
     if (shuffleThreshold <= 0 || cards.length === 0) return
     const boardCount = cards.filter(c => (cardRemaining.get(c.id) ?? c.audio_count ?? 1) > 0).length
-    // 只在 boardCount 发生变化且 <= 阈值时打乱（避免初始化时打乱）
-    if (boardCount <= shuffleThreshold && prevRemainingRef.current !== boardCount && prevRemainingRef.current >= 0) {
-      setCards(prev => {
-        const shuffled = [...prev]
-        for (let i = shuffled.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
-        }
-        return shuffled
-      })
+    if (boardCount <= shuffleThreshold && prevBoardCountRef.current !== boardCount && prevBoardCountRef.current >= 0) {
+      setShufflePending(true)
+      showToast('🌀 下一首开始前要打乱牌面了！', 'info', 2000)
     }
-    prevRemainingRef.current = boardCount
-  }, [cardRemaining, shuffleThreshold, cards.length])
+    prevBoardCountRef.current = boardCount
+  }, [cardRemaining, shuffleThreshold, cards.length, showToast])
 
   // 等待大厅阶段预加载所有封面图和音频
   useEffect(() => {
@@ -342,9 +375,27 @@ export function RoomPage() {
         intervalRemainingRef.current = 0
         setJustJoined(false)
         setIsLastCard(event.is_last ?? false)
-        setCurrentReading({ cardId: event.card_id, cardAudioId: event.card_audio_id ?? 0, audioUrl: event.audio_url, hintText: event.hint_text, startRatio: event.start_ratio })
         setIsJudgeWaiting(false)
         setIsPaused(false)
+
+        // 如果有待执行的打乱，先打乱再开始（打乱完立即可抢）
+        if (shufflePending) {
+          setShufflePending(false)
+          setShuffleBlocking(true)
+          setCards(prev => {
+            const shuffled = [...prev]
+            for (let i = shuffled.length - 1; i > 0; i--) {
+              const j = Math.floor(Math.random() * (i + 1));
+              [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+            }
+            return shuffled
+          })
+          // 打乱完成后立即可抢，弹窗仅作短暂提示
+          setCurrentReading({ cardId: event.card_id, cardAudioId: event.card_audio_id ?? 0, audioUrl: event.audio_url, hintText: event.hint_text, startRatio: event.start_ratio })
+          setTimeout(() => setShuffleBlocking(false), 600)
+        } else {
+          setCurrentReading({ cardId: event.card_id, cardAudioId: event.card_audio_id ?? 0, audioUrl: event.audio_url, hintText: event.hint_text, startRatio: event.start_ratio })
+        }
         playSound('card_start')
         break
       }
@@ -461,11 +512,10 @@ export function RoomPage() {
         setPlayers(prev => {
           const existing = prev.find(p => p.user_id === event.user_id)
           if (existing) {
-            // 重连，恢复 online 状态
-            return prev.map(p => p.user_id === event.user_id ? { ...p, online: true } : p)
+            return prev.map(p => p.user_id === event.user_id ? { ...p, online: true, role: event.role || p.role } : p)
           }
           showToast(`👋 ${event.username} 加入了战场！`, 'info')
-          return [...prev, { room_id: roomId, user_id: event.user_id, username: event.username, role: 'player', score: 0, online: true }]
+          return [...prev, { room_id: roomId, user_id: event.user_id, username: event.username, avatar_url: event.avatar_url, role: event.role || 'player', score: 0, online: true }]
         })
         break
       }
@@ -520,6 +570,58 @@ export function RoomPage() {
         break
       }
 
+      case 'seat_update': {
+        setDuelSeats({ seat1: event.seat1, seat2: event.seat2 })
+        break
+      }
+
+      case 'seat_kicked': {
+        showToast('😯 你被房主从席位上移除了', 'info', 2000)
+        break
+      }
+
+      case 'duel_arrange_start': {
+        setDuelArranging(true)
+        setArrangeTimeout(event.timeout)
+        setArrangeP1Ready(false)
+        setArrangeP2Ready(false)
+        if (arrangeTimerRef.current) clearInterval(arrangeTimerRef.current)
+        arrangeTimerRef.current = setInterval(() => {
+          setArrangeTimeout(prev => {
+            if (prev === null || prev <= 1) {
+              if (arrangeTimerRef.current) { clearInterval(arrangeTimerRef.current); arrangeTimerRef.current = null }
+              return null
+            }
+            return prev - 1
+          })
+        }, 1000)
+        break
+      }
+
+      case 'duel_arrange_state': {
+        if (!duelArranging) setDuelArranging(true)
+        setDuelState(prev => prev ? {
+          ...prev,
+          player1: { ...prev.player1, cards: event.player1_cards },
+          player2: { ...prev.player2, cards: event.player2_cards },
+        } : null)
+        setArrangeP1Ready(event.p1_ready)
+        setArrangeP2Ready(event.p2_ready)
+        break
+      }
+
+      case 'duel_arrange_done': {
+        setDuelArranging(false)
+        if (arrangeTimerRef.current) { clearInterval(arrangeTimerRef.current); arrangeTimerRef.current = null }
+        setArrangeTimeout(null)
+        setDuelState(prev => prev ? {
+          ...prev,
+          player1: { ...prev.player1, cards: event.player1_cards },
+          player2: { ...prev.player2, cards: event.player2_cards },
+        } : null)
+        break
+      }
+
       case 'judge_waiting': {
         setIsJudgeWaiting(true)
         setCurrentReading(null)
@@ -535,10 +637,188 @@ export function RoomPage() {
         showToast('👑 裁判长时间未归，对局自动结束 (｡•́︿•̀｡)', 'info', 3000)
         break
       }
+
+      // === Duel mode events ===
+      case 'duel_state': {
+        setDuelState(event.data)
+        setGameStatus('reading')
+        break
+      }
+
+      case 'duel_card_start': {
+        setDuelCurrentCardId(event.card_id)
+        setDuelRound(event.round)
+        setCurrentReading({ cardId: event.card_id, cardAudioId: 0, audioUrl: event.audio_url, hintText: event.hint_text, startRatio: event.start_ratio })
+        // 启动倒计时
+        if (duelTimerRef.current) { clearInterval(duelTimerRef.current); duelTimerRef.current = null }
+        const roundTime = roomState?.room?.duel_round_time ?? 30
+        setDuelRoundTimer(roundTime)
+        duelTimerRef.current = setInterval(() => {
+          setDuelRoundTimer(prev => {
+            if (prev === null || prev <= 1) {
+              if (duelTimerRef.current) { clearInterval(duelTimerRef.current); duelTimerRef.current = null }
+              return null
+            }
+            return prev - 1
+          })
+        }, 1000)
+        playSound('card_start')
+        break
+      }
+
+      case 'duel_grab_wrong': {
+        const isMe = user && event.user_id === user.id
+        if (isMe) {
+          showToast('❌ 拍错了！本轮机会-1 (╥_╥)', 'fail', 2000)
+        } else {
+          showToast(`❌ ${event.username} 拍错了，机会-1！`, 'info', 1500)
+        }
+        playSound('grab_fail')
+        break
+      }
+
+      case 'duel_grab_invalid': {
+        showToast('⚠️ 无效操作，现在不能拍牌 (°_°)', 'info', 1200)
+        break
+      }
+
+      case 'duel_grab_blocked': {
+        showToast('🚫 本轮机会用完了！等下一轮吧… (´-ω-`)', 'fail', 2000)
+        playSound('grab_fail')
+        break
+      }
+
+      case 'duel_card_claimed': {
+        const isMe = user && event.user_id === user.id
+        // 停止倒计时
+        if (duelTimerRef.current) { clearInterval(duelTimerRef.current); duelTimerRef.current = null }
+        setDuelRoundTimer(null)
+        setDuelCurrentCardId(null)
+        setCurrentReading(null)
+        // 标记牌为已抢（保留在原位，变小变灰）
+        setDuelState(prev => {
+          if (!prev) return null
+          const markClaimed = (cards: typeof prev.player1.cards) =>
+            cards.map(c => c.id === event.card_id ? { ...c, claimed: true, claimed_by: event.user_id } : c)
+          return {
+            ...prev,
+            player1: { ...prev.player1, cards: markClaimed(prev.player1.cards) },
+            player2: { ...prev.player2, cards: markClaimed(prev.player2.cards) },
+            p1_count: event.p1_count,
+            p2_count: event.p2_count,
+          }
+        })
+        if (isMe) {
+          const areaText = event.area === 'own' ? '己方区' : '对方区'
+          showToast(`🎉 你从${areaText}抢到了！(ﾉ◕ヮ◕)ﾉ`, 'success')
+          playSound('grab_ok')
+        } else {
+          showToast(`✨ ${event.username} 抢到了！`, 'info')
+        }
+        break
+      }
+
+      case 'duel_timeout': {
+        if (duelTimerRef.current) { clearInterval(duelTimerRef.current); duelTimerRef.current = null }
+        setDuelRoundTimer(null)
+        setDuelCurrentCardId(null)
+        setCurrentReading(null)
+        if (event.requeued) {
+          showToast('⏰ 超时了！歌曲已重新入队 (´-ω-`)', 'info', 2000)
+        } else {
+          showToast('⏰ 超时了！这首歌飞走了… (°ω°)', 'info', 2000)
+        }
+        break
+      }
+
+      case 'duel_give_request': {
+        setDuelGiveCards(event.cards)
+        break
+      }
+
+      case 'duel_give_done': {
+        setDuelGiveCards(null)
+        setDuelState(prev => {
+          if (!prev) return null
+          const fromIsP1 = event.from_id === prev.player1.id
+          const fromCards = fromIsP1 ? prev.player1.cards : prev.player2.cards
+          const toCards = fromIsP1 ? prev.player2.cards : prev.player1.cards
+          const givenCard = fromCards.find(c => c.id === event.card_id)
+          const newFromCards = fromCards.filter(c => c.id !== event.card_id)
+          const newToCards = givenCard ? [...toCards, givenCard] : toCards
+          return {
+            ...prev,
+            player1: { ...prev.player1, cards: fromIsP1 ? newFromCards : newToCards },
+            player2: { ...prev.player2, cards: fromIsP1 ? newToCards : newFromCards },
+            p1_count: event.p1_count,
+            p2_count: event.p2_count,
+          }
+        })
+        const isMe = user && event.from_id === user.id
+        if (isMe) {
+          showToast('📤 牌已送出！ (ﾉ´∀`*)ﾉ', 'info', 1500)
+        } else {
+          showToast('📥 对方送了一张牌过来！', 'info', 1500)
+        }
+        break
+      }
+
+      case 'duel_game_over': {
+        if (duelTimerRef.current) { clearInterval(duelTimerRef.current); duelTimerRef.current = null }
+        setDuelRoundTimer(null)
+        setDuelCurrentCardId(null)
+        setCurrentReading(null)
+        setGameStatus('end')
+        const isWinner = user && event.winner_id === user.id
+        const isTie = event.winner_id === 0
+        const p1 = duelState?.player1
+        const p2 = duelState?.player2
+        const toGrabbedCards = (cards?: Array<{ id: number; display_text: string; cover_url: string }>) =>
+          (cards ?? []).map(c => ({ id: c.id, display_text: c.display_text, cover_url: c.cover_url, hint_text: '' }))
+        const p1Cards = toGrabbedCards(event.p1_grabbed_cards)
+        const p2Cards = toGrabbedCards(event.p2_grabbed_cards)
+        if (isTie) {
+          setGameResults([
+            { user_id: p1?.id ?? 0, username: p1?.username ?? '', score: p1Cards.length, rank: 1, grabbed_cards: p1Cards },
+            { user_id: p2?.id ?? 0, username: p2?.username ?? '', score: p2Cards.length, rank: 1, grabbed_cards: p2Cards },
+          ])
+          showToast('🤝 平局！旗鼓相当！(´・ω・`)', 'info', 5000)
+        } else {
+          const winnerId = event.winner_id
+          const loserId = winnerId === (p1?.id ?? 0) ? (p2?.id ?? 0) : (p1?.id ?? 0)
+          const loserName = winnerId === (p1?.id ?? 0) ? (p2?.username ?? '') : (p1?.username ?? '')
+          const winnerCards = winnerId === (p1?.id ?? 0) ? p1Cards : p2Cards
+          const loserCards = winnerId === (p1?.id ?? 0) ? p2Cards : p1Cards
+          setGameResults([
+            { user_id: winnerId, username: event.winner, score: winnerCards.length, rank: 1, grabbed_cards: winnerCards },
+            { user_id: loserId, username: loserName, score: loserCards.length, rank: 2, grabbed_cards: loserCards },
+          ])
+          if (isWinner) {
+            showToast('🏆 你赢了！对决胜利！！(ﾉ◕ヮ◕)ﾉ*:・゜✧', 'success', 5000)
+          } else {
+            showToast(`💫 ${event.winner} 获胜了… 下次再战！(>_<)`, 'info', 5000)
+          }
+        }
+        const toCards = (cards?: Array<{ id: number; display_text: string; cover_url: string }>) => cards ?? []
+        setDuelEndData({
+          winner: event.winner, winnerId: event.winner_id, isTie, rounds: event.rounds,
+          p1: { id: p1?.id ?? 0, username: p1?.username ?? '', grabbed: toCards(event.p1_grabbed_cards), remaining: toCards(event.p1_remaining) },
+          p2: { id: p2?.id ?? 0, username: p2?.username ?? '', grabbed: toCards(event.p2_grabbed_cards), remaining: toCards(event.p2_remaining) },
+        })
+        playSound('game_over')
+        break
+      }
     }
-  }, [user, roomId, playSound, showToast, navigate])
+  }, [user, roomId, playSound, showToast, navigate, roomState, duelState])
 
   const { send, connected } = useRoomSocket(roomId, handleEvent)
+
+  // WS 连接成功后，确保自己在 players 列表中是 online
+  useEffect(() => {
+    if (connected && user) {
+      setPlayers(prev => prev.map(p => p.user_id === user.id ? { ...p, online: true } : p))
+    }
+  }, [connected, user])
 
   const handleGrab = useCallback((cardId: number) => {
     if (isSpectator) {
@@ -551,6 +831,35 @@ export function RoomPage() {
     }
     send({ type: 'grab', card_id: cardId })
   }, [send, currentReading, showToast, isSpectator])
+
+  const handleDuelGrab = useCallback((cardId: number) => {
+    if (isSpectator) {
+      showToast('👁 旁观者不能抢牌哦！(´-ω-`)', 'info', 1000)
+      return
+    }
+    if (!duelCurrentCardId) {
+      showToast('🎵 等待下一轮吧… (´。• ω •。`)', 'info', 1000)
+      return
+    }
+    send({ type: 'grab', card_id: cardId })
+  }, [send, duelCurrentCardId, showToast, isSpectator])
+
+  const handleDuelGive = useCallback((cardId: number) => {
+    send({ type: 'give_card', card_id: cardId })
+    setDuelGiveCards(null)
+  }, [send])
+
+  const handleArrangeSwap = useCallback((posA: number, posB: number) => {
+    send({ type: 'duel_arrange_swap', data: { pos_a: posA, pos_b: posB, cross: false } })
+  }, [send])
+
+  const handleArrangeCrossSwap = useCallback((myIdx: number, oppIdx: number) => {
+    send({ type: 'duel_arrange_swap', data: { pos_a: myIdx, pos_b: oppIdx, cross: true } })
+  }, [send])
+
+  const handleArrangeReady = useCallback(() => {
+    send({ type: 'duel_arrange_ready' })
+  }, [send])
 
   const handleChatSend = useCallback((text: string) => {
     send({ type: 'chat', text })
@@ -603,6 +912,10 @@ export function RoomPage() {
     </Layout>
   )
 
+  if (gameStatus === 'end' && roomState?.room.mode === 'duel' && duelEndData) return (
+    <DuelGameOver data={duelEndData} currentUserId={user?.id ?? 0} />
+  )
+
   if (gameStatus === 'end' && gameResults) return (
     <GameOver results={gameResults} currentUserId={user?.id ?? 0} lastCardWinnerId={lastCardWinnerId} />
   )
@@ -642,6 +955,16 @@ export function RoomPage() {
             } catch { /* ignore */ }
           }}
           preloadProgress={preloadProgress}
+          duelSeats={duelSeats}
+          onClaimSeat={async (seat) => {
+            try { await api.rooms.claimSeat(roomId, seat) } catch (e) { showToast(e instanceof Error ? e.message : '入座失败', 'fail') }
+          }}
+          onLeaveSeat={async () => {
+            try { await api.rooms.leaveSeat(roomId) } catch { /* ignore */ }
+          }}
+          onKickSeat={async (userId) => {
+            try { await api.rooms.kickFromSeat(roomId, userId) } catch { /* ignore */ }
+          }}
         />
         <ChatRoom messages={chatMessages} players={players} currentUserId={user?.id ?? 0}
           isSpectator={isSpectator} onSend={handleChatSend} onEgg={handleEgg} />
@@ -652,6 +975,7 @@ export function RoomPage() {
 
   const isHost = roomState.room.host_id === user?.id
   const isJudgeMode = roomState.room.mode === 'judge'
+  const isDuelMode = roomState.room.mode === 'duel'
   const remainingCount = Array.from(cardRemaining.values()).filter(r => r > 0).length
 
   return (
@@ -684,8 +1008,21 @@ export function RoomPage() {
           </div>
         )}
 
-        {/* 旁观者切换提示 */}
-        {isSpectator && (
+        {/* 旁观者切换提示（duel 模式不显示加入战斗按钮） */}
+        {isDuelMode && (() => {
+          const spectators = players.filter(p => (p as any).role !== 'duel_p1' && (p as any).role !== 'duel_p2')
+          return spectators.length > 0 || isSpectator ? (
+            <div className="flex items-center gap-2 px-4 py-1.5 text-xs"
+              style={{ background: 'rgba(128,90,213,0.08)', borderBottom: '1px solid rgba(128,90,213,0.15)' }}>
+              <span className="text-purple-300/60 shrink-0">👁 旁观席:</span>
+              <span className="text-purple-300/80 truncate">
+                {spectators.length > 0 ? spectators.map(s => s.username).join(', ') : '暂无'}
+              </span>
+              {isSpectator && <span className="text-purple-300/50 ml-auto shrink-0">(你在旁观)</span>}
+            </div>
+          ) : null
+        })()}
+        {isSpectator && !isDuelMode && !roomState.room.training && (
           <div className="flex items-center justify-between px-4 py-2 text-xs"
             style={{ background: 'rgba(var(--accent-primary),0.08)', borderBottom: '1px solid rgba(var(--accent-primary),0.15)' }}>
             <span className="text-gold/80">
@@ -759,7 +1096,7 @@ export function RoomPage() {
             </motion.button>
           )}
           {/* aryuu 专属：强制结束对局 */}
-          {user?.username === 'aryuu' && (
+          {user?.is_admin && (
             <motion.button
               onClick={async () => {
                 if (!confirm('强制结束本场对局？')) return
@@ -774,7 +1111,31 @@ export function RoomPage() {
         </div>
 
         {/* 主体 */}
-        {isJudgeMode && isHost ? (
+        {isDuelMode && duelState ? (
+          // 对阵模式：DuelBoard
+          <div className="flex flex-1 overflow-hidden">
+            <div className="flex-1 overflow-hidden">
+              <DuelBoard
+                duelState={duelState}
+                currentUserId={user?.id ?? 0}
+                currentCardId={duelCurrentCardId}
+                onGrab={handleDuelGrab}
+                arranging={duelArranging}
+                arrangeTimeout={arrangeTimeout}
+                p1Ready={arrangeP1Ready}
+                p2Ready={arrangeP2Ready}
+                onArrangeSwap={handleArrangeSwap}
+                onArrangeCrossSwap={handleArrangeCrossSwap}
+                onArrangeReady={handleArrangeReady}
+              />
+            </div>
+          </div>
+        ) : isDuelMode && !duelState ? (
+          // 对阵模式等待状态初始化
+          <div className="flex flex-1 items-center justify-center">
+            <span className="text-gold/60 font-serif animate-pulse">等待对阵初始化… (｡･ω･｡)</span>
+          </div>
+        ) : isJudgeMode && isHost ? (
           // 裁判视图：上方选牌区 + 下方只读棋布
           <div className="flex flex-col flex-1 overflow-hidden">
             {/* 上：选牌区（固定高度） */}
@@ -842,33 +1203,61 @@ export function RoomPage() {
         )}
 
         {/* 移动端底部计分条 */}
-        <div className="md:hidden"
-          style={{ background: 'rgba(var(--accent-bg-mid),0.9)', borderTop: '1px solid rgba(var(--accent-primary),0.08)' }}>
-          <div className="flex overflow-x-auto gap-1 px-3 py-2">
-            {[...players]
-              .filter(p => !(isJudgeMode && p.user_id === roomState.room.host_id))
-              .sort((a, b) => b.score - a.score).map((p, i) => {
-              const medals = ['🥇','🥈','🥉']
-              const isMe = p.user_id === user?.id
-              return (
-                <div key={p.user_id}
-                  className="flex items-center gap-1 shrink-0 px-2 py-1 rounded-lg"
-                  style={{ background: isMe ? 'rgba(var(--accent-primary),0.08)' : 'rgba(255,255,255,0.03)', border: `1px solid ${isMe ? 'rgba(var(--accent-primary),0.2)' : 'rgba(255,255,255,0.04)'}` }}>
-                  <span className="text-xs">{medals[i] ?? `${i+1}.`}</span>
-                  <span className={`text-xs ${isMe ? 'text-gold font-medium' : 'text-white/60'} ${!p.online ? 'opacity-40' : ''}`}>
-                    {p.username}
-                  </span>
-                  <motion.span key={`${p.user_id}-${p.score}`}
-                    initial={{ scale: 1.5 }} animate={{ scale: 1 }} transition={{ duration: 0.3 }}
-                    className="text-xs font-bold tabular-nums"
-                    style={{ color: isMe ? 'var(--color-gold)' : 'rgba(255,255,255,0.4)' }}>
-                    {p.score}
-                  </motion.span>
-                </div>
-              )
-            })}
+        {!isDuelMode && (
+          <div className="md:hidden"
+            style={{ background: 'rgba(var(--accent-bg-mid),0.9)', borderTop: '1px solid rgba(var(--accent-primary),0.08)' }}>
+            <div className="flex overflow-x-auto gap-1 px-3 py-2">
+              {[...players]
+                .filter(p => !(isJudgeMode && p.user_id === roomState.room.host_id))
+                .sort((a, b) => b.score - a.score).map((p, i) => {
+                const medals = ['🥇','🥈','🥉']
+                const isMe = p.user_id === user?.id
+                return (
+                  <div key={p.user_id}
+                    className="flex items-center gap-1 shrink-0 px-2 py-1 rounded-lg"
+                    style={{ background: isMe ? 'rgba(var(--accent-primary),0.08)' : 'rgba(255,255,255,0.03)', border: `1px solid ${isMe ? 'rgba(var(--accent-primary),0.2)' : 'rgba(255,255,255,0.04)'}` }}>
+                    <span className="text-xs">{medals[i] ?? `${i+1}.`}</span>
+                    <span className={`text-xs ${isMe ? 'text-gold font-medium' : 'text-white/60'} ${!p.online ? 'opacity-40' : ''}`}>
+                      {p.username}
+                    </span>
+                    <motion.span key={`${p.user_id}-${p.score}`}
+                      initial={{ scale: 1.5 }} animate={{ scale: 1 }} transition={{ duration: 0.3 }}
+                      className="text-xs font-bold tabular-nums"
+                      style={{ color: isMe ? 'var(--color-gold)' : 'rgba(255,255,255,0.4)' }}>
+                      {p.score}
+                    </motion.span>
+                  </div>
+                )
+              })}
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* Duel 轮次/倒计时信息 */}
+        {isDuelMode && duelState && (
+          <div className="flex items-center justify-center gap-4 px-4 py-1.5"
+            style={{ background: 'rgba(var(--accent-bg-mid),0.8)', borderTop: '1px solid rgba(var(--accent-primary),0.08)' }}>
+            <span className="text-muted text-xs">第 {duelRound} 轮</span>
+            {duelRoundTimer !== null && (
+              <motion.span
+                key={duelRoundTimer}
+                initial={{ scale: 1.3 }}
+                animate={{ scale: 1 }}
+                className={`text-sm font-bold tabular-nums ${duelRoundTimer <= 5 ? 'text-crimson' : 'text-gold/80'}`}
+              >
+                {duelRoundTimer}s
+              </motion.span>
+            )}
+            <span className="text-muted text-xs">
+              {duelState.player1.id === (user?.id ?? 0) ? duelState.p1_count : duelState.p2_count} 张 vs {duelState.player1.id === (user?.id ?? 0) ? duelState.p2_count : duelState.p1_count} 张
+            </span>
+          </div>
+        )}
+
+        {/* Duel 给牌弹窗 */}
+        {duelGiveCards && duelGiveCards.length > 0 && (
+          <DuelGiveModal cards={duelGiveCards} onGive={handleDuelGive} />
+        )}
 
         {/* Toast 反馈 */}
         <AnimatePresence>
@@ -918,6 +1307,29 @@ export function RoomPage() {
 
         {/* 丢蛋动画 */}
         <EggAnimation event={eggEvent} />
+
+        {/* 打乱弹窗 */}
+        {shuffleBlocking && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none"
+            style={{ background: 'rgba(0,0,0,0.5)' }}
+          >
+            <motion.div
+              initial={{ scale: 0.5, rotate: -10 }}
+              animate={{ scale: 1, rotate: 0 }}
+              transition={{ type: 'spring', damping: 12 }}
+              className="text-center"
+            >
+              <span className="text-5xl sm:text-7xl font-bold font-serif text-gold"
+                style={{ textShadow: '0 0 40px rgba(var(--accent-primary),0.6)' }}>
+                🌀 打乱！
+              </span>
+            </motion.div>
+          </motion.div>
+        )}
 
       </div>
     </Layout>

@@ -8,6 +8,12 @@ type Config struct {
 	UploadDir string
 	DBPath    string
 
+	// Bangumi API (optional)
+	BangumiToken string
+
+	// Invite system: "true" = require invite code from DB, else fixed code "33989"
+	InviteRequired bool
+
 	// COS object storage configuration
 	COSEnabled   bool
 	COSSecretID  string
@@ -23,6 +29,9 @@ func Load() *Config {
 		JWTSecret: getEnv("JWT_SECRET", "karuta-secret-key"),
 		UploadDir: getEnv("UPLOAD_DIR", "./uploads"),
 		DBPath:    getEnv("DB_PATH", "./karuta.db"),
+
+		BangumiToken:   getEnv("BANGUMI_TOKEN", ""),
+		InviteRequired: getEnv("INVITE_REQUIRED", "") == "true",
 
 		COSEnabled:   getEnv("COS_ENABLED", "") == "true",
 		COSSecretID:  getEnv("COS_SECRET_ID", ""),

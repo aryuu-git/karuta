@@ -99,7 +99,8 @@ func (h *DeckHandler) ListMyDecks(w http.ResponseWriter, r *http.Request) {
 
 // GET /api/decks/public
 func (h *DeckHandler) ListPublicDecks(w http.ResponseWriter, r *http.Request) {
-	decks, err := h.store.Decks.ListPublicByShareLevel()
+	owner := r.URL.Query().Get("owner")
+	decks, err := h.store.Decks.ListPublicByShareLevel(owner)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to list public decks")
 		return
@@ -501,7 +502,11 @@ func (h *DeckHandler) CloneDeck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	newDeck, err := h.store.Decks.CreateDeck(userID, srcDeck.Name+" (copy)", srcDeck.Description)
+	username := ""
+	if u, err2 := h.store.Users.GetByID(userID); err2 == nil {
+		username = u.Username
+	}
+	newDeck, err := h.store.Decks.CreateDeck(userID, srcDeck.Name+"_"+username, srcDeck.Description)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to create deck copy")
 		return
@@ -514,7 +519,7 @@ func (h *DeckHandler) CloneDeck(w http.ResponseWriter, r *http.Request) {
 			srcCards, _ = h.store.Cards.ListByDeck(deckID)
 		}
 		for i, c := range srcCards {
-			newCard, err := h.store.Cards.CreateCard(userID, c.CoverPath, c.DisplayText+"_copy", c.Series, c.Tags, true)
+			newCard, err := h.store.Cards.CreateCard(userID, c.CoverPath, c.DisplayText+"_"+username, c.Series, c.Tags, true)
 			if err != nil {
 				log.Printf("[clone] CreateCard failed: %v", err)
 				continue

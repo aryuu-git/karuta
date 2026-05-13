@@ -7,7 +7,13 @@ type User struct {
 	Username  string    `json:"username"`
 	Email     string    `json:"email"`
 	Password  string    `json:"-"`
-	CreatedAt time.Time `json:"created_at"`
+	InvitedBy int64     `json:"invited_by"`
+	Disabled  bool      `json:"disabled"`
+	IsAdmin    bool      `json:"is_admin"`
+	IsGuest    bool      `json:"is_guest"`
+	AvatarPath string    `json:"-"`
+	AvatarURL  string    `json:"avatar_url,omitempty"`
+	CreatedAt  time.Time `json:"created_at"`
 }
 
 type Deck struct {
@@ -36,6 +42,7 @@ type Card struct {
 	Series      string       `json:"series"`
 	Tags        string       `json:"tags"`
 	IsShared    bool         `json:"is_shared"`
+	ShareLevel  string       `json:"share_level"`
 	SortOrder   int          `json:"sort_order"`
 	CreatedAt   time.Time    `json:"created_at"`
 	Audios      []*CardAudio `json:"audios,omitempty"`
@@ -74,20 +81,33 @@ type Room struct {
 	MaskSeed       int64     `json:"-"`
 	PenaltyWrong     bool `json:"penalty_wrong"`
 	PenaltySlow      bool `json:"penalty_slow"`
+	PenaltyLast      int  `json:"penalty_last"`
+	Training         bool   `json:"training"`
+	MinPlayTime      int    `json:"min_play_time"`
+	MultiAudioMode   string `json:"multi_audio_mode"`
 	ShuffleRemaining int  `json:"shuffle_remaining"`
 	RandomStart    bool `json:"random_start"`
 	RandomStartMax int  `json:"random_start_max"`
+	// Duel mode fields
+	DuelTotalCards  int  `json:"duel_total_cards"`
+	DuelFlip        bool `json:"duel_flip"`
+	DuelRequeue     bool `json:"duel_requeue"`
+	DuelMaxRounds   int  `json:"duel_max_rounds"`
+	DuelRoundTime   int  `json:"duel_round_time"`
+	DuelGrabChances int  `json:"duel_grab_chances"`
+	DuelArrangeTime int  `json:"duel_arrange_time"`
 	CreatedAt      time.Time `json:"created_at"`
 }
 
 type RoomPlayer struct {
-	RoomID   int64     `json:"room_id"`
-	UserID   int64     `json:"user_id"`
-	Username string    `json:"username"`
-	Role     string    `json:"role"`
-	Score    int       `json:"score"`
-	Online   bool      `json:"online"`
-	JoinedAt time.Time `json:"joined_at"`
+	RoomID    int64     `json:"room_id"`
+	UserID    int64     `json:"user_id"`
+	Username  string    `json:"username"`
+	AvatarURL string    `json:"avatar_url,omitempty"`
+	Role      string    `json:"role"`
+	Score     int       `json:"score"`
+	Online    bool      `json:"online"`
+	JoinedAt  time.Time `json:"joined_at"`
 }
 
 type GameRecord struct {
