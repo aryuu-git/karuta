@@ -10,6 +10,14 @@
 # 前端构建输出
 frontend/dist/
 
+# 构建目录中的编译产物
+build/android/
+build/tauri/target/
+build/*.keystore
+
+# 构建产物
+dist/
+
 # npm 依赖
 frontend/node_modules/
 
@@ -37,3 +45,9 @@ Thumbs.db
 
 # 编译产物
 karuta-server
+
+# 打包脚本
+dev.ps1
+
+# CodeWhale
+.codewhale/

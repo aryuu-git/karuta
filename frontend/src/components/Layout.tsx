@@ -1,6 +1,7 @@
 import { type ReactNode } from 'react'
 import { Link, useNavigate, Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import { IS_NATIVE } from '../config'
 import { Changelog } from './Changelog'
 import { ThemeSwitcher } from './ThemeSwitcher'
 
@@ -76,6 +77,14 @@ export function Layout({ children }: LayoutProps) {
               <span>👤</span>
               <span className="hidden sm:inline">{user.username}</span>
             </Link>
+            {IS_NATIVE && (
+              <Link to="/settings"
+                className="text-muted text-sm hover:text-gold transition-all duration-200 px-3 py-1.5 rounded-lg border border-border hover:border-gold/40 hover:scale-105"
+              >
+                <span className="hidden sm:inline">设置</span>
+                <span className="sm:hidden text-base">⚙️</span>
+              </Link>
+            )}
             <button
               onClick={handleLogout}
               className="text-muted text-sm hover:text-crimson transition-all duration-200 px-3 py-1.5 rounded-lg border border-border hover:border-crimson/40 hover:scale-105"

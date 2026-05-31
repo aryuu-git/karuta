@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { DuelState, DuelCard, CardMask } from '../api/types'
+import { CachedImg } from './CachedImg'
 
 function buildMaskStyle(m: CardMask): React.CSSProperties {
   switch (m.type) {
@@ -263,7 +264,7 @@ function DuelCardGrid({ cards, flipped, onGrab, isOpponent, onCardClickWithIndex
                   }}
                 >
                   {card.cover_url ? (
-                    <img
+                    <CachedImg
                       src={card.cover_url}
                       alt=""
                       className="absolute inset-0 w-full h-full object-cover"

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { cacheMedia } from '../utils/mediaCache'
 
 interface ReadingPanelProps {
   hintText: string | null
@@ -17,51 +18,68 @@ interface ReadingPanelProps {
 // intervalSec 保留 prop 供外部传入，ReadingPanel 内部仅用 audio timeupdate 驱动进度条
 export function ReadingPanel({ hintText, audioUrl, startRatio, intervalSec: _intervalSec, isActive, isPaused, countdown, intervalCountdown, onAudioEnded, isLastCard }: ReadingPanelProps) {
   const audioRef = useRef<HTMLAudioElement>(null)
+  const cleanupRef = useRef<(() => void) | null>(null)
   const [audioError, setAudioError] = useState(false)
   const [progress, setProgress] = useState(0)
 
-  // 音频加载和播放（含重试机制）
+  // 音频加载和播放（含重试机制 + 本地缓存）
   useEffect(() => {
     const audio = audioRef.current
     if (!audio || !audioUrl) return
+    let cancelled = false
+
     setAudioError(false)
     setProgress(0)
     audio.pause()
     audio.currentTime = 0
-    audio.src = audioUrl
-    audio.load()
 
-    // 随机片段：加载完 metadata 后 seek 到指定位置
-    const currentStartRatio = startRatio
-    const seekHandler = () => {
-      if (currentStartRatio && currentStartRatio > 0 && audio.duration && isFinite(audio.duration)) {
-        audio.currentTime = audio.duration * currentStartRatio
-      }
-    }
-    audio.addEventListener('loadedmetadata', seekHandler, { once: true })
+    // 优先使用本地缓存，然后加载并播放
+    cacheMedia(audioUrl).then((resolvedUrl) => {
+      if (cancelled) return
+      audio.src = resolvedUrl
+      audio.load()
 
-    let retryCount = 0
-    let retryTimer: ReturnType<typeof setTimeout>
-
-    const tryPlay = () => {
-      audio.play().catch(() => {
-        retryCount++
-        if (retryCount < 3) {
-          retryTimer = setTimeout(tryPlay, 1000)
-        } else {
-          setAudioError(true)
+      // 随机片段：加载完 metadata 后 seek 到指定位置
+      const currentStartRatio = startRatio
+      const seekHandler = () => {
+        if (currentStartRatio && currentStartRatio > 0 && audio.duration && isFinite(audio.duration)) {
+          audio.currentTime = audio.duration * currentStartRatio
         }
-      })
-    }
+      }
+      audio.addEventListener('loadedmetadata', seekHandler, { once: true })
 
-    const ended = () => onAudioEnded?.()
-    audio.addEventListener('canplaythrough', tryPlay, { once: true })
-    audio.addEventListener('ended', ended)
+      let retryCount = 0
+      let retryTimer: ReturnType<typeof setTimeout>
+
+      const tryPlay = () => {
+        if (cancelled) return
+        audio.play().catch(() => {
+          retryCount++
+          if (retryCount < 3 && !cancelled) {
+            retryTimer = setTimeout(tryPlay, 1000)
+          } else if (!cancelled) {
+            setAudioError(true)
+          }
+        })
+      }
+
+      const ended = () => onAudioEnded?.()
+      audio.addEventListener('canplaythrough', tryPlay, { once: true })
+      audio.addEventListener('ended', ended)
+
+      // cleanup 存到外层
+      cleanupRef.current = () => {
+        clearTimeout(retryTimer)
+        audio.removeEventListener('canplaythrough', tryPlay)
+        audio.removeEventListener('ended', ended)
+        audio.removeEventListener('loadedmetadata', seekHandler)
+        audio.pause()
+      }
+    })
+
     return () => {
-      clearTimeout(retryTimer)
-      audio.removeEventListener('canplaythrough', tryPlay)
-      audio.removeEventListener('ended', ended)
-      audio.pause()
+      cancelled = true
+      cleanupRef.current?.()
     }
   }, [audioUrl, onAudioEnded])
 

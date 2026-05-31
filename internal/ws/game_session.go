@@ -632,11 +632,12 @@ func (gs *GameSession) buildPlayerList(players []*model.RoomPlayer) []map[string
 			continue
 		}
 		list = append(list, map[string]interface{}{
-			"user_id":  p.UserID,
-			"username": p.Username,
-			"role":     p.Role,
-			"score":    p.Score,
-			"online":   onlineSet[p.UserID],
+			"user_id":    p.UserID,
+			"username":   p.Username,
+			"avatar_url": p.AvatarURL,
+			"role":       p.Role,
+			"score":      p.Score,
+			"online":     onlineSet[p.UserID],
 		})
 	}
 	return list

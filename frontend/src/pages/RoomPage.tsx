@@ -276,7 +276,7 @@ export function RoomPage() {
     prevBoardCountRef.current = boardCount
   }, [cardRemaining, shuffleThreshold, cards.length, showToast])
 
-  // 等待大厅阶段预加载所有封面图和音频
+  // 等待大厅阶段预加载所有封面图和音频（含本地缓存）
   useEffect(() => {
     if (!cards.length || gameStatus !== 'waiting' || preloadStartedRef.current) return
     preloadStartedRef.current = true
@@ -294,27 +294,46 @@ export function RoomPage() {
 
     setPreloadProgress({ loaded: 0, total: items.length })
 
-    let loaded = 0
-    const tick = () => {
-      loaded++
-      setPreloadProgress({ loaded, total: items.length })
-    }
-
-    items.forEach(item => {
-      if (item.type === 'image') {
-        const img = new Image()
-        img.onload = tick
-        img.onerror = tick
-        img.src = item.url
-      } else {
-        const audio = new Audio()
-        audio.addEventListener('canplaythrough', tick, { once: true })
-        audio.addEventListener('error', tick, { once: true })
-        audio.preload = 'auto'
-        audio.src = item.url
-        audio.load()
+    // 异步缓存 + 预加载
+    let cancelled = false
+    ;(async () => {
+      const { cacheMedia } = await import('../utils/mediaCache')
+      let loaded = 0
+      const tick = () => {
+        loaded++
+        if (!cancelled) setPreloadProgress({ loaded, total: items.length })
       }
-    })
+
+      for (const item of items) {
+        if (cancelled) break
+        try {
+          // 先缓存到本地
+          const localUrl = await cacheMedia(item.url)
+          // 再用浏览器预加载（确保解码完成）
+          if (item.type === 'image') {
+            await new Promise<void>((resolve) => {
+              const img = new Image()
+              img.onload = () => { tick(); resolve() }
+              img.onerror = () => { tick(); resolve() }
+              img.src = localUrl
+            })
+          } else {
+            await new Promise<void>((resolve) => {
+              const audio = new Audio()
+              audio.addEventListener('canplaythrough', () => { tick(); resolve() }, { once: true })
+              audio.addEventListener('error', () => { tick(); resolve() }, { once: true })
+              audio.preload = 'auto'
+              audio.src = localUrl
+              audio.load()
+            })
+          }
+        } catch {
+          tick()
+        }
+      }
+    })()
+
+    return () => { cancelled = true }
   }, [cards, gameStatus])
 
   const handleEvent = useCallback((event: WSEvent) => {
@@ -809,7 +828,7 @@ export function RoomPage() {
         break
       }
     }
-  }, [user, roomId, playSound, showToast, navigate, roomState, duelState])
+  }, [user, roomId, playSound, showToast, navigate, roomState, duelState, shufflePending, duelArranging])
 
   const { send, connected } = useRoomSocket(roomId, handleEvent)
 

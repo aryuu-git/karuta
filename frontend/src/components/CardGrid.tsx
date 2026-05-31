@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { KarutaCard } from './KarutaCard'
+import { CachedImg } from './CachedImg'
 import type { Card } from '../api/types'
 
 interface DiscardItem {
@@ -67,7 +68,7 @@ export function CardGrid({ cards, cardRemaining, discardPile = [], onGrab }: Car
                     className="relative rounded overflow-hidden"
                     style={{ width: 'clamp(40px, 5vw, 56px)', aspectRatio: '3/4' }}>
                     {card.cover_url ? (
-                      <img src={card.cover_url} alt="" className="w-full h-full object-cover" />
+                      <CachedImg src={card.cover_url} alt="" className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full bg-surface flex items-center justify-center">
                         <span className="text-gold/30 text-xs">♪</span>

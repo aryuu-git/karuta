@@ -12,6 +12,11 @@ import { CardCreatePage } from './pages/CardCreatePage'
 import { NewRoomPage } from './pages/NewRoomPage'
 import { JoinRoomPage } from './pages/JoinRoomPage'
 import { RoomPage } from './pages/RoomPage'
+import { QuadrantLobby } from './pages/quadrant/QuadrantLobby'
+import { QuadrantRoom } from './pages/quadrant/QuadrantRoom'
+import { QuadrantBankList } from './pages/quadrant/QuadrantBankList'
+import { QuadrantBankEdit } from './pages/quadrant/QuadrantBankEdit'
+import { SettingsPage } from './pages/SettingsPage'
 
 export default function App() {
   const { user } = useAuth()
@@ -44,6 +49,13 @@ export default function App() {
       <Route path="/rooms/new" element={<NewRoomPage />} />
       <Route path="/rooms/join" element={<JoinRoomPage />} />
       <Route path="/rooms/:id" element={<RoomPage />} />
+
+      <Route path="/quadrant" element={<QuadrantLobby />} />
+      <Route path="/quadrant/rooms/:id" element={<QuadrantRoom />} />
+      <Route path="/quadrant/banks" element={<QuadrantBankList />} />
+      <Route path="/quadrant/banks/:id" element={<QuadrantBankEdit />} />
+
+      <Route path="/settings" element={<SettingsPage />} />
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

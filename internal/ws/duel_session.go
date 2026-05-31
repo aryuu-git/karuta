@@ -555,6 +555,15 @@ func (ds *DuelSession) handleGrabResult(result duelGrabResult) {
 			return
 		}
 		// Fully exhausted — fall through to remove logic
+	} else {
+		// "once" mode: remove remaining audios for this card from queue
+		filtered := make([]*PlayItem, 0, len(ds.queue))
+		for _, qi := range ds.queue {
+			if qi.CardID != answerCardID {
+				filtered = append(filtered, qi)
+			}
+		}
+		ds.queue = filtered
 	}
 
 	if inMyArea {

@@ -16,6 +16,7 @@ import (
 	"karuta/internal/storage"
 	"karuta/internal/store"
 	"karuta/internal/ws"
+	"karuta/quadrant"
 
 	"github.com/go-chi/chi/v5"
 	chiMiddleware "github.com/go-chi/chi/v5/middleware"
@@ -165,6 +166,9 @@ func main() {
 
 	// WebSocket endpoint (auth via query token)
 	r.Get("/ws/rooms/{id}", wsH.ServeWS)
+
+	// Quadrant game module (independent)
+	quadrant.RegisterRoutes(r, db, cfg.JWTSecret, authMiddleware)
 
 	// Static file serving for uploads with COS redirect support
 	uploadsFS := http.StripPrefix("/uploads/", http.FileServer(http.Dir(cfg.UploadDir)))

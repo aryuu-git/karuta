@@ -410,8 +410,8 @@ export function NewRoomPage() {
                   </div>
                 )}
 
-                {/* Training mode (auto only) */}
-                {selectedMode === 'auto' && (
+                {/* 房主测试模式 (auto + judge) */}
+                {selectedMode !== 'duel' && (
                   <div onClick={() => setTraining(!training)}
                     className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all duration-200 ${
                       training ? 'border border-orange-400/30 bg-orange-400/5' : 'border border-white/10 bg-white/5 hover:border-white/20'
@@ -421,10 +421,10 @@ export function NewRoomPage() {
                     </div>
                     <div>
                       <p className={`text-sm font-medium ${training ? 'text-orange-300/90' : 'text-white/50'}`}>
-                        {training ? '🏋️ 训练模式' : '👥 多人模式'}
+                        {training ? '🔧 房主测试模式' : '👥 多人模式'}
                       </p>
                       <p className="text-[10px] text-muted/50">
-                        {training ? '仅自己可进，不允许其他玩家加入' : '其他玩家可通过邀请码或大厅加入'}
+                        {training ? '等待中可加入，开打后只能旁观' : '其他玩家可通过邀请码或大厅加入'}
                       </p>
                     </div>
                   </div>
@@ -575,8 +575,8 @@ export function NewRoomPage() {
                   )}
                 </div>}
 
-                {/* 多音频牌模式 */}
-                <div className="rounded-xl p-4"
+                {/* 多音频牌模式（duel 模式强制 once，不展示选择） */}
+                {selectedMode !== 'duel' && <div className="rounded-xl p-4"
                   style={{ background: 'linear-gradient(135deg, rgba(var(--accent-bg),0.15), rgba(var(--accent-bg-mid),0.4))', border: '1px solid rgba(var(--accent-primary),0.12)' }}>
                   <h3 className="text-gold/80 text-xs font-serif mb-3">🎵 多音频牌</h3>
                   <div className="flex gap-2">
@@ -599,7 +599,7 @@ export function NewRoomPage() {
                       <p className="text-[9px] text-muted/50 mt-0.5">抢到第一首就消失</p>
                     </button>
                   </div>
-                </div>
+                </div>}
 
                 {/* 最短播放时间 */}
                 {selectedMode !== 'duel' && (

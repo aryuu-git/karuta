@@ -1,20 +1,20 @@
 import { useEffect, useRef, useCallback, useState } from 'react'
-import type { WSEvent } from '../api/types'
+import type { QWSEvent } from '../api/quadrant'
 import { buildWsUrl } from '../config'
 
 const MAX_RETRIES = 10
 const BASE_DELAY_MS = 1000
 const MAX_DELAY_MS = 30000
 
-interface UseRoomSocketReturn {
+interface UseQuadrantSocketReturn {
   send: (data: object) => void
   connected: boolean
 }
 
-export function useRoomSocket(
+export function useQuadrantSocket(
   roomId: number,
-  onEvent: (e: WSEvent) => void
-): UseRoomSocketReturn {
+  onEvent: (e: QWSEvent) => void
+): UseQuadrantSocketReturn {
   const wsRef = useRef<WebSocket | null>(null)
   const retriesRef = useRef(0)
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -22,7 +22,6 @@ export function useRoomSocket(
   const onEventRef = useRef(onEvent)
   const [connected, setConnected] = useState(false)
 
-  // Keep onEvent ref up to date so reconnects use latest handler
   useEffect(() => {
     onEventRef.current = onEvent
   }, [onEvent])
@@ -31,7 +30,7 @@ export function useRoomSocket(
     if (!mountedRef.current) return
 
     const token = localStorage.getItem('karuta_token') ?? ''
-    const url = buildWsUrl(`/ws/rooms/${roomId}`, token)
+    const url = buildWsUrl(`/ws/quadrant/rooms/${roomId}`, token)
 
     const ws = new WebSocket(url)
     wsRef.current = ws
@@ -45,10 +44,10 @@ export function useRoomSocket(
     ws.onmessage = (event) => {
       if (!mountedRef.current) return
       try {
-        const parsed = JSON.parse(event.data) as WSEvent
+        const parsed = JSON.parse(event.data) as QWSEvent
         onEventRef.current(parsed)
       } catch {
-        // ignore malformed messages
+        // ignore
       }
     }
 

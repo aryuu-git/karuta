@@ -1,6 +1,7 @@
 import { useEffect, useRef, type RefObject } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
+import { CachedImg } from './CachedImg'
 
 interface GrabbedCard {
   id: number
@@ -294,7 +295,7 @@ export function GameOver({ results, currentUserId, lastCardWinnerId }: GameOverP
                     title={card.display_text || card.hint_text || ''}
                   >
                     {card.cover_url ? (
-                      <img src={card.cover_url} alt="" className="w-full h-full object-cover" />
+                      <CachedImg src={card.cover_url} alt="" className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
                         <span className="text-gold/20 font-serif text-lg">歌</span>

@@ -65,6 +65,17 @@ export function HomePage() {
     <Layout>
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
 
+        {/* 快闪游戏入口 */}
+        <div className="mb-6 rounded-2xl p-4 border border-purple-700/30 cursor-pointer hover:border-purple-500/50 transition-colors relative overflow-hidden"
+          style={{ background: 'linear-gradient(135deg, rgba(88,28,135,0.2), rgba(30,27,75,0.3))' }}
+          onClick={() => navigate('/quadrant')}>
+          <span className="absolute top-2 right-2 text-[10px] px-1.5 py-0.5 rounded bg-yellow-900/50 text-yellow-400 border border-yellow-700/50">
+            内测中
+          </span>
+          <h2 className="font-serif text-base text-purple-300 font-bold">🎯 猜象限</h2>
+          <p className="text-purple-300/50 text-xs mt-1">从标签和位置推理真相 — 快闪小游戏</p>
+        </div>
+
         {/* 邀请码 + 创建房间 */}
         <div className="flex flex-col sm:flex-row gap-4 mb-8">
           <div className="flex-1 rounded-2xl p-5 relative overflow-hidden"
@@ -140,7 +151,9 @@ export function HomePage() {
           className="flex items-center gap-2 mb-4 px-4 py-2.5 rounded-xl transition-all hover:scale-[1.01]"
           style={{ background: 'rgba(var(--accent-primary),0.06)', border: '1px solid rgba(var(--accent-primary),0.15)' }}>
           <span className="text-sm">💻</span>
-          <span className="text-xs text-white/70">下载桌面版（音频本地缓存，省流量更流畅）</span>
+          <span className="text-xs text-white/70">下载桌面版</span>
+          <span className="text-[10px] px-1.5 py-0.5 rounded bg-crimson/20 text-crimson/80">内测</span>
+          <span className="text-[10px] text-muted/50">目前Bug较多，仅限测Bug用</span>
           <span className="ml-auto text-[10px] text-gold/60">Windows</span>
         </a>
 
@@ -206,7 +219,7 @@ export function HomePage() {
                     {room.status !== 'end' && (
                       <div className="flex items-center gap-2 shrink-0">
                         <span className={`text-xs group-hover:text-gold transition-all ${room.training ? 'text-orange-400/60' : room.status === 'waiting' ? 'text-gold/60' : 'text-muted'}`}>
-                          {room.training ? '🏋️ 旁观 →' : room.status === 'waiting' ? '加入 →' : '旁观 →'}
+                          {room.training ? '🔧 旁观 →' : room.status === 'waiting' ? '加入 →' : '旁观 →'}
                         </span>
                         {isAdmin && (
                           <button

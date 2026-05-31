@@ -439,6 +439,11 @@ func (h *RoomHandler) CreateRoom(w http.ResponseWriter, r *http.Request) {
 		_ = h.store.Rooms.UpdateMultiAudioMode(room.ID, "once")
 	}
 
+	// Duel 模式强制 once：抢一次即消失
+	if req.Mode == "duel" {
+		_ = h.store.Rooms.UpdateMultiAudioMode(room.ID, "once")
+	}
+
 	// Set duel config if duel mode
 	if req.Mode == "duel" {
 		totalCards := req.DuelTotalCards
@@ -511,9 +516,9 @@ func (h *RoomHandler) JoinRoom(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 已结束的不让进；其他状态（waiting/reading/paused）都允许
-	// 训练模式：非房主只能旁观
+	// 等待中=玩家身份进入，游戏进行中=旁观身份进入
 	role := "player"
-	if room.Status != "waiting" || (room.Training && room.HostID != userID) {
+	if room.Status != "waiting" {
 		role = "spectator"
 	}
 

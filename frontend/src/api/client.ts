@@ -1,6 +1,7 @@
 import type { User, Deck, Card, CardAudio, Room, RoomState, RoomListItem, UserStats, AuthResponse } from './types'
+import { API_BASE } from '../config'
 
-const BASE = '/api'
+const BASE = API_BASE
 
 function getToken(): string | null {
   return localStorage.getItem('karuta_token')

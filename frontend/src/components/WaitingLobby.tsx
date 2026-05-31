@@ -362,7 +362,7 @@ export function WaitingLobby({ room, players, currentUserId, onRoleChange, onKic
         )}
 
         {/* 旁观切换（非房主可切换，duel 模式通过席位管理） */}
-        {!isHost && room.mode !== 'duel' && (
+        {!isHost && room.mode !== 'duel' && room.status === 'waiting' && (
           <div className="flex justify-center">
             <motion.button
               whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
