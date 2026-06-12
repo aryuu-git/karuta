@@ -16,6 +16,7 @@ import (
 	"karuta/internal/storage"
 	"karuta/internal/store"
 	"karuta/internal/ws"
+	"karuta/ccp"
 	"karuta/quadrant"
 
 	"github.com/go-chi/chi/v5"
@@ -26,7 +27,7 @@ func main() {
 	cfg := config.Load()
 
 	// Ensure upload directories exist
-	for _, sub := range []string{"audio", "covers"} {
+	for _, sub := range []string{"audio", "covers", "ccp"} {
 		dir := filepath.Join(cfg.UploadDir, sub)
 		if err := os.MkdirAll(dir, 0755); err != nil {
 			log.Fatalf("create upload dir %s: %v", dir, err)
@@ -169,6 +170,9 @@ func main() {
 
 	// Quadrant game module (independent)
 	quadrant.RegisterRoutes(r, db, cfg.JWTSecret, authMiddleware)
+
+	// CCP game module (independent)
+	ccp.RegisterRoutes(r, db, cfg.JWTSecret, authMiddleware, stor)
 
 	// Static file serving for uploads with COS redirect support
 	uploadsFS := http.StripPrefix("/uploads/", http.FileServer(http.Dir(cfg.UploadDir)))

@@ -60,12 +60,14 @@ Write-Host "OK -> dist/"
 Write-Host ""
 
 Write-Host "[4] Starting services..."
-# COS 配置
-$env:COS_ENABLED = "true"
-$env:COS_SECRET_ID = "xxx"
-$env:COS_SECRET_KEY = "xxx"
-$env:COS_BUCKET = "xxx"
-$env:COS_REGION = "xxx"
+# 加载本地配置（密钥等敏感信息，不上传 git）
+if (Test-Path "$ROOT\dev_local.ps1") {
+    . "$ROOT\dev_local.ps1"
+    Write-Host "Loaded dev_local.ps1"
+} else {
+    Write-Host "[WARN] dev_local.ps1 not found. COS may not work."
+    Write-Host "       Create dev_local.ps1 with your COS keys, see dev_local.ps1.example"
+}
 Start-Process "$ROOT\karuta-server.exe" -WorkingDirectory $ROOT
 Start-Sleep -Seconds 2
 Start-Process "cmd" -ArgumentList "/k `"cd /d $ROOT\frontend && npm run dev`""

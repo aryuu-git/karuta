@@ -13,6 +13,9 @@ export const API_BASE = serverUrl ? `${serverUrl}/api` : '/api'
 /** Quadrant API 基础路径 */
 export const QUADRANT_API_BASE = serverUrl ? `${serverUrl}/api/quadrant` : '/api/quadrant'
 
+/** CCP API 基础路径 */
+export const CCP_API_BASE = serverUrl ? `${serverUrl}/api/ccp` : '/api/ccp'
+
 /** 构建 WebSocket URL */
 export function buildWsUrl(path: string, token: string): string {
   if (serverUrl) {

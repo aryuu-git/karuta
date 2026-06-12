@@ -16,6 +16,12 @@ import { QuadrantLobby } from './pages/quadrant/QuadrantLobby'
 import { QuadrantRoom } from './pages/quadrant/QuadrantRoom'
 import { QuadrantBankList } from './pages/quadrant/QuadrantBankList'
 import { QuadrantBankEdit } from './pages/quadrant/QuadrantBankEdit'
+import { CcpLobby } from './pages/ccp/CcpLobby'
+import { CcpRoom } from './pages/ccp/CcpRoom'
+import { CcpGame } from './pages/ccp/CcpGame'
+import { CcpResult } from './pages/ccp/CcpResult'
+import { CcpThemes } from './pages/ccp/CcpThemes'
+import { CcpLocalPage } from './pages/CcpLocalPage'
 import { SettingsPage } from './pages/SettingsPage'
 
 export default function App() {
@@ -54,6 +60,15 @@ export default function App() {
       <Route path="/quadrant/rooms/:id" element={<QuadrantRoom />} />
       <Route path="/quadrant/banks" element={<QuadrantBankList />} />
       <Route path="/quadrant/banks/:id" element={<QuadrantBankEdit />} />
+
+      <Route path="/ccp" element={<CcpLobby />} />
+      <Route path="/ccp/rooms/:code" element={<CcpRoom />} />
+      <Route path="/ccp/game/:code" element={<CcpGame />} />
+      <Route path="/ccp/result/:code" element={<CcpResult />} />
+      <Route path="/ccp/themes" element={<CcpThemes />} />
+      <Route path="/ccp/local" element={<CcpLocalPage />} />
+      <Route path="/ccp/local/host" element={<CcpLocalPage />} />
+      <Route path="/ccp/local/player" element={<CcpLocalPage />} />
 
       <Route path="/settings" element={<SettingsPage />} />
 

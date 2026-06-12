@@ -1127,6 +1127,33 @@ export function RoomPage() {
               ⚡ 强制结束
             </motion.button>
           )}
+          {/* 跳到结算画面（调试用） */}
+          {(isHost || user?.is_admin) && gameStatus === 'reading' && (
+            <motion.button
+              onClick={() => {
+                if (!confirm('跳过剩余对局，直接进入结算画面？')) return
+                // 生成模拟的结算数据
+                const mockResults: GameResult[] = players
+                  .filter(p => p.role === 'player')
+                  .map((p, idx) => ({
+                    user_id: p.user_id,
+                    username: p.username,
+                    score: p.score,
+                    rank: idx + 1,
+                    penalty_count: 0,
+                    grabbed_cards: [],
+                  }))
+                  .sort((a, b) => b.score - a.score)
+                  .map((r, idx) => ({ ...r, rank: idx + 1 }))
+                setGameResults(mockResults)
+                setGameStatus('end')
+              }}
+              whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+              className="px-3 py-1.5 rounded-lg text-xs transition-all ml-1"
+              style={{ background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.35)', color: 'rgba(139,92,246,0.9)' }}>
+              🏁 跳到结算
+            </motion.button>
+          )}
         </div>
 
         {/* 主体 */}

@@ -1,0 +1,2432 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>👑 东半球猜猜背皇帝</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   RESET & CSS 变量
+   ============================================================ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --pink-primary: #FF6B9D;
+  --pink-light: #FFB8D0;
+  --pink-glow: #FF85B3;
+  --purple-deep: #5B21B6;
+  --purple-mid: #8B5CF6;
+  --purple-light: #A78BFA;
+  --bg-deep: #0F0720;
+  --bg-mid: #1A0F2E;
+  --bg-card: rgba(255, 255, 255, 0.06);
+  --bg-card-hover: rgba(255, 255, 255, 0.10);
+  --text-primary: #F0E6FF;
+  --text-secondary: #C4B5E3;
+  --text-glow: #F9A8D4;
+  --gold: #FBBF24;
+  --gold-light: #FDE68A;
+  --red-warn: #EF4444;
+  --green-success: #34D399;
+  --border-subtle: rgba(255, 255, 255, 0.10);
+  --border-glow: rgba(255, 107, 157, 0.4);
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.4);
+  --shadow-glow: 0 0 30px rgba(255, 107, 157, 0.35);
+  --shadow-glow-strong: 0 0 50px rgba(255, 107, 157, 0.55);
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --radius-full: 9999px;
+  --transition-fast: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-smooth: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-flip: 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ============================================================
+   BASE
+   ============================================================ */
+html, body {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  background: radial-gradient(ellipse at 50% 20%, #1E1040 0%, #0F0720 60%, #0A0418 100%);
+  color: var(--text-primary);
+  user-select: none;
+  -webkit-user-select: none;
+  position: relative;
+}
+
+/* ============================================================
+   SCREEN LAYOUT
+   ============================================================ */
+.screen {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  overflow-y: auto;
+}
+
+.screen.active {
+  display: flex;
+}
+
+/* ============================================================
+   BACKGROUND: STARS
+   ============================================================ */
+#bg-stars {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.star {
+  position: absolute;
+  border-radius: 50%;
+  background: white;
+  animation: twinkle var(--dur) ease-in-out infinite;
+  animation-delay: var(--delay);
+}
+
+.star.bright { background: var(--gold-light); box-shadow: 0 0 3px var(--gold); }
+.star.pink  { background: var(--pink-light); box-shadow: 0 0 3px var(--pink-primary); }
+.star.purple { background: var(--purple-light); box-shadow: 0 0 3px var(--purple-mid); }
+
+@keyframes twinkle {
+  0%, 100% { opacity: 0.15; transform: scale(0.8); }
+  50%      { opacity: 0.9;  transform: scale(1.3); }
+}
+
+/* ============================================================
+   BACKGROUND: SAKURA
+   ============================================================ */
+#bg-sakura {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.sakura-petal {
+  position: absolute;
+  top: -40px;
+  animation: sakura-fall var(--dur) var(--delay) linear infinite;
+  font-size: var(--size);
+  opacity: 0.7;
+  filter: blur(0.5px);
+}
+
+@keyframes sakura-fall {
+  0%   { transform: translateY(0) rotate(0deg) translateX(0); opacity: 0.85; }
+  25%  { transform: translateY(25vh) rotate(180deg) translateX(var(--drift)); opacity: 0.9; }
+  50%  { transform: translateY(50vh) rotate(360deg) translateX(calc(var(--drift) * -0.5)); opacity: 0.75; }
+  75%  { transform: translateY(75vh) rotate(540deg) translateX(var(--drift)); opacity: 0.5; }
+  100% { transform: translateY(105vh) rotate(720deg) translateX(calc(var(--drift) * -0.3)); opacity: 0; }
+}
+
+/* ============================================================
+   TITLE
+   ============================================================ */
+.title-area {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.title-main {
+  font-size: clamp(2rem, 5vw, 3.2rem);
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  background: linear-gradient(135deg, #F9A8D4 0%, #C084FC 35%, #FBBF24 65%, #F472B6 100%);
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  filter: drop-shadow(0 0 24px rgba(249, 168, 212, 0.45));
+  animation: title-float 3.5s ease-in-out infinite, title-shimmer 4s ease-in-out infinite;
+  line-height: 1.3;
+}
+
+@keyframes title-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-7px); }
+}
+
+@keyframes title-shimmer {
+  0%, 100% { background-position: 0% 50%; }
+  50%      { background-position: 100% 50%; }
+}
+
+.title-sub {
+  font-size: 1.05rem;
+  color: var(--text-secondary);
+  margin-top: 8px;
+  letter-spacing: 0.08em;
+  animation: subtitle-pulse 2.5s ease-in-out infinite;
+}
+
+@keyframes subtitle-pulse {
+  0%, 100% { opacity: 0.7; }
+  50%      { opacity: 1; }
+}
+
+/* ============================================================
+   UPLOAD ZONE
+   ============================================================ */
+.upload-zone {
+  width: min(420px, 85vw);
+  height: 220px;
+  border: 2px dashed var(--border-subtle);
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  cursor: pointer;
+  transition: all var(--transition-smooth);
+  background: var(--bg-card);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  position: relative;
+  overflow: hidden;
+}
+
+.upload-zone::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, var(--pink-primary), var(--purple-mid), var(--gold));
+  opacity: 0;
+  z-index: -1;
+  transition: opacity var(--transition-smooth);
+}
+
+.upload-zone:hover {
+  border-color: var(--border-glow);
+  box-shadow: var(--shadow-glow);
+  transform: translateY(-2px);
+}
+
+.upload-zone:hover::before {
+  opacity: 0.3;
+}
+
+.upload-zone.drag-over {
+  border-color: var(--pink-primary);
+  background: rgba(255, 107, 157, 0.12);
+  box-shadow: var(--shadow-glow-strong);
+  transform: scale(1.03);
+}
+
+.upload-icon {
+  font-size: 3rem;
+  animation: upload-bounce 2s ease-in-out infinite;
+}
+
+@keyframes upload-bounce {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-8px); }
+}
+
+.upload-zone p {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+}
+
+/* ============================================================
+   HISTORY
+   ============================================================ */
+#history-section {
+  margin-top: 40px;
+  width: min(500px, 85vw);
+}
+
+#history-section h3 {
+  text-align: center;
+  margin-bottom: 16px;
+  font-size: 1rem;
+  color: var(--text-secondary);
+}
+
+#history-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+}
+
+.history-item {
+  background: var(--bg-card);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-align: center;
+  min-width: 140px;
+  position: relative;
+}
+.hi-delete {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.4);
+  font-size: 0.85rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+  line-height: 1;
+  z-index: 2;
+}
+.hi-delete:hover {
+  background: rgba(239,68,68,0.3);
+  color: #fff;
+}
+.history-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.history-header h3 { margin: 0; }
+.btn-clear-history {
+  padding: 4px 12px;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: rgba(255,255,255,0.35);
+  font-size: 0.75rem;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all var(--transition-fast);
+}
+.btn-clear-history:hover {
+  border-color: rgba(239,68,68,0.5);
+  color: #EF4444;
+}
+
+.history-item:hover {
+  border-color: var(--border-glow);
+  box-shadow: 0 0 16px rgba(255, 107, 157, 0.2);
+  transform: translateY(-2px);
+}
+
+.history-item .hi-thumb {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  margin-bottom: 8px;
+}
+
+.history-item .hi-meta {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+/* ============================================================
+   CONFIG SCREEN
+   ============================================================ */
+#screen-config {
+  gap: 24px;
+}
+
+#screen-config h2 {
+  font-size: 1.6rem;
+  background: linear-gradient(135deg, var(--pink-light), var(--purple-light));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.preview-area {
+  position: relative;
+  width: min(400px, 75vw);
+  aspect-ratio: auto;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: var(--shadow-md);
+}
+
+.preview-area img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: var(--radius-md);
+}
+.image-pager {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  right: 8px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+.pager-arrow {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.3);
+  background: rgba(0,0,0,0.5);
+  color: white;
+  font-size: 0.7rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+  backdrop-filter: blur(4px);
+}
+.pager-arrow:hover {
+  background: rgba(255,107,157,0.3);
+  border-color: var(--pink-primary);
+}
+.pager-info {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: white;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.7);
+}
+
+.grid-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.grid-overlay .grid-line-h,
+.grid-overlay .grid-line-v {
+  position: absolute;
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.grid-overlay .grid-line-h {
+  left: 0;
+  right: 0;
+  height: 1px;
+}
+
+.grid-overlay .grid-line-v {
+  top: 0;
+  bottom: 0;
+  width: 1px;
+}
+
+/* config panel */
+.config-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  width: min(420px, 80vw);
+  background: var(--bg-card);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 24px;
+}
+
+.config-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.config-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.config-label span {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.config-label small {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+
+/* toggle */
+.toggle {
+  position: relative;
+  width: 56px;
+  height: 28px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.toggle.active {
+  background: linear-gradient(135deg, var(--pink-primary), var(--purple-mid));
+}
+
+.toggle::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  background: white;
+  border-radius: 50%;
+  transition: transform var(--transition-fast);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+}
+
+.toggle.active::after {
+  transform: translateX(28px);
+}
+
+/* grid selector */
+.grid-selector {
+  display: flex;
+  gap: 8px;
+}
+
+.grid-selector button {
+  padding: 8px 16px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  font-family: inherit;
+}
+
+.grid-selector button:hover {
+  border-color: var(--pink-primary);
+  color: var(--pink-light);
+}
+
+.grid-selector button.active {
+  background: linear-gradient(135deg, var(--pink-primary), var(--purple-mid));
+  color: white;
+  border-color: transparent;
+  box-shadow: 0 0 16px rgba(255, 107, 157, 0.35);
+}
+
+/* range slider */
+.config-slider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.config-slider input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100px;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.15);
+  outline: none;
+  cursor: pointer;
+}
+.config-slider input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--pink-primary), var(--purple-mid));
+  cursor: pointer;
+  box-shadow: 0 0 10px rgba(255, 107, 157, 0.4);
+  transition: box-shadow var(--transition-fast);
+}
+.config-slider input[type="range"]::-webkit-slider-thumb:hover {
+  box-shadow: 0 0 18px rgba(255, 107, 157, 0.6);
+}
+.config-slider .slider-val {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--pink-light);
+  min-width: 36px;
+  text-align: right;
+}
+
+/* grid row/col inputs */
+.grid-inputs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.grid-inputs .grid-btn {
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 50%;
+  background: rgba(255,255,255,0.08);
+  color: var(--text-primary);
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+  font-family: inherit;
+  line-height: 1;
+  user-select: none;
+}
+.grid-inputs .grid-btn:hover {
+  border-color: var(--pink-primary);
+  color: var(--pink-light);
+  background: rgba(255,107,157,0.12);
+}
+.grid-inputs .grid-btn:active { transform: scale(0.9); }
+.grid-inputs .grid-val {
+  width: 36px;
+  text-align: center;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--pink-light);
+  user-select: none;
+}
+.grid-inputs .grid-sep {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  margin: 0 4px;
+}
+
+/* live preview cards in config */
+.preview-cards {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--border-subtle);
+  width: min(500px, 90vw);
+}
+.preview-cards .preview-label {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.preview-card {
+  width: 64px;
+  height: 64px;
+  border-radius: 8px;
+  overflow: hidden;
+  position: relative;
+  flex-shrink: 0;
+}
+.preview-card-front {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, #4C1D95, #831843);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: rgba(255,255,255,0.55);
+}
+.preview-card img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.preview-shadow-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  display: none;
+}
+
+/* config-row with slider */
+.config-row-slider {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* ============================================================
+   BUTTONS
+   ============================================================ */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 48px;
+  font-size: 1.15rem;
+  font-weight: 700;
+  font-family: inherit;
+  color: white;
+  background: linear-gradient(135deg, var(--pink-primary) 0%, var(--purple-mid) 100%);
+  border: none;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  box-shadow: 0 4px 24px rgba(255, 107, 157, 0.35);
+  transition: all var(--transition-fast);
+  letter-spacing: 0.03em;
+}
+
+.btn-primary:hover {
+  transform: scale(1.06) translateY(-2px);
+  box-shadow: 0 8px 32px rgba(255, 107, 157, 0.5);
+}
+
+.btn-primary:active {
+  transform: scale(0.97);
+  box-shadow: 0 2px 12px rgba(255, 107, 157, 0.3);
+}
+
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 24px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--text-primary);
+  background: transparent;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn-ghost:hover {
+  border-color: var(--pink-primary);
+  color: var(--pink-primary);
+  box-shadow: 0 0 12px rgba(255, 107, 157, 0.2);
+}
+
+.btn-ghost.confirming {
+  border-color: var(--red-warn);
+  color: var(--red-warn);
+  animation: pulse-warn 0.7s ease-in-out infinite;
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.4);
+}
+
+@keyframes pulse-warn {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.06); }
+}
+
+/* ============================================================
+   PLAYING SCREEN
+   ============================================================ */
+#screen-playing {
+  gap: 20px;
+}
+
+.game-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  width: 100%;
+  position: relative;
+  z-index: 70;
+}
+
+.progress-info {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: var(--bg-card);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  padding: 10px 24px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-subtle);
+}
+
+.progress-info span {
+  color: var(--pink-light);
+  font-weight: 700;
+}
+
+/* puzzle board */
+.puzzle-board {
+  display: grid;
+  gap: 10px;
+  width: min(82vw, calc(82vh * var(--board-ratio, 1)), 900px);
+  aspect-ratio: var(--board-ratio, 1);
+  max-height: 82vh;
+  position: relative;
+  z-index: 20;
+}
+
+/* card */
+.card {
+  perspective: 1000px;
+  cursor: pointer;
+  animation: card-idle 2.8s ease-in-out infinite;
+  animation-delay: var(--card-delay);
+}
+
+.card.flipped {
+  cursor: default;
+  animation: none;
+}
+
+.card.flipped:hover {
+  transform: none;
+}
+
+@keyframes card-idle {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-4px); }
+}
+
+.card-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transition: transform var(--transition-flip);
+  transform-style: preserve-3d;
+  border-radius: var(--card-radius, var(--radius-md));
+}
+
+.card.flipped .card-inner {
+  transform: rotateY(180deg);
+}
+
+.card:hover:not(.flipped) .card-inner {
+  box-shadow: 0 0 28px rgba(255, 107, 157, 0.45);
+}
+
+.card-front,
+.card-back {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  border-radius: var(--card-radius, var(--radius-md));
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.card-front {
+  /* 底色调亮：粉紫渐变，不抢文字 */
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.35), rgba(236, 72, 153, 0.2));
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.card-back {
+  transform: rotateY(180deg);
+  background: #000;
+}
+
+.card-back img {
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  display: block;
+  filter: blur(var(--tile-blur, 0px));
+}
+.card-back .back-shadow-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+.back-shadow-blob {
+  position: absolute;
+  background: rgba(0, 0, 0, 0.75);
+  border-radius: 40% 60% 55% 45%;
+}
+
+/* cover layers */
+.cover-solid {
+  position: absolute;
+  inset: 0;
+  /* 毛玻璃：半透明底 + 双光斑提亮 + 微边框 */
+  background:
+    radial-gradient(ellipse at 25% 20%, rgba(167,139,250,0.18) 0%, transparent 50%),
+    radial-gradient(ellipse at 75% 70%, rgba(236,72,153,0.12) 0%, transparent 45%),
+    rgba(35, 12, 70, 0.35);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border: 1px solid rgba(255,255,255,0.06);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
+}
+
+/* 玻璃高光线 */
+.card-front::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 8%; right: 8%; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+  z-index: 3;
+  pointer-events: none;
+}
+
+.cover-blur-layer {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+}
+
+.cover-emoji-layer {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--cover-font-size, 1.3rem);
+  font-weight: 800;
+  z-index: 2;
+  pointer-events: none;
+  letter-spacing: 0.06em;
+  /* 渐变发光文字，呼应标题风格 */
+  background: linear-gradient(135deg, #F9A8D4 0%, #C084FC 50%, #FDE68A 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  filter: drop-shadow(0 0 6px rgba(249,168,212,0.35));
+}
+
+@keyframes emoji-float {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50%      { transform: translateY(-4px) scale(1.08); }
+}
+
+/* ============================================================
+   FINISHED SCREEN
+   ============================================================ */
+#screen-finished {
+  gap: 28px;
+}
+
+.result-display {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.trophy {
+  font-size: 5rem;
+  animation: trophy-bounce 0.8s ease-out;
+}
+
+@keyframes trophy-bounce {
+  0%   { transform: scale(0) rotate(-15deg); opacity: 0; }
+  60%  { transform: scale(1.2) rotate(5deg); opacity: 1; }
+  80%  { transform: scale(0.9) rotate(-2deg); }
+  100% { transform: scale(1) rotate(0); }
+}
+
+.result-display h2 {
+  font-size: 1.8rem;
+  font-weight: 900;
+  background: linear-gradient(135deg, var(--gold), var(--pink-light));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.result-subtitle {
+  color: var(--text-secondary);
+  font-size: 1.1rem;
+}
+
+.result-image {
+  width: min(350px, 70vw);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: var(--shadow-glow);
+  border: 2px solid var(--border-glow);
+}
+
+.result-image img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.result-stats {
+  color: var(--text-secondary);
+  font-size: 1.05rem;
+  background: var(--bg-card);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  padding: 10px 28px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-subtle);
+}
+
+.result-stats span {
+  color: var(--gold);
+  font-weight: 700;
+}
+
+/* ============================================================
+   PARTICLE EFFECTS
+   ============================================================ */
+.particle-burst {
+  position: fixed;
+  z-index: 100;
+  pointer-events: none;
+  font-size: 1.1rem;
+  animation: burst-out 0.7s ease-out forwards;
+}
+
+@keyframes burst-out {
+  0%   { transform: translate(0, 0) scale(1); opacity: 1; }
+  100% { transform: translate(var(--dx), var(--dy)) scale(0.2); opacity: 0; }
+}
+
+/* firework for game end */
+.firework-emoji {
+  position: fixed;
+  z-index: 100;
+  pointer-events: none;
+  font-size: var(--fw-size);
+  animation: firework-drop var(--fw-dur) var(--fw-delay) linear forwards;
+  left: var(--fw-x);
+  top: -30px;
+}
+
+@keyframes firework-drop {
+  0%   { transform: translateY(0) rotate(0deg); opacity: 1; }
+  85%  { opacity: 1; }
+  100% { transform: translateY(105vh) rotate(720deg); opacity: 0; }
+}
+
+/* shake animation for wrong guess */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%      { transform: translateX(-8px); }
+  40%      { transform: translateX(8px); }
+  60%      { transform: translateX(-6px); }
+  80%      { transform: translateX(6px); }
+}
+
+/* keyboard hints */
+.kbd-hints {
+  display: flex;
+  gap: 20px;
+  margin-top: 12px;
+  font-size: 0.75rem;
+  color: rgba(255,255,255,0.25);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.kbd-hints span {
+  white-space: nowrap;
+}
+
+/* ============================================================
+   LOCAL LIVE SYNC
+   ============================================================ */
+.live-badge {
+  position: fixed;
+  left: 16px;
+  bottom: 16px;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: var(--radius-full);
+  border: 1px solid rgba(255,255,255,0.14);
+  background: rgba(15, 7, 32, 0.78);
+  color: var(--text-secondary);
+  font-size: 0.76rem;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--red-warn);
+  box-shadow: 0 0 12px rgba(239,68,68,0.7);
+}
+
+.live-badge.connected .live-dot {
+  background: var(--green-success);
+  box-shadow: 0 0 12px rgba(52,211,153,0.75);
+}
+
+.chat-panel {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 65;
+  width: min(330px, calc(100vw - 32px));
+  max-height: 42vh;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 16px;
+  background: rgba(15, 7, 32, 0.78);
+  color: var(--text-primary);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+}
+
+.chat-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  font-size: 0.78rem;
+  color: var(--pink-light);
+}
+
+.chat-id {
+  color: var(--text-secondary);
+  font-size: 0.7rem;
+}
+
+.chat-log {
+  min-height: 110px;
+  overflow-y: auto;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 0.82rem;
+}
+
+.chat-empty {
+  color: rgba(255,255,255,0.35);
+  font-size: 0.78rem;
+}
+
+.chat-line {
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.chat-speaker {
+  color: var(--gold-light);
+  font-weight: 700;
+  margin-right: 6px;
+}
+
+.chat-form {
+  display: flex;
+  gap: 8px;
+  padding: 10px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+}
+
+.chat-form input {
+  min-width: 0;
+  flex: 1;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 10px;
+  background: rgba(255,255,255,0.08);
+  color: var(--text-primary);
+  padding: 8px 10px;
+  outline: none;
+}
+
+.chat-form button {
+  border: 1px solid rgba(255,107,157,0.35);
+  border-radius: 10px;
+  background: rgba(255,107,157,0.18);
+  color: var(--pink-light);
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+body.player-view .host-only {
+  display: none !important;
+}
+
+body.player-view .card {
+  cursor: default;
+}
+
+body.player-view .title-sub::after {
+  content: ' / 等待出题人同步题板';
+}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media (max-width: 768px) {
+  .screen { padding: 16px; }
+  .title-main { font-size: clamp(1.6rem, 7vw, 2.4rem); }
+  .puzzle-board { width: min(88vw, 88vw); gap: 6px; }
+  .upload-zone { height: 180px; }
+  .config-panel { width: 90vw; padding: 18px; }
+  .game-header { flex-direction: column; gap: 12px; }
+  .chat-panel { max-height: 34vh; }
+  .btn-primary { padding: 14px 36px; font-size: 1.05rem; }
+  .trophy { font-size: 3.5rem; }
+}
+
+@media (max-width: 400px) {
+  .grid-selector { flex-wrap: wrap; }
+  .grid-selector button { padding: 6px 12px; font-size: 0.82rem; }
+}
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     BACKGROUND LAYERS
+     ============================================================ -->
+<div id="bg-stars"></div>
+<div id="bg-sakura"></div>
+
+<!-- ============================================================
+     IDLE SCREEN
+     ============================================================ -->
+<section id="screen-idle" class="screen active">
+  <div class="title-area">
+    <h1 class="title-main">👑 东半球猜猜背皇帝 👑</h1>
+    <p class="title-sub">✨ 你翻牌 · 我来猜 · 谁是背图王 ✨</p>
+  </div>
+
+  <div class="upload-zone" id="upload-zone">
+    <div class="upload-icon">📸</div>
+    <p>拖拽单张或多张图片到此处 或 点击上传</p>
+    <input type="file" accept="image/*" multiple hidden id="file-input">
+  </div>
+
+  <div id="history-section" style="display:none;">
+    <div class="history-header">
+      <h3>📜 最近对局</h3>
+      <button class="btn-clear-history" id="btn-clear-history" title="清空全部历史">🗑️ 清空</button>
+    </div>
+    <div id="history-list"></div>
+  </div>
+
+  <div class="kbd-hints">
+    <span>🖱️ 左键翻牌</span>
+    <span>🖱️ 右键撤销</span>
+    <span>⌨️ Esc 返回</span>
+    <span>⌨️ Enter 开始</span>
+  </div>
+</section>
+
+<!-- ============================================================
+     CONFIG SCREEN
+     ============================================================ -->
+<section id="screen-config" class="screen">
+  <button class="btn-ghost" id="btn-back-idle">← 返回</button>
+  <h2>⚙️ 游戏设置</h2>
+
+  <div class="preview-area" id="preview-area">
+    <div class="image-pager" id="image-pager" style="display:none;">
+      <button class="pager-arrow" id="pager-prev">◀</button>
+      <span class="pager-info" id="pager-info">第 1/1 张</span>
+      <button class="pager-arrow" id="pager-next">▶</button>
+    </div>
+    <img id="preview-img" src="" alt="预览">
+    <div class="grid-overlay" id="grid-overlay"></div>
+  </div>
+
+  <div class="config-panel">
+    <div class="config-row">
+      <div class="config-label">
+        <span>🔍 模糊封面</span>
+        <small>翻开的牌显示模糊图，0=关闭</small>
+      </div>
+      <div class="config-slider">
+        <input type="range" id="slider-blur" min="0" max="5" value="0" step="0.25">
+        <span class="slider-val" id="val-blur">0px</span>
+      </div>
+    </div>
+    <div class="config-row">
+      <div class="config-label">
+        <span>🌑 阴影遮盖</span>
+        <small>翻开的牌随机盖黑影，0%=关闭</small>
+      </div>
+      <div class="config-slider">
+        <input type="range" id="slider-mask" min="0" max="100" value="0" step="5">
+        <span class="slider-val" id="val-mask">0%</span>
+      </div>
+    </div>
+    <div class="config-row">
+      <div class="config-label">
+        <span>📐 切割网格</span>
+        <small>3×3 到 10×10</small>
+      </div>
+      <div class="grid-inputs">
+        <button class="grid-btn" data-target="rows" data-dir="-1">−</button>
+        <span class="grid-val" id="grid-val-rows">5</span>
+        <button class="grid-btn" data-target="rows" data-dir="1">+</button>
+        <span class="grid-sep">×</span>
+        <button class="grid-btn" data-target="cols" data-dir="-1">−</button>
+        <span class="grid-val" id="grid-val-cols">5</span>
+        <button class="grid-btn" data-target="cols" data-dir="1">+</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- live preview of card effect -->
+  <div class="preview-cards" id="preview-cards">
+    <span class="preview-label">👈 未翻开</span>
+    <div class="preview-card">
+      <div class="preview-card-front"><span>1-1</span></div>
+    </div>
+    <span style="color:var(--text-secondary);">→</span>
+    <div class="preview-card" id="preview-card-back">
+      <img id="preview-back-img" src="" alt="" style="transform:scale(1.04);">
+      <div class="preview-shadow-overlay" id="preview-shadow-overlay">
+        <div class="back-shadow-blob" style="width:55%;height:40%;top:20%;left:25%;border-radius:35% 65% 50% 50%;transform:rotate(15deg);"></div>
+        <div class="back-shadow-blob" style="width:35%;height:30%;top:50%;left:55%;border-radius:60% 40% 45% 55%;transform:rotate(-25deg);"></div>
+      </div>
+    </div>
+    <span class="preview-label">翻开后 👉</span>
+  </div>
+
+  <button class="btn-primary" id="btn-start-game">🎮 开始游戏</button>
+</section>
+
+<!-- ============================================================
+     PLAYING SCREEN
+     ============================================================ -->
+<section id="screen-playing" class="screen">
+  <div class="game-header">
+    <div class="progress-info">
+      第 <span id="image-idx">1</span>/<span id="image-total">1</span> 张 ·
+      已翻 <span id="flipped-count">0</span>/<span id="total-count">25</span>
+    </div>
+    <button class="btn-ghost" id="btn-end-game">🏁 下一张</button>
+  </div>
+  <div class="puzzle-board" id="puzzle-board"></div>
+</section>
+
+<!-- ============================================================
+     FINISHED SCREEN
+     ============================================================ -->
+<section id="screen-finished" class="screen">
+  <div class="result-display">
+    <div class="trophy">🏆</div>
+    <h2>游戏结束！</h2>
+    <p class="result-subtitle">谁是背图王？👑</p>
+    <div class="result-image" id="result-image"></div>
+    <p class="result-stats">
+      翻开了 <span id="result-flipped"></span> / <span id="result-total"></span> 块
+    </p>
+  </div>
+  <button class="btn-primary" id="btn-replay">🔄 再来一局</button>
+</section>
+
+<div class="live-badge" id="live-badge">
+  <span class="live-dot"></span>
+  <span id="live-status">同步连接中...</span>
+</div>
+
+<aside class="chat-panel" id="chat-panel">
+  <div class="chat-head">
+    <strong>聊天</strong>
+    <span class="chat-id" id="chat-id"></span>
+  </div>
+  <div class="chat-log" id="chat-log">
+    <div class="chat-empty">还没有消息</div>
+  </div>
+  <form class="chat-form" id="chat-form">
+    <input id="chat-input" maxlength="120" autocomplete="off" placeholder="说点什么..." />
+    <button type="submit">发送</button>
+  </form>
+</aside>
+
+<!-- ============================================================
+     JAVASCRIPT
+     ============================================================ -->
+<script>
+(function() {
+'use strict';
+
+// ============================================================
+// STATE
+// ============================================================
+const STATE = {
+  screen: 'idle',
+  images: [],            // [{ dataUrl, name }] 多张图片
+  currentImageIdx: 0,    // 当前第几张
+  currentImageRatio: 1,  // 当前图片原始宽高比
+  tiles: [],             // [{ id, row, col, original, flipped }]
+  grid: { rows: 5, cols: 5 },
+  blurRadius: 0,         // 0-5px 翻开后模糊程度 (×0.2→CSS blur)
+  maskChance: 0,         // 0-100% 翻开后随机阴影遮盖概率
+  flippedCount: 0,
+  startTime: null,
+};
+// convenience getter
+function currentImage() { return STATE.images[STATE.currentImageIdx]?.dataUrl || null; }
+
+// ============================================================
+// DOM REFS
+// ============================================================
+const $ = (sel) => document.querySelector(sel);
+const $$ = (sel) => document.querySelectorAll(sel);
+
+const screens = {
+  idle:     $('#screen-idle'),
+  config:   $('#screen-config'),
+  playing:  $('#screen-playing'),
+  finished: $('#screen-finished'),
+};
+
+// ============================================================
+// LOCAL LIVE SYNC
+// ============================================================
+const VIEW_MODE = new URLSearchParams(location.search).get('view') || 'host';
+const IS_PLAYER_VIEW = VIEW_MODE === 'player';
+const IS_HOST_VIEW = !IS_PLAYER_VIEW;
+let liveSocket = null;
+let liveApplying = false;
+let liveTileKey = '';
+let liveAnimating = false;
+let pendingLiveState = null;
+let LIVE_USER = { id: 'guest', username: 'guest', label: 'guest' };
+
+function getAPIBase() {
+  if (location.port === '5173') return `${location.protocol}//${location.hostname}:8080/api`;
+  return '/api';
+}
+
+async function loadCurrentUser() {
+  const token = localStorage.getItem('karuta_token');
+  if (!token) {
+    return { id: 'guest', username: 'guest', label: 'guest' };
+  }
+  try {
+    const res = await fetch(`${getAPIBase()}/me`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) throw new Error('not logged in');
+    const user = await res.json();
+    const id = String(user.id || 'guest');
+    const username = user.username || `user-${id}`;
+    return { id, username, label: `${username}#${id}` };
+  } catch {
+    return { id: 'guest', username: 'guest', label: 'guest' };
+  }
+}
+document.body.classList.toggle('player-view', IS_PLAYER_VIEW);
+
+function getLiveWSURL() {
+  const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const host = location.port === '5173' ? `${location.hostname}:8080` : location.host;
+  return `${protocol}//${host}/ws/ccp-local`;
+}
+
+function setLiveStatus(text, connected) {
+  const badge = $('#live-badge');
+  $('#live-status').textContent = text;
+  badge.classList.toggle('connected', !!connected);
+}
+
+function liveFlippedIndices() {
+  return STATE.tiles.map((tile, index) => tile.flipped ? index : -1).filter(index => index >= 0);
+}
+
+function liveSnapshot() {
+  return {
+    screen: STATE.screen,
+    images: STATE.images,
+    currentImageIdx: STATE.currentImageIdx,
+    currentImageRatio: STATE.currentImageRatio,
+    grid: STATE.grid,
+    blurRadius: STATE.blurRadius,
+    maskChance: STATE.maskChance,
+    flipped: liveFlippedIndices(),
+  };
+}
+
+function sendLiveState() {
+  if (!IS_HOST_VIEW || liveApplying || !liveSocket || liveSocket.readyState !== WebSocket.OPEN) return;
+  liveSocket.send(JSON.stringify({ type: 'set_state', data: liveSnapshot() }));
+}
+
+function tileKeyFor(data) {
+  const img = data.images?.[data.currentImageIdx || 0]?.dataUrl || '';
+  const grid = data.grid || {};
+  return [data.currentImageIdx || 0, img.length, grid.rows || 5, grid.cols || 5, data.blurRadius || 0].join(':');
+}
+
+async function applyLiveState(data) {
+  if (!IS_PLAYER_VIEW || !data || liveApplying) return;
+  if (liveAnimating) {
+    pendingLiveState = data;
+    return;
+  }
+  liveApplying = true;
+  try {
+    STATE.images = Array.isArray(data.images) ? data.images : [];
+    STATE.currentImageIdx = Number(data.currentImageIdx || 0);
+    STATE.currentImageRatio = Number(data.currentImageRatio || 1);
+    STATE.grid = {
+      rows: Number(data.grid?.rows || 5),
+      cols: Number(data.grid?.cols || 5),
+    };
+    STATE.blurRadius = Number(data.blurRadius || 0);
+    STATE.maskChance = Number(data.maskChance || 0);
+    const flipped = new Set(Array.isArray(data.flipped) ? data.flipped.map(Number) : []);
+
+    if (data.screen === 'playing' && currentImage()) {
+      const nextKey = tileKeyFor(data);
+      if (nextKey !== liveTileKey || STATE.tiles.length !== STATE.grid.rows * STATE.grid.cols) {
+        STATE.tiles = await sliceImage(currentImage(), STATE.grid.rows, STATE.grid.cols, STATE.blurRadius);
+        liveTileKey = nextKey;
+      }
+      STATE.tiles.forEach((tile, index) => { tile.flipped = flipped.has(index); });
+      STATE.flippedCount = flipped.size;
+      $('#image-idx').textContent = STATE.currentImageIdx + 1;
+      $('#image-total').textContent = STATE.images.length || 1;
+      renderBoard();
+      updateProgress();
+      showScreen('playing');
+    } else if (data.screen === 'finished' && currentImage()) {
+      $('#result-image').innerHTML = `<img src="${currentImage()}" alt="">`;
+      $('#result-flipped').textContent = flipped.size;
+      $('#result-total').textContent = STATE.grid.rows * STATE.grid.cols;
+      showScreen('finished');
+    } else {
+      STATE.tiles = [];
+      STATE.flippedCount = 0;
+      liveTileKey = '';
+      showScreen('idle');
+    }
+  } finally {
+    liveApplying = false;
+  }
+}
+
+function chatRoleLabel(role) {
+  if (role === 'host') return '出题人';
+  if (role === 'player') return '玩家';
+  return '游客';
+}
+
+function appendChatMessage(msg) {
+  if (!msg || !msg.text) return;
+  const log = $('#chat-log');
+  const empty = log.querySelector('.chat-empty');
+  if (empty) empty.remove();
+  const line = document.createElement('div');
+  line.className = 'chat-line';
+  const speaker = document.createElement('span');
+  speaker.className = 'chat-speaker';
+  speaker.textContent = `[${chatRoleLabel(msg.role)}] ${msg.speaker || 'guest'}：`;
+  line.appendChild(speaker);
+  line.appendChild(document.createTextNode(msg.text));
+  log.appendChild(line);
+  while (log.children.length > 80) log.removeChild(log.firstChild);
+  log.scrollTop = log.scrollHeight;
+}
+
+function initLiveChat() {
+  $('#chat-id').textContent = LIVE_USER.label;
+  $('#chat-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const input = $('#chat-input');
+    const text = input.value.trim();
+    if (!text || !liveSocket || liveSocket.readyState !== WebSocket.OPEN) return;
+    liveSocket.send(JSON.stringify({
+      type: 'chat',
+      data: {
+        userId: LIVE_USER.id,
+        username: LIVE_USER.username,
+        speaker: LIVE_USER.label,
+        role: IS_HOST_VIEW ? 'host' : 'player',
+        text,
+        ts: Date.now(),
+      },
+    }));
+    input.value = '';
+  });
+}
+
+function initLiveSync() {
+  initLiveChat();
+  if (IS_PLAYER_VIEW) {
+    ['#upload-zone', '#history-section', '#btn-back-idle', '#btn-start-game', '#btn-end-game', '#btn-replay'].forEach(sel => {
+      const el = $(sel);
+      if (el) el.classList.add('host-only');
+    });
+  }
+
+  const connect = () => {
+    setLiveStatus('同步连接中...', false);
+    liveSocket = new WebSocket(getLiveWSURL());
+    liveSocket.addEventListener('open', () => {
+      setLiveStatus(IS_HOST_VIEW ? '出题端已连接' : '玩家端已连接', true);
+      sendLiveState();
+    });
+    liveSocket.addEventListener('message', (event) => {
+      let msg = null;
+      try { msg = JSON.parse(event.data); } catch { return; }
+      if (msg.type === 'state_update') applyLiveState(msg.data);
+      if (msg.type === 'chat') appendChatMessage(msg.data);
+      if (msg.type === 'action') handleLiveAction(msg.data);
+    });
+    liveSocket.addEventListener('close', () => {
+      setLiveStatus('同步已断开，重连中...', false);
+      setTimeout(connect, 1200);
+    });
+    liveSocket.addEventListener('error', () => setLiveStatus('同步连接异常', false));
+  };
+  connect();
+}
+
+// ============================================================
+// COVER EMOJIS
+// ============================================================
+const COVER_EMOJIS = ['🎀','🌸','✨','💫','🌟','⭐','🎪','🎭','💎','🔮','🎵','🎶','💖','🎯','🎨','🌈','🦋','🌺','🍀','💜'];
+const PARTICLE_EMOJIS = ['✨','💫','⭐','🌟','💖','🎀','💎','🌸','🎵'];
+const FIREWORK_EMOJIS = ['🎉','🎊','🥳','🏆','💖','👑','✨','🌟','💫','🎀','🌸','💎','🎯','💜'];
+
+function randomCoverEmoji() {
+  return COVER_EMOJIS[Math.floor(Math.random() * COVER_EMOJIS.length)];
+}
+function randomParticleEmoji() {
+  return PARTICLE_EMOJIS[Math.floor(Math.random() * PARTICLE_EMOJIS.length)];
+}
+function randomFireworkEmoji() {
+  return FIREWORK_EMOJIS[Math.floor(Math.random() * FIREWORK_EMOJIS.length)];
+}
+
+// ============================================================
+// SCREEN SWITCHING
+// ============================================================
+function showScreen(name) {
+  Object.keys(screens).forEach(k => {
+    screens[k].classList.toggle('active', k === name);
+  });
+  STATE.screen = name;
+}
+window.showScreen = showScreen;
+
+// ============================================================
+// BACKGROUND INIT
+// ============================================================
+function initStars() {
+  const container = $('#bg-stars');
+  container.innerHTML = '';
+  const types = ['bright', 'pink', 'purple'];
+  for (let i = 0; i < 55; i++) {
+    const star = document.createElement('div');
+    star.className = 'star ' + types[Math.floor(Math.random() * types.length)];
+    star.style.left = Math.random() * 100 + '%';
+    star.style.top = Math.random() * 100 + '%';
+    const size = Math.random() * 2.5 + 1;
+    star.style.width = size + 'px';
+    star.style.height = size + 'px';
+    star.style.setProperty('--dur', (Math.random() * 2 + 1.2) + 's');
+    star.style.setProperty('--delay', Math.random() * 4 + 's');
+    container.appendChild(star);
+  }
+}
+
+function initSakura() {
+  const container = $('#bg-sakura');
+  container.innerHTML = '';
+  const petals = ['🌸','💮','🏵️','🌺','🦋','🍃'];
+  for (let i = 0; i < 28; i++) {
+    const petal = document.createElement('div');
+    petal.className = 'sakura-petal';
+    petal.textContent = petals[Math.floor(Math.random() * petals.length)];
+    petal.style.left = Math.random() * 100 + '%';
+    petal.style.setProperty('--size', (Math.random() * 0.8 + 0.6) + 'rem');
+    petal.style.setProperty('--dur', (Math.random() * 6 + 8) + 's');
+    petal.style.setProperty('--delay', (Math.random() * -20) + 's');
+    petal.style.setProperty('--drift', (Math.random() * 120 - 60) + 'px');
+    container.appendChild(petal);
+  }
+}
+
+initStars();
+initSakura();
+
+// ============================================================
+// CANVAS ENGINE
+// ============================================================
+function loadImageFromFile(file) {
+  return new Promise((resolve, reject) => {
+    if (!file || !file.type.startsWith('image/')) {
+      reject(new Error('请上传图片文件'));
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function applyBlur(sourceCanvas, radius = 12) {
+  const canvas = document.createElement('canvas');
+  canvas.width = sourceCanvas.width;
+  canvas.height = sourceCanvas.height;
+  const ctx = canvas.getContext('2d');
+  // scale factor: Canvas blur is surprisingly strong on small tiles
+  ctx.filter = `blur(${radius * 0.35}px)`;
+  ctx.drawImage(sourceCanvas, 0, 0);
+  return canvas.toDataURL('image/jpeg', 0.9);
+}
+
+function createThumbnail(dataUrl, maxWidth = 200) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const scale = maxWidth / img.naturalWidth;
+      const canvas = document.createElement('canvas');
+      canvas.width = maxWidth;
+      canvas.height = Math.round(img.naturalHeight * scale);
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL('image/jpeg', 0.5));
+    };
+    img.src = dataUrl;
+  });
+}
+
+// 原图 → Canvas 按 rows×cols 均等切割 → 每块导出 JPEG DataURL
+// 浮点坐标保证不丢边缘像素，Canvas 自动插值
+function sliceImage(dataUrl, rows, cols, blurRadius = 0) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      STATE.currentImageRatio = img.naturalWidth / img.naturalHeight;
+      const tiles = [];
+      const tw = img.naturalWidth / cols;  // 浮点精确均分
+      const th = img.naturalHeight / rows;
+      const srcCanvas = document.createElement('canvas');
+      const ctx = srcCanvas.getContext('2d');
+
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          srcCanvas.width = Math.floor(tw);   // Canvas 尺寸取整
+          srcCanvas.height = Math.floor(th);
+          // drawImage 源坐标/尺寸用浮点数确保完整覆盖
+          ctx.drawImage(img, c * tw, r * th, tw, th, 0, 0, Math.floor(tw), Math.floor(th));
+          tiles.push({
+            id: `t${r}-${c}`, row: r, col: c,
+            original: srcCanvas.toDataURL('image/jpeg', 0.92),
+            flipped: false,
+          });
+        }
+      }
+      resolve(tiles);
+    };
+    img.src = dataUrl;
+  });
+}
+
+// ============================================================
+// HISTORY (localStorage)
+// ============================================================
+const HISTORY_KEY = 'guessemperor_history';
+const MAX_HISTORY = 20;
+
+function loadHistory() {
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+
+function saveHistory(entry) {
+  let history = loadHistory();
+  history.unshift(entry);
+  if (history.length > MAX_HISTORY) history = history.slice(0, MAX_HISTORY);
+  try {
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+  } catch { /* storage full, ignore */ }
+}
+
+function deleteHistoryItem(idx) {
+  let history = loadHistory();
+  history.splice(idx, 1);
+  try { localStorage.setItem(HISTORY_KEY, JSON.stringify(history)); } catch {}
+  renderHistory();
+}
+
+function clearAllHistory() {
+  try { localStorage.removeItem(HISTORY_KEY); } catch {}
+  renderHistory();
+}
+
+function renderHistory() {
+  const list = $('#history-list');
+  const section = $('#history-section');
+  const history = loadHistory();
+  if (history.length === 0) {
+    section.style.display = 'none';
+    return;
+  }
+  section.style.display = 'block';
+  list.innerHTML = history.map((h, i) => `
+    <div class="history-item" data-idx="${i}">
+      <button class="hi-delete" data-idx="${i}" title="删除此记录">×</button>
+      <img class="hi-thumb" src="${h.thumb}" alt="">
+      <div class="hi-meta">${h.grid} · 翻了${h.flipped}/${h.total}块</div>
+    </div>
+  `).join('');
+
+  list.querySelectorAll('.history-item').forEach(item => {
+    item.addEventListener('click', (e) => {
+      if (e.target.classList.contains('hi-delete')) return;
+      const idx = parseInt(item.dataset.idx);
+      const entry = loadHistory()[idx];
+      if (entry && entry.imageData) {
+        STATE.images = [{ dataUrl: entry.imageData, name: '历史图片' }];
+        STATE.currentImageIdx = 0;
+        const [rows, cols] = entry.grid.split('x').map(Number);
+        STATE.grid = { rows, cols };
+        STATE.blurRadius = entry.blurRadius || 0;
+        STATE.maskChance = entry.maskChance || 0;
+        enterConfig();
+      } else {
+        alert('该历史记录的图片数据已丢失，请重新上传。');
+      }
+    });
+  });
+
+  // delete buttons
+  list.querySelectorAll('.hi-delete').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const idx = parseInt(btn.dataset.idx);
+      deleteHistoryItem(idx);
+    });
+  });
+}
+
+function addHistoryEntry() {
+  const img = currentImage();
+  if (!img) return;
+  // compress to avoid localStorage 5MB limit
+  Promise.all([
+    createThumbnail(img, 200),
+    createThumbnail(img, 1000)
+  ]).then(([thumb, imageData]) => {
+    saveHistory({
+      imageData,
+      thumb,
+      grid: `${STATE.grid.rows}x${STATE.grid.cols}`,
+      blurRadius: STATE.blurRadius,
+      maskChance: STATE.maskChance,
+      flipped: STATE.flippedCount,
+      total: STATE.tiles.length,
+    });
+    renderHistory();
+  });
+}
+
+// ============================================================
+// IDLE → CONFIG: upload
+// ============================================================
+// 多图上传：过滤 → 清空旧数据 → 逐张 base64 编码 → 全部就绪后进配置
+function handleFiles(files) {
+  if (IS_PLAYER_VIEW) return;
+  if (!files || files.length === 0) return;
+  const imageFiles = Array.from(files).filter(f => f.type.startsWith('image/'));
+  if (imageFiles.length === 0) return;
+
+  STATE.images = [];          // 每次上传清空旧图片
+  STATE.currentImageIdx = 0;
+  let loaded = 0;             // 计数器，等所有 Promise 完成
+  imageFiles.forEach((file, i) => {
+    loadImageFromFile(file).then(dataUrl => {
+      STATE.images[i] = { dataUrl, name: file.name || `图片${i+1}` };
+      loaded++;
+      if (loaded === imageFiles.length) enterConfig();  // 全部加载完进配置
+    }).catch(err => {
+      alert('图片加载失败：' + err.message);
+    });
+  });
+}
+
+function enterConfig() {
+  // update preview
+  $('#preview-img').src = currentImage();
+
+  // update sliders
+  $('#slider-blur').value = STATE.blurRadius;
+  $('#val-blur').textContent = (STATE.blurRadius).toFixed(2).replace(/0+$/,'').replace(/\.$/,'') + 'px';
+  $('#slider-mask').value = STATE.maskChance;
+  $('#val-mask').textContent = STATE.maskChance + '%';
+
+  // update grid inputs
+  $('#grid-val-rows').textContent = STATE.grid.rows;
+  $('#grid-val-cols').textContent = STATE.grid.cols;
+
+  // live card preview
+  $('#preview-back-img').src = currentImage();
+  updateCardPreview();
+
+  // image pager
+  updateImagePager();
+
+  updateGridOverlay();
+  showScreen('config');
+}
+
+function updateImagePager() {
+  const total = STATE.images.length;
+  const pager = $('#image-pager');
+  if (total <= 1) { pager.style.display = 'none'; return; }
+  pager.style.display = 'flex';
+  $('#pager-info').textContent = `第 ${STATE.currentImageIdx + 1}/${total} 张`;
+  $('#pager-prev').style.visibility = STATE.currentImageIdx === 0 ? 'hidden' : 'visible';
+  $('#pager-next').style.visibility = STATE.currentImageIdx >= total - 1 ? 'hidden' : 'visible';
+}
+
+function switchPreviewImage(dir) {
+  const total = STATE.images.length;
+  STATE.currentImageIdx = Math.max(0, Math.min(total - 1, STATE.currentImageIdx + dir));
+  $('#preview-img').src = currentImage();
+  $('#preview-back-img').src = currentImage();
+  updateImagePager();
+}
+
+function updateCardPreview() {
+  const blurPx = STATE.blurRadius;
+  const maskPct = STATE.maskChance;
+  // blur directly on preview img
+  $('#preview-back-img').style.filter = blurPx > 0 ? `blur(${blurPx * 0.2}px)` : 'none';
+  // shadow preview
+  const shadowOverlay = $('#preview-shadow-overlay');
+  if (maskPct > 0) {
+    shadowOverlay.style.display = 'block';
+    shadowOverlay.style.opacity = maskPct / 100;
+  } else {
+    shadowOverlay.style.display = 'none';
+  }
+}
+
+function updateGridOverlay() {
+  const overlay = $('#grid-overlay');
+  const { rows, cols } = STATE.grid;
+  overlay.innerHTML = '';
+
+  for (let i = 1; i < rows; i++) {
+    const line = document.createElement('div');
+    line.className = 'grid-line-h';
+    line.style.top = (i / rows * 100) + '%';
+    overlay.appendChild(line);
+  }
+  for (let i = 1; i < cols; i++) {
+    const line = document.createElement('div');
+    line.className = 'grid-line-v';
+    line.style.left = (i / cols * 100) + '%';
+    overlay.appendChild(line);
+  }
+}
+
+// ============================================================
+// CONFIG interactions
+// ============================================================
+// blur slider
+$('#slider-blur').addEventListener('input', function() {
+  STATE.blurRadius = parseFloat(this.value);
+  $('#val-blur').textContent = STATE.blurRadius.toFixed(2).replace(/0+$/,'').replace(/\.$/,'') + 'px';
+  updateCardPreview();
+});
+// mask slider
+$('#slider-mask').addEventListener('input', function() {
+  STATE.maskChance = parseInt(this.value);
+  $('#val-mask').textContent = STATE.maskChance + '%';
+  updateCardPreview();
+});
+// grid stepper buttons + wheel
+function stepGrid(target, dir) {
+  const cur = STATE.grid[target];
+  const next = Math.max(3, Math.min(10, cur + dir));
+  if (next === cur) return;
+  STATE.grid[target] = next;
+  $('#grid-val-' + target).textContent = next;
+  updateGridOverlay();
+}
+document.querySelectorAll('.grid-btn').forEach(btn => {
+  btn.addEventListener('click', () => stepGrid(btn.dataset.target, parseInt(btn.dataset.dir)));
+});
+// wheel on grid inputs area
+document.querySelector('.grid-inputs').addEventListener('wheel', (e) => {
+  e.preventDefault();
+  // determine which side: rows if left half, cols if right half
+  const rect = e.currentTarget.getBoundingClientRect();
+  const target = (e.clientX < rect.left + rect.width / 2) ? 'rows' : 'cols';
+  stepGrid(target, e.deltaY > 0 ? 1 : -1);
+}, { passive: false });
+
+// ============================================================
+// START GAME
+// ============================================================
+function startGame() {
+  if (STATE.images.length === 0) {
+    alert('请先上传图片');
+    return;
+  }
+
+  $('#btn-start-game').textContent = '⏳ 处理中...';
+  $('#btn-start-game').disabled = true;
+
+  const { rows, cols } = STATE.grid;
+  const imgData = currentImage();
+  if (!imgData) { alert('图片加载异常'); return; }
+
+  sliceImage(imgData, rows, cols, STATE.blurRadius).then(tiles => {
+    STATE.tiles = tiles;
+    STATE.flippedCount = 0;
+    STATE.startTime = Date.now();
+
+    // update multi-image progress
+    STATE.currentImageIdx = 0;
+    $('#image-idx').textContent = '1';
+    $('#image-total').textContent = STATE.images.length;
+    updateEndButtonLabel();
+
+    renderBoard();
+    updateProgress();
+    showScreen('playing');
+    sendLiveState();
+
+    $('#btn-start-game').textContent = '🎮 开始游戏';
+    $('#btn-start-game').disabled = false;
+  });
+}
+window.startGame = startGame;
+
+// ============================================================
+// RANDOM SHADOW BLOBS
+// ============================================================
+function randomShadows() {
+  const count = 1 + Math.floor(Math.random() * 3); // 1-3 blobs
+  let html = '';
+  for (let i = 0; i < count; i++) {
+    const w = 25 + Math.random() * 50;
+    const h = 20 + Math.random() * 45;
+    const t = Math.random() * (100 - h);
+    const l = Math.random() * (100 - w);
+    const br = () => 30 + Math.random() * 50;
+    const rot = Math.random() * 360;
+    const alpha = 0.55 + Math.random() * 0.35;
+    html += `<div class="back-shadow-blob" style="
+      width:${w}%;height:${h}%;top:${t}%;left:${l}%;
+      border-radius:${br()}% ${br()}% ${br()}% ${br()}%;
+      transform:rotate(${rot}deg);
+      background:rgba(0,0,0,${alpha});
+    "></div>`;
+  }
+  return html;
+}
+
+// ============================================================
+// RENDER BOARD
+// ============================================================
+// 动态渲染 N×M 拼图板：CSS Grid + 自适应 gap/圆角/字号 + 3D 翻牌卡片
+function renderBoard() {
+  const board = $('#puzzle-board');
+  const { rows, cols } = STATE.grid;
+  board.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+  board.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
+  board.style.setProperty('--board-ratio', STATE.currentImageRatio || 1);
+
+  const maxRC = Math.max(rows, cols);
+  const gap = Math.max(1, 6 - maxRC);           // 网格越大间隙越小
+  const cardRadius = Math.max(2, 10 - maxRC);   // 网格越大圆角越小
+  board.style.gap = gap + 'px';
+  // 大网格靠上对齐避免溢出
+  const playingScreen = $('#screen-playing');
+  playingScreen.style.justifyContent = maxRC >= 7 ? 'flex-start' : 'center';
+  playingScreen.style.paddingTop = maxRC >= 7 ? '16px' : '';
+  board.innerHTML = '';
+
+  const showMask = STATE.maskChance > 0;
+
+  STATE.tiles.forEach((tile, i) => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.dataset.index = i;
+    card.style.setProperty('--card-delay', `${i * 0.07}s`);       // 浮动动画交错
+    card.style.setProperty('--card-radius', cardRadius + 'px');
+    card.style.setProperty('--tile-blur', (STATE.blurRadius * 0.2) + 'px');  // 滑块×0.2=CSS blur
+    const coverFontSize = Math.max(0.55, 1.6 - maxRC * 0.1);     // 字号自适应
+    card.style.setProperty('--cover-font-size', coverFontSize + 'rem');
+
+    // 正面：紫色渐变底 + 行列号标签
+    const label = `${tile.row + 1}-${tile.col + 1}`;
+    const coverHTML = `<div class="cover-solid"></div>
+                       <div class="cover-emoji-layer">${label}</div>`;
+
+    // 背面：原图（CSS blur 处理）+ 随机阴影块
+    let backHTML = `<img src="${tile.original}" alt="" loading="lazy">`;
+    if (showMask && Math.random() * 100 < STATE.maskChance) {
+      backHTML += `<div class="back-shadow-overlay">${randomShadows()}</div>`;
+    }
+
+    card.innerHTML = `
+      <div class="card-inner">
+        <div class="card-front">${coverHTML}</div>
+        <div class="card-back">${backHTML}</div>
+      </div>
+    `;
+    if (tile.flipped) card.classList.add('flipped');
+    // 左键翻牌 / 右键撤销
+    card.addEventListener('click', () => flipTile(i, card));
+    card.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      unflipTile(i, card);
+    });
+    board.appendChild(card);
+  });
+}
+
+// ============================================================
+// FLIP TILE
+// ============================================================
+function flipTile(index, cardEl) {
+  if (IS_PLAYER_VIEW) return;
+  if (STATE.tiles[index].flipped) return;
+  if (STATE.screen !== 'playing') return;
+
+  STATE.tiles[index].flipped = true;
+  STATE.flippedCount++;
+  cardEl.classList.add('flipped');
+
+  spawnParticles(cardEl);
+  updateProgress();
+  sendLiveState();
+
+  // if all flipped, auto-end after short delay
+  if (STATE.flippedCount >= STATE.tiles.length) {
+    setTimeout(() => requestEndGame(), 800);
+  }
+}
+
+function unflipTile(index, cardEl) {
+  if (IS_PLAYER_VIEW) return;
+  if (!STATE.tiles[index].flipped) return;
+  if (STATE.screen !== 'playing') return;
+
+  STATE.tiles[index].flipped = false;
+  STATE.flippedCount--;
+  cardEl.classList.remove('flipped');
+  updateProgress();
+  sendLiveState();
+}
+
+// ============================================================
+// PARTICLES
+// ============================================================
+function spawnParticles(cardEl) {
+  const rect = cardEl.getBoundingClientRect();
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top + rect.height / 2;
+
+  for (let i = 0; i < 14; i++) {
+    const particle = document.createElement('span');
+    particle.className = 'particle-burst';
+    particle.textContent = randomParticleEmoji();
+    particle.style.left = cx + 'px';
+    particle.style.top = cy + 'px';
+    const angle = Math.random() * Math.PI * 2;
+    const dist = 50 + Math.random() * 130;
+    particle.style.setProperty('--dx', Math.cos(angle) * dist + 'px');
+    particle.style.setProperty('--dy', Math.sin(angle) * dist + 'px');
+    document.body.appendChild(particle);
+    setTimeout(() => particle.remove(), 720);
+  }
+}
+
+function spawnFireworks() {
+  for (let i = 0; i < 60; i++) {
+    const emoji = document.createElement('span');
+    emoji.className = 'firework-emoji';
+    emoji.textContent = randomFireworkEmoji();
+    emoji.style.setProperty('--fw-x', Math.random() * 100 + '%');
+    emoji.style.setProperty('--fw-size', (Math.random() * 1.8 + 0.8) + 'rem');
+    emoji.style.setProperty('--fw-dur', (Math.random() * 2 + 2) + 's');
+    emoji.style.setProperty('--fw-delay', (Math.random() * 1.5) + 's');
+    document.body.appendChild(emoji);
+    setTimeout(() => emoji.remove(), 4000);
+  }
+}
+
+// ============================================================
+// PROGRESS
+// ============================================================
+function updateProgress() {
+  $('#flipped-count').textContent = STATE.flippedCount;
+  $('#total-count').textContent = STATE.tiles.length;
+}
+
+// ============================================================
+// END GAME
+// ============================================================
+let endConfirmTimer = null;
+
+function handleEndClick() {
+  const btn = $('#btn-end-game');
+
+  if (btn.classList.contains('confirming')) {
+    // second click — confirm
+    clearTimeout(endConfirmTimer);
+    btn.classList.remove('confirming');
+    btn.textContent = '🏁 结束对局';
+    requestEndGame();
+  } else {
+    // first click — enter confirming state
+    btn.classList.add('confirming');
+    btn.textContent = '再点一次确认 (╥﹏╥)';
+    endConfirmTimer = setTimeout(() => {
+      btn.classList.remove('confirming');
+      btn.textContent = '🏁 结束对局';
+    }, 3000);
+  }
+}
+window.handleEndClick = handleEndClick;
+
+// 裁判双击确认 → 翻完剩余牌 → 最后一张进FINISHED / 否则自动下一张
+// 拆分为 requestEndGame (发 action) + runEndGameAnimation (播动画)
+// 方案A：host 发 action 后等待广播，所有视角收到广播后统一播放动画
+function sendLiveAction(action, payload = {}) {
+  if (!IS_HOST_VIEW || !liveSocket || liveSocket.readyState !== WebSocket.OPEN) return;
+  liveSocket.send(JSON.stringify({
+    type: 'action',
+    data: { action, ...payload, ts: Date.now() },
+  }));
+}
+
+function requestEndGame() {
+  if (!IS_HOST_VIEW) return;
+  sendLiveAction('end_game');
+}
+
+function handleLiveAction(data) {
+  if (!data || !data.action) return;
+  if (data.action === 'end_game') {
+    runEndGameAnimation();
+  }
+}
+
+function runEndGameAnimation() {
+  if (liveAnimating) return;
+  liveAnimating = true;
+
+  const isLast = STATE.currentImageIdx >= STATE.images.length - 1;
+
+  // 未翻卡片 stagger 翻转（每块间隔100ms）
+  const board = $('#puzzle-board');
+  const cards = board.querySelectorAll('.card:not(.flipped)');
+  cards.forEach((card, i) => {
+    setTimeout(() => {
+      const idx = parseInt(card.dataset.index);
+      if (!STATE.tiles[idx].flipped) {
+        STATE.tiles[idx].flipped = true;
+        STATE.flippedCount++;
+        card.classList.add('flipped');
+        spawnParticles(card);
+      }
+    }, i * 100);
+  });
+
+  const totalDelay = cards.length * 100 + 600;
+  setTimeout(() => {
+    if (isLast) {
+      // 全部完成：烟花 → 结算页
+      spawnFireworks();
+      $('#result-image').innerHTML = `<img src="${currentImage()}" alt="">`;
+      $('#result-flipped').textContent = STATE.flippedCount;
+      $('#result-total').textContent = STATE.tiles.length;
+      showScreen('finished');
+      addHistoryEntry();
+    } else if (IS_HOST_VIEW) {
+      // 非最后一张：host 自动切下一张图（nextImage 内部调 sendLiveState）
+      nextImage();
+    }
+
+    liveAnimating = false;
+    if (IS_HOST_VIEW && isLast) {
+      sendLiveState();
+    } else if (!IS_HOST_VIEW && pendingLiveState) {
+      const state = pendingLiveState;
+      pendingLiveState = null;
+      applyLiveState(state);
+    }
+  }, totalDelay);
+}
+
+// 多图模式：切到下一张 → 重新切片 → 刷新拼图板
+function nextImage() {
+  STATE.currentImageIdx++;
+  const imgData = currentImage();
+  if (!imgData) return;
+
+  const { rows, cols } = STATE.grid;
+  sliceImage(imgData, rows, cols, STATE.blurRadius).then(tiles => {
+    STATE.tiles = tiles;
+    STATE.flippedCount = 0;
+    STATE.startTime = Date.now();
+    $('#image-idx').textContent = STATE.currentImageIdx + 1;
+    updateEndButtonLabel();       // 最后一张时按钮文案变为"结束对局"
+    renderBoard();
+    updateProgress();
+    sendLiveState();
+  });
+}
+
+function updateEndButtonLabel() {
+  const btn = $('#btn-end-game');
+  btn.classList.remove('confirming');
+  clearTimeout(endConfirmTimer);
+  const isLast = STATE.currentImageIdx >= STATE.images.length - 1;
+  btn.textContent = isLast ? '🏁 结束对局' : '🏁 下一张';
+}
+
+// ============================================================
+// RESET / REPLAY
+// ============================================================
+function resetGame() {
+  STATE.tiles = [];
+  STATE.images = [];
+  STATE.currentImageIdx = 0;
+  STATE.currentImageRatio = 1;
+  STATE.flippedCount = 0;
+  STATE.startTime = null;
+  // reset end button state
+  const btn = $('#btn-end-game');
+  btn.classList.remove('confirming');
+  btn.textContent = '🏁 下一张';
+  clearTimeout(endConfirmTimer);
+  showScreen('idle');
+  sendLiveState();
+}
+window.resetGame = resetGame;
+
+// ============================================================
+// EVENT BINDINGS
+// ============================================================
+// upload zone
+const uploadZone = $('#upload-zone');
+const fileInput = $('#file-input');
+
+uploadZone.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', (e) => {
+  if (e.target.files.length) handleFiles(e.target.files);
+  fileInput.value = '';
+});
+
+// drag & drop
+uploadZone.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  uploadZone.classList.add('drag-over');
+});
+uploadZone.addEventListener('dragleave', () => {
+  uploadZone.classList.remove('drag-over');
+});
+uploadZone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  uploadZone.classList.remove('drag-over');
+  if (e.dataTransfer.files.length) handleFiles(e.dataTransfer.files);
+});
+
+// also allow drop anywhere on idle screen
+$('#screen-idle').addEventListener('dragover', (e) => {
+  e.preventDefault();
+  uploadZone.classList.add('drag-over');
+});
+$('#screen-idle').addEventListener('drop', (e) => {
+  e.preventDefault();
+  uploadZone.classList.remove('drag-over');
+  if (e.dataTransfer.files.length) handleFiles(e.dataTransfer.files);
+});
+
+// config back button
+$('#btn-back-idle').addEventListener('click', () => showScreen('idle'));
+
+// image pager buttons
+$('#pager-prev').addEventListener('click', () => switchPreviewImage(-1));
+$('#pager-next').addEventListener('click', () => switchPreviewImage(1));
+
+// start game button
+$('#btn-start-game').addEventListener('click', startGame);
+
+// end game button
+$('#btn-end-game').addEventListener('click', handleEndClick);
+
+// replay button
+$('#btn-replay').addEventListener('click', resetGame);
+
+// clear history button
+$('#btn-clear-history').addEventListener('click', () => {
+  if (confirm('确定清空全部历史记录吗？')) clearAllHistory();
+});
+
+// keyboard shortcut: Escape = back to idle from anywhere
+document.addEventListener('keydown', (e) => {
+  if (IS_PLAYER_VIEW) return;
+  if (e.key === 'Escape' && STATE.screen !== 'idle') {
+    // confirm for playing screen
+    if (STATE.screen === 'playing') {
+      if (!confirm('确定要退出当前游戏吗？')) return;
+    }
+    resetGame();
+    showScreen('idle');
+  }
+  // Enter on config = start game
+  if (e.key === 'Enter' && STATE.screen === 'config') {
+    startGame();
+  }
+});
+
+// ============================================================
+// INIT
+// ============================================================
+async function initApp() {
+  LIVE_USER = await loadCurrentUser();
+  initLiveSync();
+  renderHistory();
+  showScreen('idle');
+}
+initApp();
+
+})();
+</script>
+</body>
+</html>

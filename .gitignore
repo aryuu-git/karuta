@@ -45,9 +45,18 @@ Thumbs.db
 
 # 编译产物
 karuta-server
+karuta-server-linux
+
+# Go 缓存
+.gocache/
+.gomodcache/
+
+# 发布目录
+release/
 
 # 打包脚本
 dev.ps1
+dev_local.ps1
 
 # CodeWhale
 .codewhale/

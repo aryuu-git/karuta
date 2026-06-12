@@ -66,14 +66,30 @@ export function HomePage() {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
 
         {/* 快闪游戏入口 */}
-        <div className="mb-6 rounded-2xl p-4 border border-purple-700/30 cursor-pointer hover:border-purple-500/50 transition-colors relative overflow-hidden"
-          style={{ background: 'linear-gradient(135deg, rgba(88,28,135,0.2), rgba(30,27,75,0.3))' }}
-          onClick={() => navigate('/quadrant')}>
-          <span className="absolute top-2 right-2 text-[10px] px-1.5 py-0.5 rounded bg-yellow-900/50 text-yellow-400 border border-yellow-700/50">
-            内测中
-          </span>
-          <h2 className="font-serif text-base text-purple-300 font-bold">🎯 猜象限</h2>
-          <p className="text-purple-300/50 text-xs mt-1">从标签和位置推理真相 — 快闪小游戏</p>
+        <div className="flex gap-3 mb-6">
+          <div className="flex-1 rounded-2xl p-4 border border-gray-700/30 relative overflow-hidden opacity-50 cursor-not-allowed"
+            style={{ background: 'linear-gradient(135deg, rgba(50,50,50,0.2), rgba(30,30,30,0.3))' }}>
+            <span className="absolute top-2 right-2 text-[10px] px-1.5 py-0.5 rounded bg-gray-700/50 text-gray-400 border border-gray-600/50">
+              维护中
+            </span>
+            <h2 className="font-serif text-base text-gray-400 font-bold">🎯 猜象限</h2>
+            <p className="text-gray-500/50 text-xs mt-1">从标签和位置推理真相 — 快闪小游戏</p>
+          </div>
+          <div className="flex-1 rounded-2xl p-4 border border-teal-700/30 cursor-pointer hover:border-teal-500/50 transition-colors relative overflow-hidden"
+            style={{ background: 'linear-gradient(135deg, rgba(20,78,78,0.2), rgba(15,50,50,0.3))' }}
+            onClick={() => navigate('/ccp')}>
+            <h2 className="font-serif text-base text-teal-300 font-bold">🎨 CG猜谜</h2>
+            <p className="text-teal-300/50 text-xs mt-1">掀开方块猜CG — 快闪小游戏</p>
+          </div>
+          <div className="flex-1 rounded-2xl p-4 border border-pink-700/30 cursor-pointer hover:border-pink-500/50 transition-colors relative overflow-hidden"
+            style={{ background: 'linear-gradient(135deg, rgba(135,28,88,0.2), rgba(75,27,50,0.3))' }}
+            onClick={() => navigate('/ccp/local')}>
+            <span className="absolute top-2 right-2 text-[10px] px-1.5 py-0.5 rounded bg-green-900/50 text-green-400 border border-green-700/50">
+              本地
+            </span>
+            <h2 className="font-serif text-base text-pink-300 font-bold">👑 CG猜谜 · 本地版</h2>
+            <p className="text-pink-300/50 text-xs mt-1">无需房间，直接本地翻牌猜CG</p>
+          </div>
         </div>
 
         {/* 邀请码 + 创建房间 */}
