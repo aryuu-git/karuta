@@ -2,6 +2,7 @@ import { useState, useEffect, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Layout } from '../components/Layout'
+import { Button, Input, Textarea } from '../components/ui'
 import { api } from '../api/client'
 import type { Deck } from '../api/types'
 
@@ -88,10 +89,7 @@ export function DecksPage() {
                 {tab === 'mine' ? '编排你的最强阵容，战无不胜！✧' : tab === 'editable' ? '同盟之力，共铸战阵 ♪' : '天下阵法，尽收眼底 ～ ✦'}
               </p>
             </div>
-            <button onClick={() => setShowCreate(true)}
-              className="btn-gold text-sm transition-all duration-200 hover:scale-105 shadow-lg shadow-gold/20">
-              ✨ 锻造新阵
-            </button>
+            <Button onClick={() => setShowCreate(true)}>✨ 锻造新阵</Button>
           </div>
         </div>
 
@@ -127,11 +125,11 @@ export function DecksPage() {
         <div className="mb-5">
           <div className="flex gap-2">
             <div className="relative flex-1 max-w-sm">
-              <input
+              <Input
                 type="text"
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                className="input-dark text-sm w-full pl-9"
+                className="text-sm pl-9"
                 placeholder="以名索阵，寻觅你的命定之编…"
               />
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted/40 text-sm">🔮</span>
@@ -166,10 +164,7 @@ export function DecksPage() {
               <>
                 <p className="text-gold text-base font-serif mb-1">此处空无一阵…</p>
                 <p className="text-pink-300/50 text-sm mb-5 font-serif">战阵尚未铸成，去锻造你的第一副吧！✧</p>
-                <button onClick={() => setShowCreate(true)}
-                  className="btn-gold text-sm transition-all duration-200 hover:scale-105 shadow-lg shadow-gold/20">
-                  ✨ 锻造第一副战阵
-                </button>
+                <Button onClick={() => setShowCreate(true)}>✨ 锻造第一副战阵</Button>
               </>
             ) : (
               <>
@@ -246,14 +241,12 @@ export function DecksPage() {
               <p className="text-pink-300/50 text-xs mb-5 font-serif italic">赐予你的战阵一个响彻天下的名号吧！✧</p>
               <form onSubmit={handleCreate} className="flex flex-col gap-4">
                 <div>
-                  <label className="text-muted text-xs block mb-1.5">🃏 牌组名称 *</label>
-                  <input type="text" value={newName} onChange={e => setNewName(e.target.value)}
-                    className="input-dark" placeholder="例：百人一首·极" required autoFocus />
+                  <Input label="🃏 牌组名称 *" type="text" value={newName} onChange={e => setNewName(e.target.value)}
+                    placeholder="例：百人一首·极" required autoFocus />
                 </div>
                 <div>
-                  <label className="text-muted text-xs block mb-1.5">📝 描述（选填）</label>
-                  <textarea value={newDesc} onChange={e => setNewDesc(e.target.value)}
-                    className="input-dark resize-none" placeholder="简单介绍一下这副牌吧～" rows={2} />
+                  <Textarea label="📝 描述（选填）" value={newDesc} onChange={e => setNewDesc(e.target.value)}
+                    className="resize-none" placeholder="简单介绍一下这副牌吧～" rows={2} />
                 </div>
                 <div>
                   <label className="text-muted text-xs block mb-1.5">🌐 共享级别</label>
@@ -297,10 +290,8 @@ export function DecksPage() {
                   </div>
                 )}
                 <div className="flex gap-3 mt-1">
-                  <button type="button" onClick={() => setShowCreate(false)} className="btn-outline flex-1 transition-all duration-200 hover:scale-[1.02]">罢了罢了</button>
-                  <button type="submit" disabled={creating || !newName.trim()} className="btn-gold flex-1 disabled:opacity-50 transition-all duration-200 hover:scale-[1.02] shadow-lg shadow-gold/20">
-                    {creating ? '铸造中… (｡･ω･｡)' : '✨ 铸成！'}
-                  </button>
+                  <Button type="button" variant="outline" className="flex-1" onClick={() => setShowCreate(false)}>罢了罢了</Button>
+                  <Button type="submit" className="flex-1" loading={creating} disabled={!newName.trim()}>✨ 铸成！</Button>
                 </div>
               </form>
             </motion.div>

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useAuth } from '../hooks/useAuth'
 import { api } from '../api/client'
+import { Button, Input } from '../components/ui'
 
 export function GuestPage() {
   const { user, guestLogin, logout } = useAuth()
@@ -56,14 +57,12 @@ export function GuestPage() {
 
           {step === 'name' ? (
             <form onSubmit={handleSetName} className="space-y-4">
-              <div>
-                <input type="text" value={username} onChange={e => setUsername(e.target.value)}
-                  className="input-dark text-center w-full" placeholder="取一个昵称" autoFocus />
-              </div>
+              <Input type="text" value={username} onChange={e => setUsername(e.target.value)}
+                className="text-center" placeholder="取一个昵称" autoFocus />
               {error && <p className="text-crimson text-xs">{error}</p>}
-              <button type="submit" disabled={loading} className="btn-gold w-full py-3 text-sm disabled:opacity-50">
-                {loading ? '创建中…' : '确定昵称'}
-              </button>
+              <Button type="submit" loading={loading} className="w-full">
+                确定昵称
+              </Button>
               <p className="text-muted/40 text-[10px]">
                 已有账号？<a href="/login" className="text-gold/60 hover:text-gold">去登录</a>
               </p>
@@ -71,15 +70,13 @@ export function GuestPage() {
           ) : (
             <form onSubmit={handleJoin} className="space-y-4">
               <p className="text-white/60 text-xs mb-2">你好，<span className="text-gold">{user?.username}</span>！</p>
-              <div>
-                <input type="text" value={code} onChange={e => setCode(e.target.value.toUpperCase())}
-                  className="input-dark text-center w-full text-lg tracking-[0.3em] font-mono" placeholder="输入邀请码" autoFocus
-                  maxLength={6} />
-              </div>
+              <Input type="text" value={code} onChange={e => setCode(e.target.value.toUpperCase())}
+                className="text-center text-lg tracking-[0.3em] font-mono" placeholder="输入邀请码" autoFocus
+                maxLength={6} />
               {error && <p className="text-crimson text-xs">{error}</p>}
-              <button type="submit" disabled={loading} className="btn-gold w-full py-3 text-sm disabled:opacity-50">
-                {loading ? '加入中…' : '加入对局'}
-              </button>
+              <Button type="submit" loading={loading} className="w-full">
+                加入对局
+              </Button>
               <button type="button" onClick={() => { logout(); setStep('name') }}
                 className="text-muted/50 text-[10px] hover:text-white/60 transition-colors w-full">
                 退出当前账号

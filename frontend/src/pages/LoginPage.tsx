@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useAuth } from '../hooks/useAuth'
+import { Button, Input } from '../components/ui'
 
 export function LoginPage() {
   const { login } = useAuth()
@@ -78,35 +79,25 @@ export function LoginPage() {
           <p className="text-pink-300/50 text-xs text-center mb-6 font-serif italic">战友们已蓄势待发，快来集合！✦</p>
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            <div>
-              <label className="block text-muted text-xs mb-1.5">
-                💭 你的战士昵称
-              </label>
-              <input
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                className="input-dark"
-                placeholder="输入昵称，让大家认识你！"
-                autoComplete="username"
-                required
-              />
-            </div>
+            <Input
+              label="💭 你的战士昵称"
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="输入昵称，让大家认识你！"
+              autoComplete="username"
+              required
+            />
 
-            <div>
-              <label className="block text-muted text-xs mb-1.5">
-                🔑 密码
-              </label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="input-dark"
-                placeholder="输入密码"
-                autoComplete="current-password"
-                required
-              />
-            </div>
+            <Input
+              label="🔑 密码"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="输入密码"
+              autoComplete="current-password"
+              required
+            />
 
             {error && (
               <motion.p
@@ -118,15 +109,14 @@ export function LoginPage() {
               </motion.p>
             )}
 
-            <motion.button
+            <Button
               type="submit"
-              disabled={loading}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className="btn-gold w-full mt-2 text-base py-3 disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-200 shadow-lg shadow-gold/20 font-serif"
+              loading={loading}
+              size="lg"
+              className="w-full mt-2 font-serif"
             >
-              {loading ? '正在召唤你的分身… (｡･ω･｡)' : '「降临战场！」ヽ(°〇°)ﾉ'}
-            </motion.button>
+              「降临战场！」ヽ(°〇°)ﾉ
+            </Button>
           </form>
         </motion.div>
 

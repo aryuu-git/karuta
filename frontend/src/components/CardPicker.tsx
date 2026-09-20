@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { api } from '../api/client'
 import type { Card } from '../api/types'
+import { Button, Input } from './ui'
 
 type Tab = 'mine' | 'public'
 
@@ -142,10 +143,10 @@ export function CardPicker({ open, onClose, onSelect, excludeIds = [] }: CardPic
             <div className="space-y-2 mb-3">
               <div className="flex gap-2">
                 <div className="relative flex-1">
-                  <input type="text" value={search}
+                  <Input type="text" value={search}
                     onChange={e => setSearch(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter') handleSearch() }}
-                    className="input-dark flex-1 text-sm w-full pl-8"
+                    className="pl-8 text-sm"
                     placeholder={tab === 'mine' ? '搜索我的牌…' : '以名寻牌，探索命运之声…'} />
                   <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted/40 text-xs">🔮</span>
                 </div>
@@ -272,12 +273,10 @@ export function CardPicker({ open, onClose, onSelect, excludeIds = [] }: CardPic
               {selected.size > 0 ? `已选中 ${selected.size} 张命运之牌 ✧` : `共 ${cards.length} 张`}
             </span>
             <div className="flex gap-3">
-              <button onClick={onClose} className="btn-outline text-sm px-4">罢了</button>
-              <button onClick={handleConfirm}
-                disabled={selected.size === 0}
-                className="btn-gold text-sm px-4 disabled:opacity-50 transition-all duration-200 hover:scale-[1.02] shadow-lg shadow-gold/20">
+              <Button variant="outline" size="sm" onClick={onClose}>罢了</Button>
+              <Button variant="gold" size="sm" disabled={selected.size === 0} onClick={handleConfirm}>
                 ✨ 召唤 {selected.size} 张
-              </button>
+              </Button>
             </div>
           </div>
         </motion.div>

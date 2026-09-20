@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import type { Room, RoomPlayer } from '../api/types'
 import { api } from '../api/client'
 import { Avatar } from './Avatar'
+import { Button } from './ui'
 
 interface DuelSeats {
   seat1: { user_id: number; username: string } | null
@@ -381,16 +382,16 @@ export function WaitingLobby({ room, players, currentUserId, onRoleChange, onKic
 
         {/* Start button (host only) */}
         {isHost ? (
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+          <Button
             onClick={handleStart}
-            disabled={starting || players.length < 1 || (room.mode === 'duel' && (!duelSeats?.seat1 || !duelSeats?.seat2))}
-            className="btn-gold w-full text-lg py-4 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+            loading={starting}
+            disabled={players.length < 1 || (room.mode === 'duel' && (!duelSeats?.seat1 || !duelSeats?.seat2))}
+            size="lg"
+            className="w-full"
             style={{ animation: !starting ? 'glowPulse 2s ease-in-out infinite' : 'none' }}
           >
-            {starting ? '号角响彻天际… (｡･ω･｡)' : '「全军出击！命运之战，开始！」(ง •̀_•́)ง'}
-          </motion.button>
+            「全军出击！命运之战，开始！」(ง •̀_•́)ง
+          </Button>
         ) : (
           <div className="text-center">
             <p className="text-pink-300/50 text-sm font-serif tracking-widest animate-pulse mb-1">

@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
+import { Button } from './ui'
 
 interface CardInfo {
   id: number
@@ -106,15 +107,14 @@ export function DuelGameOver({ data, currentUserId }: DuelGameOverProps) {
         </div>
 
         {/* 返回按钮 */}
-        <motion.button
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1.2 }}
+        <Button
+          variant="gold"
+          size="lg"
           onClick={() => navigate('/')}
-          className="btn-gold w-full mt-6 py-3 text-sm font-serif"
+          className="w-full mt-6 font-serif"
         >
           {isPlayer ? '「再战江湖！」(ง •̀_•́)ง' : '返回大厅'}
-        </motion.button>
+        </Button>
       </motion.div>
     </motion.div>
   )

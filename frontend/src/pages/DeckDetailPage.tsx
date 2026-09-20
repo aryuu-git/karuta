@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Layout } from '../components/Layout'
+import { Button, Input } from '../components/ui'
 import { api } from '../api/client'
 import type { Card, Deck } from '../api/types'
 import { CardPicker } from '../components/CardPicker'
@@ -297,19 +298,10 @@ export function DeckDetailPage() {
 
             {!loading && deck && (
               <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
-                <button onClick={() => navigate(`/rooms/new?deck_id=${deckId}`)}
-                  className="btn-gold text-sm transition-all duration-200 hover:scale-105 shadow-lg shadow-gold/20">
-                  ⚔️ 出阵！
-                </button>
-                <button onClick={handleExport} disabled={exporting || cards.length === 0}
-                  className="btn-outline text-sm px-3 transition-all duration-200 hover:scale-105 disabled:opacity-50"
-                  title="下载所有牌面封面图的压缩包">
-                  {exporting ? '打包中…' : '🗡️ 线下决斗'}
-                </button>
-                <button onClick={() => setShowCloneOptions(true)} disabled={cloning}
-                  className="btn-outline text-sm px-3 transition-all duration-200 hover:scale-105 disabled:opacity-50">
-                  {cloning ? '复制中…' : '📋 复制'}
-                </button>
+                <Button onClick={() => navigate(`/rooms/new?deck_id=${deckId}`)}>⚔️ 出阵！</Button>
+                <Button variant="outline" onClick={handleExport} loading={exporting} disabled={cards.length === 0}
+                  title="下载所有牌面封面图的压缩包">🗡️ 线下决斗</Button>
+                <Button variant="outline" onClick={() => setShowCloneOptions(true)} loading={cloning}>📋 复制</Button>
                 {isOwner && (
                   <button onClick={() => setShowDeleteDeck(true)}
                     className="text-xs px-3 py-2 rounded-lg transition-all duration-200 hover:scale-105"
@@ -384,10 +376,7 @@ export function DeckDetailPage() {
                   </button>
                 )}
                 {canAdd && !selectMode && (
-                  <button onClick={() => setShowPicker(true)}
-                    className="btn-gold text-xs transition-all duration-200 hover:scale-105 shadow-lg shadow-gold/20">
-                    ➕ 召唤歌牌
-                  </button>
+                  <Button onClick={() => setShowPicker(true)}>➕ 召唤歌牌</Button>
                 )}
               </div>
             </div>
@@ -431,10 +420,7 @@ export function DeckDetailPage() {
                 <p className="text-gold text-sm font-serif mb-1">战阵尚无一牌…</p>
                 <p className="text-pink-300/40 text-xs mb-4 font-serif">{canAdd ? '从牌库召唤歌牌，铸就你的最强阵容！✧' : '此阵尚空 (◕‿◕✿)'}</p>
                 {canAdd && (
-                  <button onClick={() => setShowPicker(true)}
-                    className="btn-gold text-sm transition-all duration-200 hover:scale-105 shadow-lg shadow-gold/20">
-                    ➕ 召唤歌牌
-                  </button>
+                  <Button onClick={() => setShowPicker(true)}>➕ 召唤歌牌</Button>
                 )}
               </div>
             ) : (
@@ -574,7 +560,7 @@ export function DeckDetailPage() {
               <p className="text-white font-medium mb-1">从牌组中移除这张牌？</p>
               <p className="text-muted text-sm mb-5">牌本身不会被删除，只是不再属于此牌组 (ᵔ◡ᵔ)</p>
               <div className="flex gap-3">
-                <button onClick={() => setRemoveCardId(null)} className="btn-outline flex-1 text-sm">取消</button>
+                <Button variant="outline" className="flex-1" onClick={() => setRemoveCardId(null)}>取消</Button>
                 <button onClick={() => handleRemoveCard(removeCardId)}
                   disabled={removing}
                   className="flex-1 px-4 py-2.5 rounded bg-crimson hover:bg-crimson-light text-white font-medium text-sm transition-all disabled:opacity-50">
@@ -602,7 +588,7 @@ export function DeckDetailPage() {
               <p className="text-muted text-sm mb-1">「{deck?.name}」将被删除！</p>
               <p className="text-muted/60 text-xs mb-5">（牌库里的牌不会被删除，只是解除绑定）</p>
               <div className="flex gap-3">
-                <button onClick={() => setShowDeleteDeck(false)} className="btn-outline flex-1 text-sm">算了算了</button>
+                <Button variant="outline" className="flex-1" onClick={() => setShowDeleteDeck(false)}>算了算了</Button>
                 <button onClick={handleDeleteDeck} disabled={deletingDeck}
                   className="flex-1 px-4 py-2.5 rounded bg-crimson hover:bg-crimson-light text-white font-medium text-sm transition-all disabled:opacity-50">
                   {deletingDeck ? '解散中…' : '狠心解散 (╥_╥)'}
@@ -628,25 +614,21 @@ export function DeckDetailPage() {
               <p className="text-muted text-xs mb-5">改个更霸气的名字吧！(ง •̀_•́)ง</p>
               <div className="flex flex-col gap-4">
                 <div>
-                  <label className="text-muted text-xs block mb-1.5">牌组名称 *</label>
-                  <input type="text" value={editName}
+                  <Input label="牌组名称 *" type="text" value={editName}
                     onChange={e => setEditName(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') setEditingName(false) }}
-                    className="input-dark" placeholder="牌组名称" autoFocus />
+                    placeholder="牌组名称" autoFocus />
                 </div>
                 <div>
-                  <label className="text-muted text-xs block mb-1.5">描述（选填）</label>
-                  <input type="text" value={editDesc}
+                  <Input label="描述（选填）" type="text" value={editDesc}
                     onChange={e => setEditDesc(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') setEditingName(false) }}
-                    className="input-dark" placeholder="描述（选填）" />
+                    placeholder="描述（选填）" />
                 </div>
                 <div className="flex gap-3 mt-1">
-                  <button onClick={() => setEditingName(false)} className="btn-outline flex-1 text-sm">算了</button>
-                  <button onClick={saveEdit} disabled={savingName || !editName.trim()}
-                    className="btn-gold flex-1 text-sm disabled:opacity-50">
-                    {savingName ? '保存中…' : '✓ 搞定！'}
-                  </button>
+                  <Button variant="outline" className="flex-1" onClick={() => setEditingName(false)}>算了</Button>
+                  <Button onClick={saveEdit} loading={savingName} disabled={!editName.trim()}
+                    className="flex-1">✓ 搞定！</Button>
                 </div>
               </div>
             </motion.div>

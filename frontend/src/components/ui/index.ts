@@ -1,0 +1,11 @@
+// 基础组件库统一出口（docs/design-system.md §2）
+export { Button, type ButtonProps, type ButtonVariant, type ButtonSize } from './Button'
+export { Input, type InputProps } from './Input'
+export { Textarea, type TextareaProps } from './Textarea'
+export { Select, type SelectProps } from './Select'
+export { Dialog, type DialogProps } from './Dialog'
+export { Panel, type PanelProps } from './Panel'
+export { Spinner, PageSpinner } from './Spinner'
+export { Badge, type BadgeTone } from './Badge'
+export { EmptyState, type EmptyStateProps } from './EmptyState'
+export { ToastProvider, useToast, type ToastType } from './Toast'

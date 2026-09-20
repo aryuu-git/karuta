@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Layout } from '../components/Layout'
+import { Button, Input } from '../components/ui'
 import { useAuth } from '../hooks/useAuth'
 import { api } from '../api/client'
 import type { Deck, RoomListItem } from '../api/types'
@@ -75,18 +76,17 @@ export function HomePage() {
             <h2 className="font-serif text-base text-gold font-bold mb-1 relative">🔑 凭令入场</h2>
             <p className="text-pink-300/50 text-xs mb-3 font-serif italic relative">持有战场令牌？直接降临！✧</p>
             <form onSubmit={handleJoinByCode} className="flex gap-2 relative">
-              <input
+              <Input
                 type="text"
                 value={joinCode}
                 onChange={e => { setJoinCode(e.target.value.toUpperCase()); setJoinError(null) }}
-                className="input-dark text-center font-serif font-bold tracking-[0.2em] flex-1 py-2.5 text-sm"
+                className="text-center font-serif font-bold tracking-[0.2em] text-sm"
                 placeholder="输入令牌…"
                 maxLength={10}
               />
-              <button type="submit" disabled={joining || !joinCode.trim()}
-                className="btn-gold px-5 py-2.5 text-sm disabled:opacity-50 shrink-0 shadow-lg shadow-gold/20 transition-all hover:scale-105">
-                {joining ? '降临…' : '降临！'}
-              </button>
+              <Button type="submit" loading={joining} disabled={!joinCode.trim()} className="shrink-0">
+                降临！
+              </Button>
             </form>
             {joinError && (
               <p className="text-crimson text-xs mt-2 text-center bg-crimson/10 border border-crimson/20 rounded-lg px-2 py-1.5">
@@ -99,10 +99,9 @@ export function HomePage() {
             style={{ background: 'linear-gradient(160deg, rgb(var(--accent-bg-end)/ 0.5), rgb(var(--accent-bg-mid)/ 0.8))', border: '1px solid rgb(var(--accent-primary)/ 0.12)' }}>
             <div className="absolute bottom-0 right-0 w-16 h-16 opacity-10 pointer-events-none"
               style={{ background: 'radial-gradient(circle, rgb(var(--accent-primary)/ 0.8), transparent 70%)' }} />
-            <button onClick={() => navigate('/rooms/new')}
-              className="btn-gold text-sm w-full transition-all duration-200 hover:scale-105 shadow-lg shadow-gold/20 relative">
+            <Button onClick={() => navigate('/rooms/new')} className="w-full">
               ⚔️ 开辟战场
-            </button>
+            </Button>
             <p className="text-pink-300/40 text-xs mt-2 text-center font-serif italic relative">选定阵容，向命运宣战 ♪</p>
           </div>
         </div>
@@ -246,12 +245,12 @@ export function HomePage() {
                 <div className="h-px flex-1 bg-gradient-to-r from-pink-500/20 via-transparent to-transparent" />
               </div>
               <div className="relative mb-3">
-                <input
+                <Input
                   type="text"
                   value={deckSearch}
                   onChange={e => setDeckSearch(e.target.value)}
                   placeholder="以名索阵…"
-                  className="input-dark text-sm w-full pl-9"
+                  className="text-sm pl-9"
                 />
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted/40 text-sm">🔮</span>
               </div>

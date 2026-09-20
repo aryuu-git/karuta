@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { Button } from './ui'
 
 const CURRENT_VERSION = '3.2.0'
 const STORAGE_KEY = 'karuta_changelog_seen'
@@ -264,12 +265,9 @@ export function Changelog() {
 
             {/* 底部按钮 */}
             <div className="px-6 pb-5 pt-3 border-t border-white/5 shrink-0">
-              <motion.button
-                whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-                onClick={handleClose}
-                className="btn-gold w-full py-3 text-sm">
+              <Button variant="gold" size="lg" className="w-full" onClick={handleClose}>
                 知道啦，冲！(ง •̀_•́)ง
-              </motion.button>
+              </Button>
               <p className="text-muted/40 text-xs text-center mt-2">下次不会再弹了 (｡•̀ᴗ-)</p>
             </div>
           </motion.div>

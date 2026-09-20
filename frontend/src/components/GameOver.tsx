@@ -1,6 +1,7 @@
 import { useEffect, useRef, type RefObject } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
+import { Button } from './ui'
 
 interface GrabbedCard {
   id: number
@@ -322,18 +323,20 @@ export function GameOver({ results, currentUserId, lastCardWinnerId }: GameOverP
           transition={{ delay: 0.9, duration: 0.4 }}
           className="flex flex-col sm:flex-row gap-3"
         >
-          <button
+          <Button
+            variant="gold"
+            className="flex-1 text-center font-serif"
             onClick={() => navigate('/rooms/new')}
-            className="btn-gold flex-1 text-center transition-all duration-200 hover:scale-[1.03] shadow-lg shadow-gold/20 font-serif"
           >
             「再战一次！」ヽ(°〇°)ﾉ
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="outline"
+            className="flex-1 text-center"
             onClick={() => navigate('/')}
-            className="btn-outline flex-1 text-center transition-all duration-200 hover:scale-[1.03]"
           >
             凯旋归营 (－ω－ ) zzZ
-          </button>
+          </Button>
         </motion.div>
       </motion.div>
     </motion.div>

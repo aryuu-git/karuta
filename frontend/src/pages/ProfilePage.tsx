@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Layout } from '../components/Layout'
+import { Button, Input } from '../components/ui'
 import { useAuth } from '../hooks/useAuth'
 import { api } from '../api/client'
 import type { UserStats } from '../api/types'
@@ -216,8 +217,8 @@ export function ProfilePage() {
                   window.location.reload()
                 } catch (err) { setNameError((err as Error).message) }
               }} className="flex items-center gap-2">
-                <input type="text" value={newName} onChange={e => { setNewName(e.target.value); setNameError('') }}
-                  className="input-dark text-lg font-bold font-serif w-40" autoFocus />
+                <div className="w-40"><Input type="text" value={newName} onChange={e => { setNewName(e.target.value); setNameError('') }}
+                  className="text-lg font-bold font-serif" autoFocus /></div>
                 <button type="submit" className="text-green-400 text-sm">✓</button>
                 <button type="button" onClick={() => setEditingName(false)} className="text-muted text-sm">✕</button>
                 {nameError && <span className="text-crimson text-xs">{nameError}</span>}
@@ -247,12 +248,7 @@ export function ProfilePage() {
             <div className="text-5xl mb-4">🌸</div>
             <p className="text-gold text-base font-serif mb-2">传说的篇章尚未书写…</p>
             <p className="text-pink-300/40 text-sm mb-6 font-serif">踏入战场，用实力刻下你的名字！✧</p>
-            <motion.button
-              whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-              onClick={() => navigate('/')}
-              className="btn-gold text-sm shadow-lg shadow-gold/20">
-              ⚔️ 前往战场大厅
-            </motion.button>
+            <Button onClick={() => navigate('/')}>⚔️ 前往战场大厅</Button>
           </motion.div>
         ) : (
           <>

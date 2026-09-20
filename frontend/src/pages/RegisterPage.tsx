@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useAuth } from '../hooks/useAuth'
 import { api } from '../api/client'
+import { Button, Input } from '../components/ui'
 
 
 export function RegisterPage() {
@@ -109,70 +110,52 @@ export function RegisterPage() {
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             {/* 用户名 */}
-            <div>
-              <label className="block text-muted text-xs mb-1.5">
-                💭 战士昵称 <span className="text-muted/50">（2-20字符）</span>
-              </label>
-              <input
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                className="input-dark"
-                placeholder="起个令人胆寒的名字吧 (¬‿¬)"
-                autoComplete="username"
-                maxLength={20}
-                required
-              />
-            </div>
+            <Input
+              label={<>💭 战士昵称 <span className="text-muted/50">（2-20字符）</span></>}
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="起个令人胆寒的名字吧 (¬‿¬)"
+              autoComplete="username"
+              maxLength={20}
+              required
+            />
 
             {/* 密码 */}
-            <div>
-              <label className="block text-muted text-xs mb-1.5">
-                🔑 密码 <span className="text-muted/50">（至少6位）</span>
-              </label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="input-dark"
-                placeholder="输入密码"
-                autoComplete="new-password"
-                required
-              />
-            </div>
+            <Input
+              label={<>🔑 密码 <span className="text-muted/50">（至少6位）</span></>}
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="输入密码"
+              autoComplete="new-password"
+              required
+            />
 
             {/* 确认密码 */}
-            <div>
-              <label className="block text-muted text-xs mb-1.5">
-                🔑 确认密码
-              </label>
-              <input
-                type="password"
-                value={confirm}
-                onChange={(e) => setConfirm(e.target.value)}
-                className="input-dark"
-                placeholder="再输一遍密码"
-                autoComplete="new-password"
-                required
-              />
-            </div>
+            <Input
+              label="🔑 确认密码"
+              type="password"
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+              placeholder="再输一遍密码"
+              autoComplete="new-password"
+              required
+            />
 
             {/* 邀请码：开放注册时不显示，服务端仍是最终权威。 */}
-            {inviteRequired && <div>
-              <label className="block text-muted text-xs mb-1.5">
-                🔮 神秘代号
-                <span className="text-muted/40 ml-1">（只有被邀请的人才知道哦）</span>
-              </label>
-              <input
+            {inviteRequired && (
+              <Input
+                label={<>🔮 神秘代号 <span className="text-muted/40 ml-1">（只有被邀请的人才知道哦）</span></>}
                 type="text"
                 value={secretCode}
                 onChange={(e) => setSecretCode(e.target.value)}
-                className="input-dark tracking-[0.3em] text-center"
+                className="tracking-[0.3em] text-center"
                 placeholder="？？？？？"
                 autoComplete="off"
                 required={inviteRequired}
               />
-            </div>}
+            )}
 
             {error && (
               <motion.p
@@ -184,15 +167,14 @@ export function RegisterPage() {
               </motion.p>
             )}
 
-            <motion.button
+            <Button
               type="submit"
-              disabled={loading}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className="btn-gold w-full mt-2 text-base py-3 disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-200 shadow-lg shadow-gold/20 font-serif"
+              loading={loading}
+              size="lg"
+              className="w-full mt-2 font-serif"
             >
-              {loading ? '召唤中… 请稍等 (｡･ω･｡)' : '「觉醒吧，新战士！」ヽ(°〇°)ﾉ'}
-            </motion.button>
+              「觉醒吧，新战士！」ヽ(°〇°)ﾉ
+            </Button>
           </form>
         </motion.div>
 

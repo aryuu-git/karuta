@@ -244,3 +244,13 @@
 .animate-slide-in-up {
   animation: slideInUp 0.4s ease-out forwards;
 }
+
+/* Toast 入场：自顶部滑入（ToastProvider 不引 framer-motion，保首屏包体） */
+.animate-toast-in {
+  animation: toastIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(-16px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { Button } from './ui'
 
 interface DuelGiveModalProps {
   cards: Array<{ id: number; display_text: string; cover_url: string }>
@@ -98,15 +99,15 @@ export function DuelGiveModal({ cards, onGive }: DuelGiveModalProps) {
           </div>
 
           {/* 确认按钮 */}
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
+          <Button
+            variant="gold"
+            size="lg"
+            className="w-full mt-4 font-serif"
             disabled={selectedId === null}
             onClick={() => { if (selectedId !== null) onGive(selectedId) }}
-            className="btn-gold w-full mt-4 py-3 text-sm font-serif disabled:opacity-40 transition-all"
           >
             {selectedId !== null ? '「送出这张牌！」(ノ>ω<)ノ' : '请选择一张牌…'}
-          </motion.button>
+          </Button>
         </motion.div>
       </motion.div>
     </AnimatePresence>

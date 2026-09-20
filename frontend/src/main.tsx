@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import { AuthProvider } from './hooks/useAuth'
 import { ThemeProvider } from './components/ThemeProvider'
+import { ToastProvider } from './components/ui/Toast'
 import App from './App'
 import './index.css'
 
@@ -14,7 +15,9 @@ createRoot(rootEl).render(
     <BrowserRouter>
       <ThemeProvider>
         <AuthProvider>
-          <App />
+          <ToastProvider>
+            <App />
+          </ToastProvider>
         </AuthProvider>
       </ThemeProvider>
     </BrowserRouter>

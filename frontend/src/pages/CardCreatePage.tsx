@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback, type FormEvent, type ChangeEv
 import { useParams, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Layout } from '../components/Layout'
+import { Button, Input } from '../components/ui'
 import { api } from '../api/client'
 import type { Card, CardAudio } from '../api/types'
 import { AudioUploadOptions } from '../components/AudioUploadOptions'
@@ -472,17 +473,16 @@ export function CardCreatePage() {
 
             {/* Display text */}
             <div>
-              <label className="text-muted text-xs block mb-1.5">🎼 牌名（歌曲名） *</label>
-              <input type="text" value={displayText} onChange={e => setDisplayText(e.target.value)}
-                className="input-dark text-sm" placeholder="例：春晓" required />
+              <Input label="🎼 牌名（歌曲名） *" type="text" value={displayText} onChange={e => setDisplayText(e.target.value)}
+                className="text-sm" placeholder="例：春晓" required />
             </div>
 
             {/* Series + Bangumi search */}
             <div className="relative">
               <label className="text-muted text-xs block mb-1.5">📺 作品名（选填）</label>
               <div className="flex gap-2">
-                <input type="text" value={series} onChange={e => setSeries(e.target.value)}
-                  className="input-dark text-sm flex-1" placeholder="例：Fate/stay night" />
+                <Input type="text" value={series} onChange={e => setSeries(e.target.value)}
+                  className="text-sm" placeholder="例：Fate/stay night" />
                 <button type="button" onClick={() => { setShowBangumi(!showBangumi); setBangumiQuery(series) }}
                   className="px-2.5 py-1.5 rounded-lg text-[10px] font-medium shrink-0 transition-all hover:scale-105"
                   style={{ background: 'rgba(74,144,217,0.15)', border: '1px solid rgba(74,144,217,0.3)', color: 'rgba(74,144,217,0.9)' }}>
@@ -494,7 +494,7 @@ export function CardCreatePage() {
                 <div className="absolute z-20 left-0 right-0 mt-2 rounded-xl overflow-hidden"
                   style={{ background: 'rgb(var(--color-ink-deep))', border: '1px solid rgb(var(--accent-primary)/ 0.2)', boxShadow: '0 8px 32px rgba(0,0,0,0.5)', maxHeight: '320px' }}>
                   <div className="p-3 flex gap-2" style={{ borderBottom: '1px solid rgb(var(--accent-primary)/ 0.1)' }}>
-                    <input type="text" value={bangumiQuery}
+                    <Input type="text" value={bangumiQuery}
                       onChange={e => {
                         setBangumiQuery(e.target.value)
                         if (bangumiTimerRef.current) clearTimeout(bangumiTimerRef.current)
@@ -520,7 +520,7 @@ export function CardCreatePage() {
                           finally { setBangumiLoading(false) }
                         }
                       }}
-                      className="input-dark text-xs flex-1" placeholder="搜索动画/游戏名…" autoFocus />
+                      className="text-xs" placeholder="搜索动画/游戏名…" autoFocus />
                     <button type="button" onClick={() => setShowBangumi(false)}
                       className="text-muted text-xs hover:text-white px-1">✕</button>
                   </div>
@@ -612,12 +612,9 @@ export function CardCreatePage() {
             {/* Hint text (create mode only) */}
             {!isEdit && (
               <div>
-                <label className="text-muted text-xs block mb-1.5">
-                  📜 播放提示
-                  <span className="text-muted/50 ml-1">（选填，播放时显示的上句提示）</span>
-                </label>
-                <input type="text" value={hintText} onChange={e => setHintText(e.target.value)}
-                  className="input-dark text-sm" placeholder="播放时显示在读牌区的提示文字" />
+                <Input label={<>📜 播放提示<span className="text-muted/50 ml-1">（选填，播放时显示的上句提示）</span></>}
+                  type="text" value={hintText} onChange={e => setHintText(e.target.value)}
+                  className="text-sm" placeholder="播放时显示在读牌区的提示文字" />
               </div>
             )}
 
@@ -660,27 +657,12 @@ export function CardCreatePage() {
             )}
 
             {/* Submit button */}
-            <button type="submit"
-              disabled={uploading || processing || (!isEdit && (createAudioFiles.length === 0 && !audioFile || !coverFile))}
-              className="btn-gold w-full disabled:opacity-50 transition-all duration-200 hover:scale-[1.02]">
-              {processing ? (
-                <span className="flex items-center justify-center gap-2">
-                  <span className="w-3 h-3 border-2 border-ink/50 border-t-ink rounded-full animate-spin" />
-                  处理音频中…
-                </span>
-              ) : uploading ? (
-                <span className="flex items-center justify-center gap-2">
-                  <span className="w-3 h-3 border-2 border-ink/50 border-t-ink rounded-full animate-spin" />
-                  上传中… (｡･ω･｡)
-                </span>
-              ) : saving ? (
-                '保存中…'
-              ) : isEdit ? (
-                '✓ 保存修改'
-              ) : (
-                '✨ 上传新牌！'
-              )}
-            </button>
+            <Button type="submit"
+              loading={uploading || processing || saving}
+              disabled={!isEdit && (createAudioFiles.length === 0 && !audioFile || !coverFile)}
+              className="w-full">
+              {isEdit ? '✓ 保存修改' : '✨ 上传新牌！'}
+            </Button>
           </form>
         </div>
 
@@ -774,13 +756,12 @@ export function CardCreatePage() {
                     <div className="text-xs text-muted space-y-1 max-h-20 overflow-y-auto">
                       {newAudioFiles.map((f, i) => <p key={i} className="truncate">♪ {f.name}</p>)}
                     </div>
-                    <input type="text" value={newHintText} onChange={e => setNewHintText(e.target.value)}
-                      className="input-dark text-sm" placeholder="播放提示（选填，多首共用）" />
-                    <button type="button" onClick={handleAddAudios}
-                      disabled={addingAudio || newProcessing}
-                      className="btn-gold text-sm disabled:opacity-50 transition-all duration-200 hover:scale-[1.02]">
+                    <Input type="text" value={newHintText} onChange={e => setNewHintText(e.target.value)}
+                      className="text-sm" placeholder="播放提示（选填，多首共用）" />
+                    <Button type="button" onClick={handleAddAudios}
+                      loading={addingAudio} disabled={newProcessing}>
                       {addingAudio ? `添加中… (${uploadProgress}/${newAudioFiles.length})` : `➕ 添加 ${newAudioFiles.length} 首音频`}
-                    </button>
+                    </Button>
                   </>
                 )}
               </div>
@@ -804,7 +785,7 @@ export function CardCreatePage() {
               <p className="text-white font-medium mb-1">要删除这条音频吗？</p>
               <p className="text-muted text-sm mb-5">删掉后无法恢复哦 (；′⌒`)</p>
               <div className="flex gap-3">
-                <button onClick={() => setDeleteAudioId(null)} className="btn-outline flex-1 text-sm">取消</button>
+                <Button variant="outline" className="flex-1" onClick={() => setDeleteAudioId(null)}>取消</Button>
                 <button onClick={() => handleDeleteAudio(deleteAudioId)}
                   disabled={deletingAudio}
                   className="flex-1 px-4 py-2.5 rounded bg-crimson hover:bg-crimson-light text-white font-medium text-sm transition-all disabled:opacity-50">
@@ -830,7 +811,7 @@ export function CardCreatePage() {
               onClick={e => e.stopPropagation()}>
               <h3 className="font-serif text-gold text-base mb-1">✦ 自定义标签</h3>
               <p className="text-pink-300/40 text-xs mb-4 font-serif">为歌牌赋予独特属性吧～</p>
-              <input
+              <Input
                 type="text"
                 value={newTagInput}
                 onChange={e => setNewTagInput(e.target.value)}
@@ -847,14 +828,13 @@ export function CardCreatePage() {
                     setShowTagDialog(false)
                   }
                 }}
-                className="input-dark w-full text-sm mb-4"
+                className="text-sm mb-4"
                 placeholder="输入标签名…"
                 autoFocus
               />
               <div className="flex gap-2">
-                <button onClick={() => setShowTagDialog(false)}
-                  className="btn-outline flex-1 text-sm">取消</button>
-                <button
+                <Button variant="outline" className="flex-1" onClick={() => setShowTagDialog(false)}>取消</Button>
+                <Button
                   onClick={() => {
                     if (newTagInput.trim()) {
                       const selectedTags = tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : []
@@ -868,10 +848,9 @@ export function CardCreatePage() {
                     }
                     setShowTagDialog(false)
                   }}
-                  disabled={!newTagInput.trim()}
-                  className="btn-gold flex-1 text-sm disabled:opacity-50">
+                  disabled={!newTagInput.trim()}>
                   ✦ 添加
-                </button>
+                </Button>
               </div>
             </motion.div>
           </motion.div>

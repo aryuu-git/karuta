@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Layout } from '../components/Layout'
+import { Button, Input } from '../components/ui'
 import { api } from '../api/client'
 import type { Card } from '../api/types'
 
@@ -132,10 +133,7 @@ export function CardLibraryPage() {
                   style={{ border: '1px solid rgb(var(--accent-primary)/ 0.15)' }}>
                   ☑ 编辑
                 </button>
-                <button onClick={() => navigate('/cards/new')}
-                  className="btn-gold text-sm transition-all duration-200 hover:scale-105 shadow-lg shadow-gold/20">
-                  ✨ 召唤新牌
-                </button>
+                <Button onClick={() => navigate('/cards/new')}>✨ 召唤新牌</Button>
               </div>
             )}
           </div>
@@ -168,12 +166,12 @@ export function CardLibraryPage() {
           <div className="mb-5 space-y-2.5">
             <div className="flex gap-2">
               <div className="relative flex-1">
-                <input
+                <Input
                   type="text"
                   value={search}
                   onChange={e => setSearch(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter') handleSearch() }}
-                  className="input-dark w-full text-sm pl-9"
+                  className="text-sm pl-9"
                   placeholder="输入关键词，寻找你的命定之牌…"
                 />
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted/40 text-sm">🔮</span>
@@ -241,10 +239,7 @@ export function CardLibraryPage() {
               <>
                 <p className="text-gold text-base font-serif mb-1">此处空无一物…</p>
                 <p className="text-pink-300/50 text-sm mb-5 font-serif">命运之牌尚未觉醒，去召唤你的第一张吧！✧</p>
-                <button onClick={() => navigate('/cards/new')}
-                  className="btn-gold text-sm transition-all duration-200 hover:scale-105 shadow-lg shadow-gold/20">
-                  ✨ 召唤第一张歌牌
-                </button>
+                <Button onClick={() => navigate('/cards/new')}>✨ 召唤第一张歌牌</Button>
               </>
             ) : (
               <>
@@ -431,7 +426,7 @@ export function CardLibraryPage() {
               <h3 className="font-sans font-semibold text-white mb-2">真的要删除这张牌吗？(；′⌒`)</h3>
               <p className="text-muted text-sm mb-6">删掉后所有引用这张牌的牌组也会受影响！</p>
               <div className="flex gap-3">
-                <button onClick={() => setDeleteId(null)} className="btn-outline flex-1 transition-all duration-200 hover:scale-[1.02]">再想想</button>
+                <Button variant="outline" className="flex-1" onClick={() => setDeleteId(null)}>再想想</Button>
                 <button onClick={() => handleDelete(deleteId)}
                   disabled={deleting}
                   className="flex-1 px-4 py-2.5 rounded bg-crimson hover:bg-crimson-light transition-all duration-200 text-white font-medium text-sm disabled:opacity-50 hover:scale-[1.02]">

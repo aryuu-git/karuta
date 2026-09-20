@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Layout } from '../components/Layout'
 import { api } from '../api/client'
+import { Button, Input } from '../components/ui'
 
 export function JoinRoomPage() {
   const navigate = useNavigate()
@@ -30,7 +31,7 @@ export function JoinRoomPage() {
   }
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    // Allow only alphanumeric input for invitation codes
+    // 只允许输入字母数字（邀请码用）
     const allowed = /^[a-zA-Z0-9]$/
     if (!allowed.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Enter', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
       e.preventDefault()
@@ -59,26 +60,24 @@ export function JoinRoomPage() {
           </div>
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-            <div>
-              <input
-                type="text"
-                value={code}
-                onChange={(e) => {
-                  setCode(e.target.value.toUpperCase())
-                  setError(null)
-                }}
-                onKeyDown={handleKeyDown}
-                className="input-dark text-center font-serif font-bold tracking-[0.3em]"
-                style={{ fontSize: '2rem', letterSpacing: '0.3em' }}
-                placeholder="XXXXXX"
-                maxLength={10}
-                autoCapitalize="characters"
-                autoComplete="off"
-                spellCheck={false}
-                required
-                autoFocus
-              />
-            </div>
+            <Input
+              type="text"
+              value={code}
+              onChange={(e) => {
+                setCode(e.target.value.toUpperCase())
+                setError(null)
+              }}
+              onKeyDown={handleKeyDown}
+              className="text-center font-serif font-bold tracking-[0.3em]"
+              style={{ fontSize: '2rem', letterSpacing: '0.3em' }}
+              placeholder="XXXXXX"
+              maxLength={10}
+              autoCapitalize="characters"
+              autoComplete="off"
+              spellCheck={false}
+              required
+              autoFocus
+            />
 
             {error && (
               <motion.p
@@ -90,15 +89,15 @@ export function JoinRoomPage() {
               </motion.p>
             )}
 
-            <motion.button
+            <Button
               type="submit"
-              disabled={joining || !code.trim()}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className="btn-gold w-full text-base py-4 disabled:opacity-50 transition-all duration-200"
+              loading={joining}
+              disabled={!code.trim()}
+              size="lg"
+              className="w-full"
             >
-              {joining ? '闯入中… (ง •̀_•́)ง' : '「冲进去！」ヽ(°〇°)ﾉ'}
-            </motion.button>
+              「冲进去！」ヽ(°〇°)ﾉ
+            </Button>
           </form>
         </motion.div>
 

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { Layout } from '../components/Layout'
 import { WaitingLobby } from '../components/WaitingLobby'
 import { ReadingPanel } from '../components/ReadingPanel'
@@ -13,6 +13,7 @@ import { EggAnimation } from '../components/EggAnimation'
 import { DuelBoard } from '../components/DuelBoard'
 import { DuelGameOver } from '../components/DuelGameOver'
 import { DuelGiveModal } from '../components/DuelGiveModal'
+import { Button, useToast } from '../components/ui'
 import { useRoomSocket } from '../hooks/useRoomSocket'
 import { useAuth } from '../hooks/useAuth'
 import { api } from '../api/client'
@@ -168,18 +169,8 @@ export function RoomPage() {
   // 丢蛋动画
   const [eggEvent, setEggEvent] = useState<{ id: number; fromName: string; targetName: string; isMe: boolean } | null>(null)
 
-  // 反馈 toast：抢牌结果
-  const [toast, setToast] = useState<{
-    text: string
-    type: 'success' | 'fail' | 'info'
-    id: number
-  } | null>(null)
-  const toastCounter = useRef(0)
-  const showToast = useCallback((text: string, type: 'success' | 'fail' | 'info', ms = 2000) => {
-    const id = ++toastCounter.current
-    setToast({ text, type, id })
-    setTimeout(() => setToast(prev => prev?.id === id ? null : prev), ms)
-  }, [])
+  // 反馈 toast：抢牌结果（全局 ToastProvider）
+  const toast = useToast()
 
   // 间隔倒计时：currentReading 变为 null 且游戏进行中时启动；暂停时冻结
   const intervalRemainingRef = useRef(0)
@@ -274,10 +265,10 @@ export function RoomPage() {
     const boardCount = cards.filter(c => (cardRemaining.get(c.id) ?? c.audio_count ?? 1) > 0).length
     if (boardCount <= shuffleThreshold && prevBoardCountRef.current !== boardCount && prevBoardCountRef.current >= 0) {
       setShufflePending(true)
-      showToast('🌀 下一首开始前要打乱牌面了！', 'info', 2000)
+      toast.show('🌀 下一首开始前要打乱牌面了！', 'info', 2000)
     }
     prevBoardCountRef.current = boardCount
-  }, [cardRemaining, shuffleThreshold, cards.length, showToast])
+  }, [cardRemaining, shuffleThreshold, cards.length, toast.show])
 
 	const prefetchAudioUrls = useCallback(async (urls: string[]) => {
 		for (const url of urls) {
@@ -463,10 +454,10 @@ export function RoomPage() {
         setCurrentReading(null)
         const isMe = user && event.winner_id === user.id
         if (isMe) {
-          showToast('🎉 你抢到了！太厉害了！+1分 (ﾉ◕ヮ◕)ﾉ', 'success')
+          toast.show('🎉 你抢到了！太厉害了！+1分 (ﾉ◕ヮ◕)ﾉ', 'success')
           playSound('grab_ok')
         } else {
-          showToast(`✨ ${event.winner_name} 手速真快！+1分`, 'info')
+          toast.show(`✨ ${event.winner_name} 手速真快！+1分`, 'info')
         }
         // 牌面打乱
         break
@@ -477,7 +468,7 @@ export function RoomPage() {
         setCardRemaining(prev => new Map(prev).set(event.card_id, remaining))
         setDiscardPile(prev => [...prev, { cardId: event.card_id, winner: '无人', hintText: '' }])
         setCurrentReading(null)
-        showToast('这张牌成功逃跑了… (°ω°)', 'info', 1500)
+        toast.show('这张牌成功逃跑了… (°ω°)', 'info', 1500)
         break
       }
 
@@ -492,7 +483,7 @@ export function RoomPage() {
           // grab_wrong 会处理
         } else {
           // 窗口已关闭等其他原因
-          showToast('⚡ 晚了一步！(>_<) 下次要更快！', 'fail', 1200)
+          toast.show('⚡ 晚了一步！(>_<) 下次要更快！', 'fail', 1200)
           playSound('grab_fail')
         }
         break
@@ -504,15 +495,15 @@ export function RoomPage() {
         const hasPenalty = event.penalty !== false
         if (isMe) {
           if (isNotCurrent) {
-            showToast(hasPenalty ? '🎯 抢错牌了！-1分，本首禁止抢牌 (╥_╥)' : '🎯 抢错牌了！本首禁止抢牌 (°ω°)', 'fail', 3000)
+            toast.show(hasPenalty ? '🎯 抢错牌了！-1分，本首禁止抢牌 (╥_╥)' : '🎯 抢错牌了！本首禁止抢牌 (°ω°)', 'fail', 3000)
           } else {
-            showToast(hasPenalty ? '😭 被人抢先了！-1分，本首禁止抢牌 (╥_╥)' : '😭 被人抢先了！本首禁止抢牌 (°ω°)', 'fail', 3000)
+            toast.show(hasPenalty ? '😭 被人抢先了！-1分，本首禁止抢牌 (╥_╥)' : '😭 被人抢先了！本首禁止抢牌 (°ω°)', 'fail', 3000)
           }
         } else {
           if (isNotCurrent) {
-            showToast(hasPenalty ? `❌ ${event.username} 抢了错误的牌，扣1分！本首出局` : `❌ ${event.username} 抢错了！本首出局`, 'info', 2500)
+            toast.show(hasPenalty ? `❌ ${event.username} 抢了错误的牌，扣1分！本首出局` : `❌ ${event.username} 抢错了！本首出局`, 'info', 2500)
           } else {
-            showToast(hasPenalty ? `💨 ${event.username} 抢慢了一步，扣1分！本首出局` : `💨 ${event.username} 抢慢了！本首出局`, 'info', 2500)
+            toast.show(hasPenalty ? `💨 ${event.username} 抢慢了一步，扣1分！本首出局` : `💨 ${event.username} 抢慢了！本首出局`, 'info', 2500)
           }
         }
         playSound('grab_fail')
@@ -520,13 +511,13 @@ export function RoomPage() {
       }
 
       case 'grab_banned': {
-        showToast('🚫 你已出局，只能看别人抢了… (´-ω-`)', 'fail', 2000)
+        toast.show('🚫 你已出局，只能看别人抢了… (´-ω-`)', 'fail', 2000)
         playSound('grab_fail')
         break
       }
 
       case 'all_banned': {
-        showToast('💀 全员出局！本首自动结束… (°ω°)', 'info', 2500)
+        toast.show('💀 全员出局！本首自动结束… (°ω°)', 'info', 2500)
         break
       }
 
@@ -552,7 +543,7 @@ export function RoomPage() {
         setIsPaused(true)
         setGameStatus('paused')
         setRoomState(prev => prev ? { ...prev, room: { ...prev.room, status: 'paused' } } : null)
-        showToast('⏸ 暂停了，喘口气 (´-ω-`)', 'info')
+        toast.show('⏸ 暂停了，喘口气 (´-ω-`)', 'info')
         break
       }
 
@@ -560,7 +551,7 @@ export function RoomPage() {
         setIsPaused(false)
         setGameStatus('reading')
         setRoomState(prev => prev ? { ...prev, room: { ...prev.room, status: 'reading' } } : null)
-        showToast('▶ 战斗继续！(ง •̀_•́)ง', 'info', 1200)
+        toast.show('▶ 战斗继续！(ง •̀_•́)ง', 'info', 1200)
         break
       }
 
@@ -570,7 +561,7 @@ export function RoomPage() {
           if (existing) {
             return prev.map(p => p.user_id === event.user_id ? { ...p, online: true, role: event.role || p.role } : p)
           }
-          showToast(`👋 ${event.username} 加入了战场！`, 'info')
+          toast.show(`👋 ${event.username} 加入了战场！`, 'info')
           return [...prev, { room_id: roomId, user_id: event.user_id, username: event.username, avatar_url: event.avatar_url, role: event.role || 'player', score: 0, online: true }]
         })
         break
@@ -580,7 +571,7 @@ export function RoomPage() {
         // 标记为离线而非删除，保留分数展示
         setPlayers(prev => {
           const leaving = prev.find(p => p.user_id === event.user_id)
-          if (leaving) showToast(`💨 ${leaving.username} 离开了战场`, 'info', 1500)
+          if (leaving) toast.show(`💨 ${leaving.username} 离开了战场`, 'info', 1500)
           return prev.map(p => p.user_id === event.user_id ? { ...p, online: false } : p)
         })
         break
@@ -615,13 +606,13 @@ export function RoomPage() {
       }
 
       case 'room_closed': {
-        showToast('战场已解散，撤退中… (｡•́︿•̀｡)', 'info', 3000)
+        toast.show('战场已解散，撤退中… (｡•́︿•̀｡)', 'info', 3000)
         setTimeout(() => navigate('/'), 2000)
         break
       }
 
       case 'kicked': {
-        showToast('😢 你被房主移出了房间…', 'fail', 3000)
+        toast.show('😢 你被房主移出了房间…', 'fail', 3000)
         setTimeout(() => navigate('/'), 2000)
         break
       }
@@ -632,7 +623,7 @@ export function RoomPage() {
       }
 
       case 'seat_kicked': {
-        showToast('😯 你被房主从席位上移除了', 'info', 2000)
+        toast.show('😯 你被房主从席位上移除了', 'info', 2000)
         break
       }
 
@@ -685,12 +676,12 @@ export function RoomPage() {
       }
 
       case 'judge_offline': {
-        showToast(`👑 裁判断线了！等待重连中… (最多 ${event.timeout}s)`, 'info', event.timeout * 1000)
+        toast.show(`👑 裁判断线了！等待重连中… (最多 ${event.timeout}s)`, 'info', event.timeout * 1000)
         break
       }
 
       case 'judge_timeout': {
-        showToast('👑 裁判长时间未归，对局自动结束 (｡•́︿•̀｡)', 'info', 3000)
+        toast.show('👑 裁判长时间未归，对局自动结束 (｡•́︿•̀｡)', 'info', 3000)
         break
       }
 
@@ -725,21 +716,21 @@ export function RoomPage() {
       case 'duel_grab_wrong': {
         const isMe = user && event.user_id === user.id
         if (isMe) {
-          showToast('❌ 拍错了！本轮机会-1 (╥_╥)', 'fail', 2000)
+          toast.show('❌ 拍错了！本轮机会-1 (╥_╥)', 'fail', 2000)
         } else {
-          showToast(`❌ ${event.username} 拍错了，机会-1！`, 'info', 1500)
+          toast.show(`❌ ${event.username} 拍错了，机会-1！`, 'info', 1500)
         }
         playSound('grab_fail')
         break
       }
 
       case 'duel_grab_invalid': {
-        showToast('⚠️ 无效操作，现在不能拍牌 (°_°)', 'info', 1200)
+        toast.show('⚠️ 无效操作，现在不能拍牌 (°_°)', 'info', 1200)
         break
       }
 
       case 'duel_grab_blocked': {
-        showToast('🚫 本轮机会用完了！等下一轮吧… (´-ω-`)', 'fail', 2000)
+        toast.show('🚫 本轮机会用完了！等下一轮吧… (´-ω-`)', 'fail', 2000)
         playSound('grab_fail')
         break
       }
@@ -766,10 +757,10 @@ export function RoomPage() {
         })
         if (isMe) {
           const areaText = event.area === 'own' ? '己方区' : '对方区'
-          showToast(`🎉 你从${areaText}抢到了！(ﾉ◕ヮ◕)ﾉ`, 'success')
+          toast.show(`🎉 你从${areaText}抢到了！(ﾉ◕ヮ◕)ﾉ`, 'success')
           playSound('grab_ok')
         } else {
-          showToast(`✨ ${event.username} 抢到了！`, 'info')
+          toast.show(`✨ ${event.username} 抢到了！`, 'info')
         }
         break
       }
@@ -780,9 +771,9 @@ export function RoomPage() {
         setDuelCurrentCardId(null)
         setCurrentReading(null)
         if (event.requeued) {
-          showToast('⏰ 超时了！歌曲已重新入队 (´-ω-`)', 'info', 2000)
+          toast.show('⏰ 超时了！歌曲已重新入队 (´-ω-`)', 'info', 2000)
         } else {
-          showToast('⏰ 超时了！这首歌飞走了… (°ω°)', 'info', 2000)
+          toast.show('⏰ 超时了！这首歌飞走了… (°ω°)', 'info', 2000)
         }
         break
       }
@@ -812,9 +803,9 @@ export function RoomPage() {
         })
         const isMe = user && event.from_id === user.id
         if (isMe) {
-          showToast('📤 牌已送出！ (ﾉ´∀`*)ﾉ', 'info', 1500)
+          toast.show('📤 牌已送出！ (ﾉ´∀`*)ﾉ', 'info', 1500)
         } else {
-          showToast('📥 对方送了一张牌过来！', 'info', 1500)
+          toast.show('📥 对方送了一张牌过来！', 'info', 1500)
         }
         break
       }
@@ -838,7 +829,7 @@ export function RoomPage() {
             { user_id: p1?.id ?? 0, username: p1?.username ?? '', score: p1Cards.length, rank: 1, grabbed_cards: p1Cards },
             { user_id: p2?.id ?? 0, username: p2?.username ?? '', score: p2Cards.length, rank: 1, grabbed_cards: p2Cards },
           ])
-          showToast('🤝 平局！旗鼓相当！(´・ω・`)', 'info', 5000)
+          toast.show('🤝 平局！旗鼓相当！(´・ω・`)', 'info', 5000)
         } else {
           const winnerId = event.winner_id
           const loserId = winnerId === (p1?.id ?? 0) ? (p2?.id ?? 0) : (p1?.id ?? 0)
@@ -850,9 +841,9 @@ export function RoomPage() {
             { user_id: loserId, username: loserName, score: loserCards.length, rank: 2, grabbed_cards: loserCards },
           ])
           if (isWinner) {
-            showToast('🏆 你赢了！对决胜利！！(ﾉ◕ヮ◕)ﾉ*:・゜✧', 'success', 5000)
+            toast.show('🏆 你赢了！对决胜利！！(ﾉ◕ヮ◕)ﾉ*:・゜✧', 'success', 5000)
           } else {
-            showToast(`💫 ${event.winner} 获胜了… 下次再战！(>_<)`, 'info', 5000)
+            toast.show(`💫 ${event.winner} 获胜了… 下次再战！(>_<)`, 'info', 5000)
           }
         }
         const toCards = (cards?: Array<{ id: number; display_text: string; cover_url: string }>) => cards ?? []
@@ -865,7 +856,7 @@ export function RoomPage() {
         break
       }
     }
-  }, [user, roomId, playSound, showToast, navigate, roomState, duelState, shufflePending, duelArranging, prefetchAudioUrls])
+  }, [user, roomId, playSound, toast.show, navigate, roomState, duelState, shufflePending, duelArranging, prefetchAudioUrls])
 
   const { send, connected } = useRoomSocket(roomId, handleEvent)
 
@@ -878,27 +869,27 @@ export function RoomPage() {
 
   const handleGrab = useCallback((cardId: number) => {
     if (isSpectator) {
-      showToast('👁 旁观者不能抢牌哦！(´-ω-`)', 'info', 1000)
+      toast.show('👁 旁观者不能抢牌哦！(´-ω-`)', 'info', 1000)
       return
     }
     if (!currentReading) {
-      showToast('🎵 等待下一张牌吧… (´。• ω •。`)', 'info', 1000)
+      toast.show('🎵 等待下一张牌吧… (´。• ω •。`)', 'info', 1000)
       return
     }
     send({ type: 'grab', card_id: cardId })
-  }, [send, currentReading, showToast, isSpectator])
+  }, [send, currentReading, toast.show, isSpectator])
 
   const handleDuelGrab = useCallback((cardId: number) => {
     if (isSpectator) {
-      showToast('👁 旁观者不能抢牌哦！(´-ω-`)', 'info', 1000)
+      toast.show('👁 旁观者不能抢牌哦！(´-ω-`)', 'info', 1000)
       return
     }
     if (!duelCurrentCardId) {
-      showToast('🎵 等待下一轮吧… (´。• ω •。`)', 'info', 1000)
+      toast.show('🎵 等待下一轮吧… (´。• ω •。`)', 'info', 1000)
       return
     }
     send({ type: 'grab', card_id: cardId })
-  }, [send, duelCurrentCardId, showToast, isSpectator])
+  }, [send, duelCurrentCardId, toast.show, isSpectator])
 
   const handleDuelGive = useCallback((cardId: number) => {
     send({ type: 'give_card', card_id: cardId })
@@ -963,7 +954,7 @@ export function RoomPage() {
       <div className="flex flex-col items-center justify-center py-32 text-crimson gap-4">
         <div className="text-5xl">😣</div>
         <p>{error ?? '找不到这个战场 (>_<)'}</p>
-        <button onClick={() => navigate('/')} className="btn-outline transition-all duration-200 hover:scale-105">回到大本营</button>
+        <Button variant="outline" onClick={() => navigate('/')}>回到大本营</Button>
       </div>
     </Layout>
   )
@@ -1013,7 +1004,7 @@ export function RoomPage() {
           preloadProgress={preloadProgress}
           duelSeats={duelSeats}
           onClaimSeat={async (seat) => {
-            try { await api.rooms.claimSeat(roomId, seat) } catch (e) { showToast(e instanceof Error ? e.message : '入座失败', 'fail') }
+            try { await api.rooms.claimSeat(roomId, seat) } catch (e) { toast.show(e instanceof Error ? e.message : '入座失败', 'fail') }
           }}
           onLeaveSeat={async () => {
             try { await api.rooms.leaveSeat(roomId) } catch { /* ignore */ }
@@ -1090,7 +1081,7 @@ export function RoomPage() {
                   await api.rooms.spectate(roomId, false)
                   setIsSpectator(false)
                   setPlayers(prev => prev.map(p => p.user_id === user?.id ? { ...p, role: 'player' } : p))
-                  showToast('⚔️ 已加入战斗！下一首可以抢了！', 'success')
+                  toast.show('⚔️ 已加入战斗！下一首可以抢了！', 'success')
                 } catch { /* ignore */ }
               }}
               className="px-3 py-1 rounded text-xs font-medium transition-all hover:scale-105"
@@ -1341,42 +1332,6 @@ export function RoomPage() {
         {duelGiveCards && duelGiveCards.length > 0 && (
           <DuelGiveModal cards={duelGiveCards} onGive={handleDuelGive} />
         )}
-
-        {/* Toast 反馈 */}
-        <AnimatePresence>
-          {toast && (
-            <motion.div key={toast.id}
-              initial={{ opacity: 0, y: 20, scale: 0.85 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -10, scale: 0.9 }}
-              transition={{ duration: 0.25, ease: 'backOut' }}
-              className="fixed bottom-20 md:top-24 md:bottom-auto left-1/2 -translate-x-1/2 z-50 pointer-events-none"
-              style={{ minWidth: '180px', maxWidth: '280px' }}>
-              <div className={[
-                'px-5 py-3 rounded-2xl text-sm font-medium text-center shadow-2xl backdrop-blur-md',
-                toast.type === 'success'
-                  ? 'border border-gold/50 text-white'
-                  : toast.type === 'fail'
-                  ? 'border border-crimson/50 text-white'
-                  : 'border border-white/10 text-white/80',
-              ].join(' ')}
-                style={{
-                  background: toast.type === 'success'
-                    ? 'linear-gradient(135deg, rgb(var(--glow-color)/ 0.3), rgb(var(--accent-primary)/ 0.2))'
-                    : toast.type === 'fail'
-                    ? 'linear-gradient(135deg, rgba(192,57,43,0.35), rgba(231,76,60,0.2))'
-                    : 'rgb(var(--accent-bg-mid)/ 0.85)',
-                  boxShadow: toast.type === 'success'
-                    ? '0 0 30px rgb(var(--accent-primary)/ 0.3), 0 8px 24px rgba(0,0,0,0.5)'
-                    : toast.type === 'fail'
-                    ? '0 0 30px rgba(192,57,43,0.3), 0 8px 24px rgba(0,0,0,0.5)'
-                    : '0 8px 24px rgba(0,0,0,0.5)',
-                }}>
-                {toast.text}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
 
         {/* 聊天室 */}
         <ChatRoom

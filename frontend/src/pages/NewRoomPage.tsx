@@ -2,6 +2,7 @@ import { useState, useEffect, type FormEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Layout } from '../components/Layout'
+import { Button } from '../components/ui'
 import { api } from '../api/client'
 import type { Deck, Room } from '../api/types'
 
@@ -134,12 +135,10 @@ export function NewRoomPage() {
               <p className="text-muted text-xs mb-8">
                 点击复制 · 发给好友 · 一起来战！
               </p>
-              <button
-                onClick={() => navigate(`/rooms/${createdRoom.id}`)}
-                className="btn-gold w-full text-lg py-4 transition-all duration-200 hover:scale-[1.02]"
-              >
+              {/* 进入房间主按钮 */}
+              <Button size="lg" className="w-full font-serif" onClick={() => navigate(`/rooms/${createdRoom.id}`)}>
                 「冲进去！」ヽ(°〇°)ﾉ
-              </button>
+              </Button>
             </motion.div>
           ) : (
             // Form
@@ -667,13 +666,16 @@ export function NewRoomPage() {
                   </p>
                 )}
 
-                <button
+                {/* 创建房间提交按钮：loading 态锁定防重复提交 */}
+                <Button
                   type="submit"
-                  disabled={creating || !selectedDeckId}
-                  className="btn-gold w-full text-base py-3.5 disabled:opacity-50 transition-all duration-200 hover:scale-[1.02] shadow-lg shadow-gold/20 font-serif"
+                  size="lg"
+                  loading={creating}
+                  disabled={!selectedDeckId}
+                  className="w-full font-serif"
                 >
-                  {creating ? '战场开辟中… (｡･ω･｡)' : '「开辟战场！」(ง •̀_•́)ง'}
-                </button>
+                  「开辟战场！」(ง •̀_•́)ง
+                </Button>
               </form>
             </motion.div>
           )}
