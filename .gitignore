@@ -5,7 +5,8 @@ data/
 *.db-shm
 *.db-wal
 
-# ffmpeg.wasm 二进制（构建/dev 时由 vite 插件从 @ffmpeg/core 自动生成）
+# 前端截图基线（视觉回归对比用，仅本地保留）
+frontend/baseline/
 frontend/public/ffmpeg/
 
 # npm 依赖
