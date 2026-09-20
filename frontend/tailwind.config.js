@@ -1,6 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 // 设计系统映射：颜色全部引用 index.css 的 RGB 三元组变量，
-// 主题切换（sakura/shimapan）由 CSS 变量驱动，无需任何 !important 覆盖。
+// 唯一主题（樱花粉）由 CSS 变量驱动，无需任何 !important 覆盖。
 // 详细规范见 docs/design-system.md。
 export default {
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],

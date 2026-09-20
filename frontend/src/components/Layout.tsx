@@ -3,7 +3,6 @@ import { Link, useNavigate, Navigate, useLocation } from 'react-router-dom'
 import { Images, Layers, CircleUserRound, LogOut } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { Changelog } from './Changelog'
-import { ThemeSwitcher } from './ThemeSwitcher'
 
 interface LayoutProps {
   children: ReactNode
@@ -96,7 +95,6 @@ export function Layout({ children }: LayoutProps) {
 
       {/* 更新日志（只显示一次） */}
       <Changelog />
-      <ThemeSwitcher />
     </div>
   )
 }

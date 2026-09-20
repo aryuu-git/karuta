@@ -6,12 +6,11 @@
    设计 token（RGB 三元组格式）
    约定：全部颜色变量存 "R G B" 三元组，消费方统一用
    rgb(var(--x) / <alpha>) 语法（现代空格斜杠语法），任意透明度
-   修饰符（Tailwind 的 /50 等）在双主题下自动生效。
+   修饰符（Tailwind 的 /50 等）自动生效。
    ============================================================ */
 
-/* 樱花粉主题（默认）：和纸质感 + 樱花粉 × 金粉 */
-:root,
-[data-theme="sakura"] {
+/* 樱花粉主题（唯一主题）：和纸质感 + 樱花粉 × 金粉 */
+:root {
   --color-ink: 68 32 56;            /* 主背景 / 重文字 #442038 */
   --color-ink-deep: 56 24 48;       /* 深背景 / 输入框底 #381830 */
   --color-gold: 248 176 200;        /* 主强调·樱花粉 #f8b0c8（历史名，实为粉） */
@@ -38,33 +37,6 @@
   --glow-color: 212 167 106;        /* 金色光晕 */
 }
 
-/* 常磐蓝主题（shimapan）：蓝白条纹意象 */
-[data-theme="shimapan"] {
-  --color-ink: 26 40 72;            /* #1a2848 */
-  --color-ink-deep: 18 30 56;       /* #121e38 */
-  --color-gold: 88 152 224;         /* 主强调·绀青 #5898e0 */
-  --color-gold-light: 144 192 248;
-  --color-gold-dark: 56 120 192;
-  --color-crimson: 224 96 128;
-  --color-crimson-light: 240 128 152;
-  --color-surface: 32 48 80;
-  --color-surface-elevated: 40 56 96;
-  --color-border: 58 88 136;
-  --color-muted: 144 176 208;
-  --color-body-bg: 26 40 72;
-  --color-body-text: 240 244 248;
-  --gold-foil: 212 167 106;         /* 金粉恒定：深蓝底上描金依旧成立 */
-  --color-success: 74 222 128;
-  --color-warning: 251 146 60;
-  --color-danger: 248 113 113;
-  --color-info: 96 165 250;
-  --accent-primary: 88 152 224;
-  --accent-secondary: 120 180 240;
-  --accent-bg: 20 40 80;
-  --accent-bg-mid: 15 25 50;
-  --accent-bg-end: 25 45 85;
-  --glow-color: 88 152 224;
-}
 
 @tailwind base;
 @tailwind components;
