@@ -17,8 +17,8 @@ const RANK_GLOW = ['rgba(255,215,0,0.15)', 'rgba(192,192,192,0.1)', 'rgba(205,12
 export function ScoreBoard({ players, currentUserId, hostId, remainingCount, totalCount, onKick }: ScoreBoardProps) {
   // 玩家按分数排，旁观者排最后
   const sorted = [...players].sort((a, b) => {
-    const aSpec = (a as any).role === 'spectator'
-    const bSpec = (b as any).role === 'spectator'
+    const aSpec = a.role === 'spectator'
+    const bSpec = b.role === 'spectator'
     if (aSpec && !bSpec) return 1
     if (!aSpec && bSpec) return -1
     return b.score - a.score
@@ -72,9 +72,9 @@ export function ScoreBoard({ players, currentUserId, hostId, remainingCount, tot
         <AnimatePresence>
           {sorted.map((player, idx) => {
             const isMe = player.user_id === currentUserId
-            const isSpectator = (player as any).role === 'spectator'
+            const isSpectator = player.role === 'spectator'
             // 旁观者不占排名序号
-            const rankIdx = sorted.slice(0, idx).filter(p => (p as any).role !== 'spectator').length
+            const rankIdx = sorted.slice(0, idx).filter(p => p.role !== 'spectator').length
             const medal = isSpectator ? null : RANK_MEDAL[rankIdx]
             const glow = isSpectator ? undefined : RANK_GLOW[rankIdx]
 

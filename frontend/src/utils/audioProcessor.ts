@@ -79,7 +79,7 @@ export async function processAudio(
 
   // 检测 SharedArrayBuffer 支持（HTTPS + COOP/COEP 才可用）
   if (typeof SharedArrayBuffer === 'undefined') {
-    console.warn('SharedArrayBuffer 不可用（需要 HTTPS），跳过音频处理')
+    console.warn('SharedArrayBuffer 不可用（需要 HTTPS），跳过音频处理') // 保留 console：ffmpeg.wasm 降级路径无其他日志通道，需告知用户为何跳过处理
     return file
   }
 
@@ -89,7 +89,7 @@ export async function processAudio(
     ffmpeg = await loadFFmpeg()
     onProgress?.(0.15)
   } catch {
-    console.warn('ffmpeg 加载失败，使用原文件上传')
+    console.warn('ffmpeg 加载失败，使用原文件上传') // 保留 console：降级为原文件上传的唯一用户可见提示
     return file
   }
 
@@ -123,7 +123,7 @@ export async function processAudio(
 
     return outputFile
   } catch (e) {
-    console.warn('音频处理失败，使用原文件上传:', e)
+    console.warn('音频处理失败，使用原文件上传:', e) // 保留 console：降级诊断出口，保留原始错误便于排查
     return file
   } finally {
     if (progressHandler) ffmpeg.off('progress', progressHandler)

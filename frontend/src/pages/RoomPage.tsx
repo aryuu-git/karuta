@@ -165,13 +165,13 @@ export function RoomPage() {
         if (state.room.status === 'paused') setIsPaused(true)
         if (state.room.status === 'reading' || state.room.status === 'paused') setJustJoined(true)
         // 检查自己是否是旁观者
-        const me = (state.players ?? []).find((p: any) => p.user_id === user?.id)
-        if (me && (me as any).role === 'spectator') setIsSpectator(true)
+        const me = (state.players ?? []).find(p => p.user_id === user?.id)
+        if (me && me.role === 'spectator') setIsSpectator(true)
         // 初始化 duel 席位
         if (state.room.mode === 'duel') {
           let s1: { user_id: number; username: string } | null = null
           let s2: { user_id: number; username: string } | null = null
-          for (const p of (state.players ?? []) as any[]) {
+          for (const p of state.players ?? []) {
             if (p.role === 'duel_p1') s1 = { user_id: p.user_id, username: p.username }
             if (p.role === 'duel_p2') s2 = { user_id: p.user_id, username: p.username }
           }
@@ -185,12 +185,12 @@ export function RoomPage() {
         // 初始化 cardRemaining（从 room_state cards 中获取）
         if (state.cards?.length) {
           const rm = new Map<number, number>()
-          state.cards.forEach((c: any) => rm.set(c.id, c.remaining ?? c.audio_count ?? 1))
+          state.cards.forEach(c => rm.set(c.id, c.remaining ?? c.audio_count ?? 1))
           setCardRemaining(rm)
         }
         // 恢复废牌堆（从 grabbed_cards 重建）
         if (state.grabbed_cards?.length) {
-          setDiscardPile(state.grabbed_cards.map((g: any) => ({
+          setDiscardPile(state.grabbed_cards.map(g => ({
             cardId: g.card_id,
             winner: g.winner_name || '无人',
             hintText: g.hint_text || '',
@@ -227,7 +227,7 @@ export function RoomPage() {
         // 避免时序问题导致刚重连的玩家显示离线
         setPlayers(prev => {
           const newPlayers = s.players ?? []
-          return newPlayers.map((np: any) => {
+          return newPlayers.map(np => {
             const existing = prev.find(p => p.user_id === np.user_id)
             return {
               ...np,
@@ -244,14 +244,14 @@ export function RoomPage() {
         // 恢复 cardRemaining 状态
         if (s.cards?.length) {
           const rm = new Map<number, number>()
-          s.cards.forEach((c: any) => rm.set(c.id, c.remaining ?? c.audio_count ?? 1))
+          s.cards.forEach(c => rm.set(c.id, c.remaining ?? c.audio_count ?? 1))
           setCardRemaining(rm)
         }
         if (s.grabbed_cards?.length) {
-          setDiscardPile(s.grabbed_cards.map((g: any) => ({
-            cardId: g.card_id as number,
-            winner: (g.winner_name || '无人') as string,
-            hintText: (g.hint_text || '') as string,
+          setDiscardPile(s.grabbed_cards.map(g => ({
+            cardId: g.card_id,
+            winner: g.winner_name || '无人',
+            hintText: g.hint_text || '',
           })))
         }
         if (s.judge_waiting) setIsJudgeWaiting(true)
@@ -310,9 +310,9 @@ export function RoomPage() {
       }
 
       case 'card_claimed': {
-        const remaining = (event as any).remaining ?? 0
+        const remaining = event.remaining ?? 0
         setCardRemaining(prev => new Map(prev).set(event.card_id, remaining))
-        setDiscardPile(prev => [...prev, { cardId: event.card_id, winner: event.winner_name, hintText: (event as any).hint_text ?? '' }])
+        setDiscardPile(prev => [...prev, { cardId: event.card_id, winner: event.winner_name, hintText: event.hint_text ?? '' }])
         setCurrentReading(null)
         const isMe = user && event.winner_id === user.id
         if (isMe) {
@@ -326,7 +326,7 @@ export function RoomPage() {
       }
 
       case 'card_missed': {
-        const remaining = (event as any).remaining ?? 0
+        const remaining = event.remaining ?? 0
         setCardRemaining(prev => new Map(prev).set(event.card_id, remaining))
         setDiscardPile(prev => [...prev, { cardId: event.card_id, winner: '无人', hintText: '' }])
         setCurrentReading(null)
@@ -875,7 +875,7 @@ export function RoomPage() {
 
         {/* 旁观者切换提示（duel 模式不显示加入战斗按钮） */}
         {isDuelMode && (() => {
-          const spectators = players.filter(p => (p as any).role !== 'duel_p1' && (p as any).role !== 'duel_p2')
+          const spectators = players.filter(p => p.role !== 'duel_p1' && p.role !== 'duel_p2')
           return spectators.length > 0 || isSpectator ? (
             <div className="flex items-center gap-2 px-4 py-1.5 text-xs"
               style={{ background: 'rgba(128,90,213,0.08)', borderBottom: '1px solid rgba(128,90,213,0.15)' }}>

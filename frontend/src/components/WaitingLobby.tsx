@@ -133,7 +133,10 @@ export function WaitingLobby({ room, players, currentUserId, onRoleChange, onKic
 
     // 解锁音频：满足浏览器自动播放策略
     try {
-      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)()
+      // Safari 旧版仅暴露带前缀的 webkitAudioContext（非标 API）；结构化断言为 AudioContext 同签名构造器
+      const legacyWindow = window as unknown as { webkitAudioContext: typeof AudioContext }
+      const AudioCtor = window.AudioContext || legacyWindow.webkitAudioContext
+      const ctx = new AudioCtor()
       if (ctx.state === 'suspended') await ctx.resume()
       const osc = ctx.createOscillator()
       const gain = ctx.createGain()
@@ -306,7 +309,7 @@ export function WaitingLobby({ room, players, currentUserId, onRoleChange, onKic
                 ].join(' ')}
               >
                 {/* Avatar */}
-                <Avatar username={player.username} avatarUrl={(player as any).avatar_url} size={24} />
+                <Avatar username={player.username} avatarUrl={player.avatar_url} size={24} />
                 <span
                   className={`text-sm truncate flex-1 ${
                     player.user_id === currentUserId ? 'text-gold' : 'text-white/80'
@@ -316,7 +319,7 @@ export function WaitingLobby({ room, players, currentUserId, onRoleChange, onKic
                   {player.user_id === room.host_id && (
                     <span className="text-crimson text-xs ml-1">👑</span>
                   )}
-                  {(player as any).role === 'spectator' && (
+                  {player.role === 'spectator' && (
                     <span className="text-xs ml-1" style={{ color: 'rgba(128,90,213,0.7)' }}>👁旁观</span>
                   )}
                 </span>
