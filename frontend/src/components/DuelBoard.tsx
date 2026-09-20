@@ -99,7 +99,7 @@ export function DuelBoard({ duelState, currentUserId, onGrab, arranging, arrange
     <div className="flex flex-col h-full overflow-hidden">
       {/* 顶部状态栏 */}
       <div className="flex items-center justify-between px-4 py-2 shrink-0"
-        style={{ background: 'rgba(var(--accent-bg-mid),0.7)', borderBottom: '1px solid rgba(var(--accent-primary),0.1)' }}>
+        style={{ background: 'rgb(var(--accent-bg-mid)/ 0.7)', borderBottom: '1px solid rgb(var(--accent-primary)/ 0.1)' }}>
         <div className="flex items-center gap-2">
           <span className="text-crimson/80 text-xs font-serif">
             {opponentState.username}
@@ -124,7 +124,7 @@ export function DuelBoard({ duelState, currentUserId, onGrab, arranging, arrange
 
       {/* 对方区域 */}
       <div className="flex-1 overflow-y-auto relative"
-        style={{ borderBottom: '2px solid rgba(var(--accent-primary),0.15)' }}>
+        style={{ borderBottom: '2px solid rgb(var(--accent-primary)/ 0.15)' }}>
         <div className="absolute top-1 left-1/2 -translate-x-1/2 z-10 pointer-events-none">
           <span className="text-crimson/40 text-xs bg-black/40 px-2 py-0.5 rounded-full font-serif">
             -- 对方领域 --
@@ -143,7 +143,7 @@ export function DuelBoard({ duelState, currentUserId, onGrab, arranging, arrange
 
       {/* 分隔线 - 中间决斗区标识 */}
       <div className="flex items-center gap-2 px-4 py-1.5 shrink-0"
-        style={{ background: 'rgba(var(--accent-primary),0.06)' }}>
+        style={{ background: 'rgb(var(--accent-primary)/ 0.06)' }}>
         <div className="h-px flex-1 bg-gold/20" />
         <span className="text-gold/60 text-xs font-serif tracking-wider">
           -- 决斗场 --
@@ -172,7 +172,7 @@ export function DuelBoard({ duelState, currentUserId, onGrab, arranging, arrange
       {/* 排阵确认按钮 */}
       {arranging && (
         <div className="shrink-0 px-4 py-3 flex items-center gap-3"
-          style={{ background: 'rgba(var(--accent-bg-mid),0.8)', borderTop: '1px solid rgba(var(--accent-primary),0.1)' }}>
+          style={{ background: 'rgb(var(--accent-bg-mid)/ 0.8)', borderTop: '1px solid rgb(var(--accent-primary)/ 0.1)' }}>
           <div className="flex-1 text-xs text-muted font-serif">
             {selected !== null ? '点击另一张牌交换（可跨区）' : '点击选中一张牌'}
           </div>
@@ -183,9 +183,9 @@ export function DuelBoard({ duelState, currentUserId, onGrab, arranging, arrange
             disabled={myReady}
             className="px-4 py-2 rounded-lg text-sm font-serif transition-all disabled:opacity-40"
             style={{
-              background: myReady ? 'rgba(34,197,94,0.2)' : 'rgba(var(--accent-primary),0.15)',
-              border: myReady ? '1px solid rgba(34,197,94,0.5)' : '1px solid rgba(var(--accent-primary),0.3)',
-              color: myReady ? '#22c55e' : 'var(--color-gold)',
+              background: myReady ? 'rgba(34,197,94,0.2)' : 'rgb(var(--accent-primary)/ 0.15)',
+              border: myReady ? '1px solid rgba(34,197,94,0.5)' : '1px solid rgb(var(--accent-primary)/ 0.3)',
+              color: myReady ? '#22c55e' : 'rgb(var(--color-gold))',
             }}
           >
             {myReady ? '已准备 ✓' : '准备完毕！'}
@@ -259,7 +259,7 @@ function DuelCardGrid({ cards, flipped, onGrab, isOpponent, onCardClickWithIndex
                       ? '2px solid rgba(34,197,94,0.8)'
                       : isClaimed
                         ? '1px solid rgba(255,255,255,0.05)'
-                        : '1px solid rgba(var(--accent-primary),0.1)',
+                        : '1px solid rgb(var(--accent-primary)/ 0.1)',
                   }}
                 >
                   {card.cover_url ? (
@@ -269,7 +269,7 @@ function DuelCardGrid({ cards, flipped, onGrab, isOpponent, onCardClickWithIndex
                     />
                   ) : (
                     <div className="absolute inset-0 flex items-center justify-center"
-                      style={{ background: 'linear-gradient(160deg, var(--color-surface), var(--color-ink))' }}>
+                      style={{ background: 'linear-gradient(160deg, rgb(var(--color-surface)), rgb(var(--color-ink)))' }}>
                       <span className="text-gold/40 text-xs font-serif">{card.display_text.slice(0, 4)}</span>
                     </div>
                   )}

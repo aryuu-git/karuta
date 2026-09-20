@@ -26,7 +26,7 @@ export function ScoreBoard({ players, currentUserId, hostId, remainingCount, tot
   const progressPct = totalCount > 0 ? ((totalCount - remainingCount) / totalCount) * 100 : 0
 
   return (
-    <div className="flex flex-col h-full w-52 shrink-0" style={{ background: 'linear-gradient(180deg, rgba(var(--accent-bg-mid),0.98) 0%, rgba(var(--accent-bg-end),0.95) 100%)', borderLeft: '1px solid rgba(var(--accent-primary),0.1)' }}>
+    <div className="flex flex-col h-full w-52 shrink-0" style={{ background: 'linear-gradient(180deg, rgb(var(--accent-bg-mid)/ 0.98) 0%, rgb(var(--accent-bg-end)/ 0.95) 100%)', borderLeft: '1px solid rgb(var(--accent-primary)/ 0.1)' }}>
 
       {/* Header */}
       <div className="px-4 pt-4 pb-3 border-b border-white/5">
@@ -48,8 +48,8 @@ export function ScoreBoard({ players, currentUserId, hostId, remainingCount, tot
                 style={{ strokeDashoffset: 94.2 * (1 - progressPct / 100) }} />
               <defs>
                 <linearGradient id="scoreGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor="var(--color-gold)" />
-                  <stop offset="100%" stopColor="var(--color-gold-light)" />
+                  <stop offset="0%" stopColor="rgb(var(--color-gold))" />
+                  <stop offset="100%" stopColor="rgb(var(--color-gold-light))" />
                 </linearGradient>
               </defs>
             </svg>
@@ -83,12 +83,12 @@ export function ScoreBoard({ players, currentUserId, hostId, remainingCount, tot
                 initial={{ opacity: 0, x: 20 }} animate={{ opacity: player.online ? 1 : 0.35, x: 0 }}
                 transition={{ duration: 0.3, layout: { duration: 0.4, ease: 'easeOut' } }}
                 className="relative rounded-lg mb-1.5 overflow-hidden"
-                style={{ background: isMe ? 'rgba(var(--accent-primary),0.07)' : glow ?? 'rgba(255,255,255,0.02)', border: `1px solid ${isMe ? 'rgba(var(--accent-primary),0.25)' : 'rgba(255,255,255,0.04)'}` }}>
+                style={{ background: isMe ? 'rgb(var(--accent-primary)/ 0.07)' : glow ?? 'rgba(255,255,255,0.02)', border: `1px solid ${isMe ? 'rgb(var(--accent-primary)/ 0.25)' : 'rgba(255,255,255,0.04)'}` }}>
 
                 {/* 我的高亮条 */}
                 {isMe && (
                   <div className="absolute left-0 top-0 bottom-0 w-0.5 rounded-l"
-                    style={{ background: 'linear-gradient(180deg, var(--color-gold), var(--color-gold-light))' }} />
+                    style={{ background: 'linear-gradient(180deg, rgb(var(--color-gold)), rgb(var(--color-gold-light)))' }} />
                 )}
 
                 <div className="flex items-center gap-2 px-3 py-2.5">
@@ -115,8 +115,8 @@ export function ScoreBoard({ players, currentUserId, hostId, remainingCount, tot
                     <span className="text-xs shrink-0" style={{ color: 'rgba(128,90,213,0.5)' }}>—</span>
                   ) : (
                   <motion.div key={`score-${player.user_id}-${player.score}`}
-                    initial={{ scale: 1.6, color: 'var(--color-gold-light)' }}
-                    animate={{ scale: 1, color: isMe ? 'var(--color-gold)' : 'rgba(255,255,255,0.5)' }}
+                    initial={{ scale: 1.6, color: 'rgb(var(--color-gold-light))' }}
+                    animate={{ scale: 1, color: isMe ? 'rgb(var(--color-gold))' : 'rgba(255,255,255,0.5)' }}
                     transition={{ duration: 0.4, ease: 'backOut' }}
                     className="text-sm font-bold tabular-nums shrink-0">
                     {player.score}

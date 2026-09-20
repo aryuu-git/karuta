@@ -49,7 +49,7 @@ export function GuestPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="w-full max-w-sm rounded-2xl p-8 text-center"
-          style={{ background: 'linear-gradient(180deg, rgba(var(--accent-bg-end),0.6) 0%, rgba(var(--accent-bg-mid),0.9) 100%)', border: '1px solid rgba(var(--accent-primary),0.15)' }}
+          style={{ background: 'linear-gradient(180deg, rgb(var(--accent-bg-end)/ 0.6) 0%, rgb(var(--accent-bg-mid)/ 0.9) 100%)', border: '1px solid rgb(var(--accent-primary)/ 0.15)' }}
         >
           <h1 className="font-serif text-2xl text-gold font-bold mb-2">🌸 歌牌 Karuta</h1>
           <p className="text-muted text-xs mb-6">游客模式 · 输入邀请码加入对局</p>

@@ -211,7 +211,7 @@ export function Changelog() {
             exit={{ scale: 0.92, opacity: 0, y: 16 }}
             transition={{ duration: 0.4, ease: 'backOut' }}
             className="w-full max-w-md max-h-[80vh] flex flex-col rounded-2xl overflow-hidden"
-            style={{ background: 'linear-gradient(160deg, var(--color-ink) 0%, var(--color-ink-deep) 100%)', border: '1px solid rgba(var(--accent-primary),0.2)', boxShadow: '0 0 60px rgba(var(--accent-primary),0.15), 0 24px 48px rgba(0,0,0,0.6)' }}
+            style={{ background: 'linear-gradient(160deg, rgb(var(--color-ink)) 0%, rgb(var(--color-ink-deep)) 100%)', border: '1px solid rgb(var(--accent-primary)/ 0.2)', boxShadow: '0 0 60px rgb(var(--accent-primary)/ 0.15), 0 24px 48px rgba(0,0,0,0.6)' }}
             onClick={e => e.stopPropagation()}
           >
             {/* 头部 */}
@@ -222,7 +222,7 @@ export function Changelog() {
                     <span className="text-xl">🌸</span>
                     <h2 className="font-serif text-lg font-bold text-gold">更新日志</h2>
                     <span className="text-xs px-2 py-0.5 rounded-full font-mono"
-                      style={{ background: 'rgba(var(--accent-primary),0.15)', color: 'var(--color-gold)', border: '1px solid rgba(var(--accent-primary),0.25)' }}>
+                      style={{ background: 'rgb(var(--accent-primary)/ 0.15)', color: 'rgb(var(--color-gold))', border: '1px solid rgb(var(--accent-primary)/ 0.25)' }}>
                       v{CURRENT_VERSION}
                     </span>
                   </div>
@@ -241,7 +241,7 @@ export function Changelog() {
                 <div key={log.version}>
                   <div className="flex items-center gap-2 mb-3">
                     <span className="text-xs font-mono px-2 py-0.5 rounded"
-                      style={{ background: li === 0 ? 'rgba(var(--accent-primary),0.15)' : 'rgba(255,255,255,0.05)', color: li === 0 ? 'var(--color-gold)' : 'rgba(255,255,255,0.3)', border: `1px solid ${li === 0 ? 'rgba(var(--accent-primary),0.2)' : 'rgba(255,255,255,0.08)'}` }}>
+                      style={{ background: li === 0 ? 'rgb(var(--accent-primary)/ 0.15)' : 'rgba(255,255,255,0.05)', color: li === 0 ? 'rgb(var(--color-gold))' : 'rgba(255,255,255,0.3)', border: `1px solid ${li === 0 ? 'rgb(var(--accent-primary)/ 0.2)' : 'rgba(255,255,255,0.08)'}` }}>
                       v{log.version}
                     </span>
                     <span className="font-medium text-sm" style={{ color: li === 0 ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.4)' }}>

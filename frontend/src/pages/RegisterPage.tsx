@@ -72,9 +72,9 @@ export function RegisterPage() {
     <div className="min-h-screen washi-bg flex items-center justify-center px-4">
       <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden="true">
         <div className="absolute top-1/3 right-1/3 w-80 h-80 rounded-full opacity-10 blur-3xl"
-          style={{ background: 'radial-gradient(circle, var(--color-gold), transparent)' }} />
+          style={{ background: 'radial-gradient(circle, rgb(var(--color-gold)), transparent)' }} />
         <div className="absolute bottom-1/3 left-1/4 w-56 h-56 rounded-full opacity-8 blur-2xl"
-          style={{ background: 'radial-gradient(circle, var(--color-gold-light), transparent)' }} />
+          style={{ background: 'radial-gradient(circle, rgb(var(--color-gold-light)), transparent)' }} />
       </div>
 
       <motion.div
@@ -86,7 +86,7 @@ export function RegisterPage() {
         <div className="text-center mb-8">
           <Link to="/login">
             <h1 className="font-serif text-5xl font-bold text-gold-shimmer mb-1 hover:opacity-80 transition-opacity"
-              style={{ textShadow: '0 0 40px rgba(var(--accent-primary),0.4)' }}>
+              style={{ textShadow: '0 0 40px rgb(var(--accent-primary)/ 0.4)' }}>
               🌸 二次元歌牌大乱斗
             </h1>
           </Link>
@@ -99,9 +99,9 @@ export function RegisterPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.15, duration: 0.4 }}
           className="rounded-2xl p-8 relative overflow-hidden"
-          style={{ background: 'linear-gradient(160deg, rgba(var(--accent-bg-end),0.8), rgba(var(--accent-bg-mid),0.95))', border: '1px solid rgba(var(--accent-primary),0.15)', boxShadow: '0 0 60px rgba(var(--accent-primary),0.1), 0 20px 40px rgba(0,0,0,0.5)' }}
+          style={{ background: 'linear-gradient(160deg, rgb(var(--accent-bg-end)/ 0.8), rgb(var(--accent-bg-mid)/ 0.95))', border: '1px solid rgb(var(--accent-primary)/ 0.15)', boxShadow: '0 0 60px rgb(var(--accent-primary)/ 0.1), 0 20px 40px rgba(0,0,0,0.5)' }}
         >
-          <div className="absolute top-0 left-0 w-full h-0.5" style={{ background: 'linear-gradient(90deg, transparent, rgba(var(--accent-primary),0.4), rgba(var(--glow-color),0.4), transparent)' }} />
+          <div className="absolute top-0 left-0 w-full h-0.5" style={{ background: 'linear-gradient(90deg, transparent, rgb(var(--accent-primary)/ 0.4), rgb(var(--glow-color)/ 0.4), transparent)' }} />
           <h2 className="text-gold font-serif font-bold text-lg mb-1 text-center">
             加入战场！✨
           </h2>

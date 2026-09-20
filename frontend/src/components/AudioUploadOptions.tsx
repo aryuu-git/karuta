@@ -43,7 +43,7 @@ export function AudioUploadOptions({ audioFile, onChange, processing, progress }
   }
 
   return (
-    <div className="border border-border rounded-lg p-3 space-y-3" style={{ background: 'rgba(var(--accent-bg),0.1)' }}>
+    <div className="border border-border rounded-lg p-3 space-y-3" style={{ background: 'rgb(var(--accent-bg)/ 0.1)' }}>
       <div className="flex items-center justify-between">
         <span className="text-muted text-xs">⚙️ 音频处理</span>
         {duration !== null && (

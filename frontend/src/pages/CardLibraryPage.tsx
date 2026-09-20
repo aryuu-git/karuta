@@ -113,9 +113,9 @@ export function CardLibraryPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
         {/* Header with decorative gradient */}
         <div className="relative mb-8 overflow-hidden rounded-2xl p-6"
-          style={{ background: 'linear-gradient(135deg, rgba(var(--accent-bg),0.4) 0%, rgba(var(--accent-bg-mid),0.8) 50%, rgba(var(--accent-bg-end),0.4) 100%)', border: '1px solid rgba(var(--accent-primary),0.15)' }}>
+          style={{ background: 'linear-gradient(135deg, rgb(var(--accent-bg)/ 0.4) 0%, rgb(var(--accent-bg-mid)/ 0.8) 50%, rgb(var(--accent-bg-end)/ 0.4) 100%)', border: '1px solid rgb(var(--accent-primary)/ 0.15)' }}>
           <div className="absolute top-0 right-0 w-32 h-32 opacity-10 pointer-events-none"
-            style={{ background: 'radial-gradient(circle, rgba(var(--glow-color),0.8), transparent 70%)' }} />
+            style={{ background: 'radial-gradient(circle, rgb(var(--glow-color)/ 0.8), transparent 70%)' }} />
           <div className="flex items-center justify-between relative">
             <div>
               <h1 className="font-serif text-2xl text-gold font-bold tracking-wide">
@@ -129,7 +129,7 @@ export function CardLibraryPage() {
               <div className="flex items-center gap-2">
                 <button onClick={() => setSelectMode(true)}
                   className="text-xs px-3 py-1.5 rounded-full text-muted/60 hover:text-gold transition-all hover:bg-gold/5"
-                  style={{ border: '1px solid rgba(var(--accent-primary),0.15)' }}>
+                  style={{ border: '1px solid rgb(var(--accent-primary)/ 0.15)' }}>
                   ☑ 编辑
                 </button>
                 <button onClick={() => navigate('/cards/new')}
@@ -180,7 +180,7 @@ export function CardLibraryPage() {
               </div>
               <button onClick={handleSearch}
                 className="px-4 py-2 text-sm rounded-lg transition-all hover:scale-105 shrink-0"
-                style={{ background: 'linear-gradient(135deg, rgba(var(--glow-color),0.2), rgba(var(--accent-primary),0.2))', border: '1px solid rgba(var(--glow-color),0.3)', color: 'var(--color-gold)' }}>
+                style={{ background: 'linear-gradient(135deg, rgb(var(--glow-color)/ 0.2), rgb(var(--accent-primary)/ 0.2))', border: '1px solid rgb(var(--glow-color)/ 0.3)', color: 'rgb(var(--color-gold))' }}>
                 探索
               </button>
             </div>
@@ -235,7 +235,7 @@ export function CardLibraryPage() {
         {!loading && cards.length === 0 && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
             className="text-center py-20 rounded-2xl"
-            style={{ background: 'linear-gradient(160deg, rgba(var(--accent-bg-end),0.5), rgba(var(--accent-bg-mid),0.8))', border: '1px dashed rgba(var(--accent-primary),0.2)' }}>
+            style={{ background: 'linear-gradient(160deg, rgb(var(--accent-bg-end)/ 0.5), rgb(var(--accent-bg-mid)/ 0.8))', border: '1px dashed rgb(var(--accent-primary)/ 0.2)' }}>
             <div className="text-5xl mb-3">🌸</div>
             {tab === 'mine' ? (
               <>
@@ -259,7 +259,7 @@ export function CardLibraryPage() {
         {/* 多选工具栏 */}
         {selectMode && tab === 'mine' && (
           <div className="mb-3 flex items-center justify-between px-4 py-2.5 rounded-xl"
-            style={{ background: 'rgba(var(--accent-primary),0.08)', border: '1px solid rgba(var(--accent-primary),0.2)' }}>
+            style={{ background: 'rgb(var(--accent-primary)/ 0.08)', border: '1px solid rgb(var(--accent-primary)/ 0.2)' }}>
             <div className="flex items-center gap-3">
               <button onClick={() => {
                 if (selectedCards.size === filteredMyCards.length) setSelectedCards(new Set())
@@ -301,7 +301,7 @@ export function CardLibraryPage() {
               </button>
               <button onClick={() => { setSelectMode(false); setSelectedCards(new Set()) }}
                 className="text-[10px] px-2 py-1 rounded-lg text-muted hover:text-white transition-colors"
-                style={{ border: '1px solid rgba(var(--accent-primary),0.1)' }}>
+                style={{ border: '1px solid rgb(var(--accent-primary)/ 0.1)' }}>
                 完成
               </button>
             </div>
@@ -321,26 +321,26 @@ export function CardLibraryPage() {
                              hover:-translate-y-1 hover:shadow-lg hover:shadow-pink-500/10 transition-all duration-250 ${
                                selectMode && selectedCards.has(card.id) ? 'ring-2 ring-gold' : ''
                              }`}
-                  style={{ border: `1px solid ${selectMode && selectedCards.has(card.id) ? 'rgba(var(--accent-primary),0.6)' : 'rgba(var(--accent-primary),0.12)'}`, background: 'linear-gradient(180deg, var(--color-ink) 0%, var(--color-ink-deep) 100%)' }}
+                  style={{ border: `1px solid ${selectMode && selectedCards.has(card.id) ? 'rgb(var(--accent-primary)/ 0.6)' : 'rgb(var(--accent-primary)/ 0.12)'}`, background: 'linear-gradient(180deg, rgb(var(--color-ink)) 0%, rgb(var(--color-ink-deep)) 100%)' }}
                   onClick={() => selectMode && tab === 'mine' ? toggleCardSelect(card.id) : navigate(`/cards/${card.id}`)}>
                   {/* Cover with gradient overlay */}
                   <div className="relative w-full overflow-hidden"
-                    style={{ aspectRatio: '3/4', background: 'var(--color-ink-deep)' }}>
+                    style={{ aspectRatio: '3/4', background: 'rgb(var(--color-ink-deep))' }}>
                     {card.cover_url ? (
                       <img src={card.cover_url} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center"
-                        style={{ background: 'linear-gradient(160deg, rgba(var(--accent-bg),0.3), rgba(var(--accent-bg-mid),0.8))' }}>
+                        style={{ background: 'linear-gradient(160deg, rgb(var(--accent-bg)/ 0.3), rgb(var(--accent-bg-mid)/ 0.8))' }}>
                         <span className="text-gold/15 font-serif text-2xl">♪</span>
                       </div>
                     )}
                     {/* Hover glow */}
                     <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
-                      style={{ background: 'linear-gradient(180deg, transparent 60%, rgba(var(--glow-color),0.1) 100%)' }} />
+                      style={{ background: 'linear-gradient(180deg, transparent 60%, rgb(var(--glow-color)/ 0.1) 100%)' }} />
                     {/* Audio count badge */}
                     {(card.audio_count ?? 1) > 1 && (
                       <div className="absolute top-1 left-1 px-1.5 py-0.5 rounded text-[9px] font-bold"
-                        style={{ background: 'rgba(0,0,0,0.7)', color: 'var(--color-gold)', border: '1px solid rgba(var(--glow-color),0.3)' }}>
+                        style={{ background: 'rgba(0,0,0,0.7)', color: 'rgb(var(--color-gold))', border: '1px solid rgb(var(--glow-color)/ 0.3)' }}>
                         ♪{card.audio_count}
                       </div>
                     )}
@@ -381,7 +381,7 @@ export function CardLibraryPage() {
                       }}
                       className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity
                                  px-1.5 py-0.5 rounded flex items-center justify-center text-[9px] font-medium"
-                      style={{ background: 'rgba(0,0,0,0.7)', color: 'var(--color-gold)', border: '1px solid rgba(var(--glow-color),0.3)', backdropFilter: 'blur(4px)' }}>
+                      style={{ background: 'rgba(0,0,0,0.7)', color: 'rgb(var(--color-gold))', border: '1px solid rgb(var(--glow-color)/ 0.3)', backdropFilter: 'blur(4px)' }}>
                       复制
                     </button>
                   )}
@@ -451,7 +451,7 @@ export function CardLibraryPage() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 20 }}
             className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-lg text-sm"
-            style={{ background: 'rgba(0,0,0,0.85)', color: 'var(--color-gold)', border: '1px solid rgba(var(--accent-primary),0.3)' }}>
+            style={{ background: 'rgba(0,0,0,0.85)', color: 'rgb(var(--color-gold))', border: '1px solid rgb(var(--accent-primary)/ 0.3)' }}>
             {cloneMsg}
           </motion.div>
         )}

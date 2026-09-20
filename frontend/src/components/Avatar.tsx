@@ -13,9 +13,9 @@ export function Avatar({ username, avatarUrl, size = 24, className = '' }: Avata
         width: size,
         height: size,
         fontSize: size * 0.4,
-        background: avatarUrl ? undefined : 'linear-gradient(135deg, rgba(var(--accent-primary),0.3), rgba(var(--accent-bg-end),0.8))',
-        border: '1px solid rgba(var(--accent-primary),0.3)',
-        color: 'var(--color-gold)',
+        background: avatarUrl ? undefined : 'linear-gradient(135deg, rgb(var(--accent-primary)/ 0.3), rgb(var(--accent-bg-end)/ 0.8))',
+        border: '1px solid rgb(var(--accent-primary)/ 0.3)',
+        color: 'rgb(var(--color-gold))',
       }}
     >
       {avatarUrl ? (

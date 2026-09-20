@@ -1036,7 +1036,7 @@ export function RoomPage() {
 
   return (
     <Layout>
-      <div className="flex flex-col h-[calc(100vh-3.5rem)]" style={{ background: 'linear-gradient(160deg, var(--color-ink-deep) 0%, var(--color-ink-deep) 50%, var(--color-ink-deep) 100%)' }}>
+      <div className="flex flex-col h-[calc(100vh-3.5rem)]" style={{ background: 'linear-gradient(160deg, rgb(var(--color-ink-deep)) 0%, rgb(var(--color-ink-deep)) 50%, rgb(var(--color-ink-deep)) 100%)' }}>
 
         {/* 读牌区 */}
         <ReadingPanel
@@ -1080,7 +1080,7 @@ export function RoomPage() {
         })()}
         {isSpectator && !isDuelMode && !roomState.room.training && (
           <div className="flex items-center justify-between px-4 py-2 text-xs"
-            style={{ background: 'rgba(var(--accent-primary),0.08)', borderBottom: '1px solid rgba(var(--accent-primary),0.15)' }}>
+            style={{ background: 'rgb(var(--accent-primary)/ 0.08)', borderBottom: '1px solid rgb(var(--accent-primary)/ 0.15)' }}>
             <span className="text-gold/80">
               👁 你当前是旁观者，无法抢牌
             </span>
@@ -1094,7 +1094,7 @@ export function RoomPage() {
                 } catch { /* ignore */ }
               }}
               className="px-3 py-1 rounded text-xs font-medium transition-all hover:scale-105"
-              style={{ background: 'rgba(var(--accent-primary),0.2)', border: '1px solid rgba(var(--accent-primary),0.4)', color: 'var(--color-gold)' }}>
+              style={{ background: 'rgb(var(--accent-primary)/ 0.2)', border: '1px solid rgb(var(--accent-primary)/ 0.4)', color: 'rgb(var(--color-gold))' }}>
               ⚔️ 加入战斗！
             </button>
           </div>
@@ -1102,7 +1102,7 @@ export function RoomPage() {
 
         {/* 控制栏 */}
         <div className="flex items-center gap-3 px-4 py-2"
-          style={{ background: 'rgba(var(--accent-bg-mid),0.6)', borderBottom: '1px solid rgba(var(--accent-primary),0.08)' }}>
+          style={{ background: 'rgb(var(--accent-bg-mid)/ 0.6)', borderBottom: '1px solid rgb(var(--accent-primary)/ 0.08)' }}>
           {/* 连接状态 */}
           <div className="flex items-center gap-1.5">
             <motion.div animate={{ opacity: connected ? 1 : [1, 0.3, 1] }}
@@ -1113,7 +1113,7 @@ export function RoomPage() {
 
           {/* 房间码 */}
           <div className="flex items-center gap-1.5 px-2 py-0.5 rounded"
-            style={{ background: 'rgba(var(--accent-primary),0.05)', border: '1px solid rgba(var(--accent-primary),0.1)' }}>
+            style={{ background: 'rgb(var(--accent-primary)/ 0.05)', border: '1px solid rgb(var(--accent-primary)/ 0.1)' }}>
             <span className="text-white/30 text-xs">房间</span>
             <span className="text-gold/80 font-serif text-xs font-bold tracking-widest">{roomState.room.code}</span>
           </div>
@@ -1124,7 +1124,7 @@ export function RoomPage() {
           {isHost && (
             <motion.button onClick={handlePauseResume} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
-              style={{ background: isPaused ? 'rgba(var(--accent-primary),0.15)' : 'rgba(255,255,255,0.05)', border: `1px solid ${isPaused ? 'rgba(var(--accent-primary),0.4)' : 'rgba(255,255,255,0.08)'}`, color: isPaused ? 'var(--color-gold)' : 'rgba(255,255,255,0.5)' }}>
+              style={{ background: isPaused ? 'rgb(var(--accent-primary)/ 0.15)' : 'rgba(255,255,255,0.05)', border: `1px solid ${isPaused ? 'rgb(var(--accent-primary)/ 0.4)' : 'rgba(255,255,255,0.08)'}`, color: isPaused ? 'rgb(var(--color-gold))' : 'rgba(255,255,255,0.5)' }}>
               {isPaused ? '▶ 继续战斗！' : '⏸ 暂停'}
             </motion.button>
           )}
@@ -1288,7 +1288,7 @@ export function RoomPage() {
         {/* 移动端底部计分条 */}
         {!isDuelMode && (
           <div className="md:hidden"
-            style={{ background: 'rgba(var(--accent-bg-mid),0.9)', borderTop: '1px solid rgba(var(--accent-primary),0.08)' }}>
+            style={{ background: 'rgb(var(--accent-bg-mid)/ 0.9)', borderTop: '1px solid rgb(var(--accent-primary)/ 0.08)' }}>
             <div className="flex overflow-x-auto gap-1 px-3 py-2">
               {[...players]
                 .filter(p => !(isJudgeMode && p.user_id === roomState.room.host_id))
@@ -1298,7 +1298,7 @@ export function RoomPage() {
                 return (
                   <div key={p.user_id}
                     className="flex items-center gap-1 shrink-0 px-2 py-1 rounded-lg"
-                    style={{ background: isMe ? 'rgba(var(--accent-primary),0.08)' : 'rgba(255,255,255,0.03)', border: `1px solid ${isMe ? 'rgba(var(--accent-primary),0.2)' : 'rgba(255,255,255,0.04)'}` }}>
+                    style={{ background: isMe ? 'rgb(var(--accent-primary)/ 0.08)' : 'rgba(255,255,255,0.03)', border: `1px solid ${isMe ? 'rgb(var(--accent-primary)/ 0.2)' : 'rgba(255,255,255,0.04)'}` }}>
                     <span className="text-xs">{medals[i] ?? `${i+1}.`}</span>
                     <span className={`text-xs ${isMe ? 'text-gold font-medium' : 'text-white/60'} ${!p.online ? 'opacity-40' : ''}`}>
                       {p.username}
@@ -1306,7 +1306,7 @@ export function RoomPage() {
                     <motion.span key={`${p.user_id}-${p.score}`}
                       initial={{ scale: 1.5 }} animate={{ scale: 1 }} transition={{ duration: 0.3 }}
                       className="text-xs font-bold tabular-nums"
-                      style={{ color: isMe ? 'var(--color-gold)' : 'rgba(255,255,255,0.4)' }}>
+                      style={{ color: isMe ? 'rgb(var(--color-gold))' : 'rgba(255,255,255,0.4)' }}>
                       {p.score}
                     </motion.span>
                   </div>
@@ -1319,7 +1319,7 @@ export function RoomPage() {
         {/* Duel 轮次/倒计时信息 */}
         {isDuelMode && duelState && (
           <div className="flex items-center justify-center gap-4 px-4 py-1.5"
-            style={{ background: 'rgba(var(--accent-bg-mid),0.8)', borderTop: '1px solid rgba(var(--accent-primary),0.08)' }}>
+            style={{ background: 'rgb(var(--accent-bg-mid)/ 0.8)', borderTop: '1px solid rgb(var(--accent-primary)/ 0.08)' }}>
             <span className="text-muted text-xs">第 {duelRound} 轮</span>
             {duelRoundTimer !== null && (
               <motion.span
@@ -1362,12 +1362,12 @@ export function RoomPage() {
               ].join(' ')}
                 style={{
                   background: toast.type === 'success'
-                    ? 'linear-gradient(135deg, rgba(var(--glow-color),0.3), rgba(var(--accent-primary),0.2))'
+                    ? 'linear-gradient(135deg, rgb(var(--glow-color)/ 0.3), rgb(var(--accent-primary)/ 0.2))'
                     : toast.type === 'fail'
                     ? 'linear-gradient(135deg, rgba(192,57,43,0.35), rgba(231,76,60,0.2))'
-                    : 'rgba(var(--accent-bg-mid),0.85)',
+                    : 'rgb(var(--accent-bg-mid)/ 0.85)',
                   boxShadow: toast.type === 'success'
-                    ? '0 0 30px rgba(var(--accent-primary),0.3), 0 8px 24px rgba(0,0,0,0.5)'
+                    ? '0 0 30px rgb(var(--accent-primary)/ 0.3), 0 8px 24px rgba(0,0,0,0.5)'
                     : toast.type === 'fail'
                     ? '0 0 30px rgba(192,57,43,0.3), 0 8px 24px rgba(0,0,0,0.5)'
                     : '0 8px 24px rgba(0,0,0,0.5)',
@@ -1407,7 +1407,7 @@ export function RoomPage() {
               className="text-center"
             >
               <span className="text-5xl sm:text-7xl font-bold font-serif text-gold"
-                style={{ textShadow: '0 0 40px rgba(var(--accent-primary),0.6)' }}>
+                style={{ textShadow: '0 0 40px rgb(var(--accent-primary)/ 0.6)' }}>
                 🌀 打乱！
               </span>
             </motion.div>

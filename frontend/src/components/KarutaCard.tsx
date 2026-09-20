@@ -125,7 +125,7 @@ export function KarutaCard({ card, isExhausted, remaining, audioCount, claimedBy
           style={{
             inset: 0,
             transform: 'translate(4px, 4px)',
-            background: 'linear-gradient(160deg, var(--color-surface) 0%, var(--color-ink) 100%)',
+            background: 'linear-gradient(160deg, rgb(var(--color-surface)) 0%, rgb(var(--color-ink)) 100%)',
             boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
             opacity: 0.5,
           }} />
@@ -135,7 +135,7 @@ export function KarutaCard({ card, isExhausted, remaining, audioCount, claimedBy
           style={{
             inset: 0,
             transform: 'translate(2px, 2px)',
-            background: 'linear-gradient(160deg, var(--color-surface) 0%, var(--color-surface) 100%)',
+            background: 'linear-gradient(160deg, rgb(var(--color-surface)) 0%, rgb(var(--color-surface)) 100%)',
             boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
             opacity: 0.7,
           }} />
@@ -144,7 +144,7 @@ export function KarutaCard({ card, isExhausted, remaining, audioCount, claimedBy
       {/* 主卡面 */}
       <div className="absolute inset-0 rounded-lg overflow-hidden"
         style={{
-          background: 'linear-gradient(160deg, var(--color-surface) 0%, var(--color-surface) 50%, var(--color-ink) 100%)',
+          background: 'linear-gradient(160deg, rgb(var(--color-surface)) 0%, rgb(var(--color-surface)) 50%, rgb(var(--color-ink)) 100%)',
           boxShadow: '0 4px 16px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.04)',
         }}>
 
@@ -164,15 +164,15 @@ export function KarutaCard({ card, isExhausted, remaining, audioCount, claimedBy
 
         {/* 内层细框 */}
         <div className="absolute inset-[3px] rounded-md pointer-events-none"
-          style={{ border: '1px solid rgba(var(--accent-primary),0.1)' }} />
+          style={{ border: '1px solid rgb(var(--accent-primary)/ 0.1)' }} />
 
         {/* 堆叠角标 */}
         {showStack && (
           <div className="absolute top-1 right-1 px-1.5 py-0.5 rounded text-xs font-bold"
             style={{
               background: 'rgba(0,0,0,0.7)',
-              color: 'var(--color-gold)',
-              border: '1px solid rgba(var(--glow-color),0.4)',
+              color: 'rgb(var(--color-gold))',
+              border: '1px solid rgb(var(--glow-color)/ 0.4)',
               fontSize: '0.65rem',
             }}>
             ×{left}

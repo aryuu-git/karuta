@@ -24,9 +24,9 @@ export function DuelGiveModal({ cards, onGive }: DuelGiveModalProps) {
           exit={{ opacity: 0, scale: 0.9 }}
           className="w-[90vw] max-w-md rounded-2xl p-5 mx-4"
           style={{
-            background: 'linear-gradient(180deg, rgba(var(--accent-bg-end),0.95) 0%, rgba(var(--accent-bg-mid),0.98) 100%)',
-            border: '1px solid rgba(var(--accent-primary),0.2)',
-            boxShadow: '0 0 40px rgba(var(--glow-color),0.15), 0 20px 60px rgba(0,0,0,0.6)',
+            background: 'linear-gradient(180deg, rgb(var(--accent-bg-end)/ 0.95) 0%, rgb(var(--accent-bg-mid)/ 0.98) 100%)',
+            border: '1px solid rgb(var(--accent-primary)/ 0.2)',
+            boxShadow: '0 0 40px rgb(var(--glow-color)/ 0.15), 0 20px 60px rgba(0,0,0,0.6)',
           }}
         >
           {/* 标题 */}
@@ -60,10 +60,10 @@ export function DuelGiveModal({ cards, onGive }: DuelGiveModalProps) {
                     style={{
                       aspectRatio: '3/4',
                       border: isSelected
-                        ? '2px solid var(--color-gold)'
-                        : '1px solid rgba(var(--accent-primary),0.15)',
+                        ? '2px solid rgb(var(--color-gold))'
+                        : '1px solid rgb(var(--accent-primary)/ 0.15)',
                       boxShadow: isSelected
-                        ? '0 0 12px rgba(var(--glow-color),0.5)'
+                        ? '0 0 12px rgb(var(--glow-color)/ 0.5)'
                         : '0 2px 6px rgba(0,0,0,0.3)',
                     }}
                   >
@@ -71,7 +71,7 @@ export function DuelGiveModal({ cards, onGive }: DuelGiveModalProps) {
                       <img src={card.cover_url} alt="" className="w-full h-full object-cover" loading="lazy" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center"
-                        style={{ background: 'linear-gradient(160deg, var(--color-surface), var(--color-ink))' }}>
+                        style={{ background: 'linear-gradient(160deg, rgb(var(--color-surface)), rgb(var(--color-ink)))' }}>
                         <span className="text-gold/40 text-xs">{card.display_text.slice(0, 4)}</span>
                       </div>
                     )}

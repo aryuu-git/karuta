@@ -1,129 +1,73 @@
+/* 字体：Noto Serif JP（书卷气主字体；A4 阶段改为本地打包） */
 @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;500;700&display=swap');
 
-/* Theme Variables */
+/* ============================================================
+   设计 token（RGB 三元组格式）
+   约定：全部颜色变量存 "R G B" 三元组，消费方统一用
+   rgb(var(--x) / <alpha>) 语法（现代空格斜杠语法），任意透明度
+   修饰符（Tailwind 的 /50 等）在双主题下自动生效。
+   ============================================================ */
+
+/* 樱花粉主题（默认）：和纸质感 + 樱花粉 × 金粉 */
 :root,
 [data-theme="sakura"] {
-  --color-ink: #442038;
-  --color-ink-deep: #381830;
-  --color-gold: #f8b0c8;
-  --color-gold-light: #fdd8e8;
-  --color-gold-dark: #f090b0;
-  --color-crimson: #f87090;
-  --color-crimson-light: #ff98b0;
-  --color-surface: #552a40;
-  --color-surface-elevated: #66304a;
-  --color-border: #884868;
-  --color-muted: #e8c0d4;
-  --color-body-bg: #442038;
-  --color-body-text: #fef8fa;
-  --color-pink-accent: rgba(248,176,200,0.15);
-  --accent-primary: 232,164,184;
-  --accent-secondary: 248,176,200;
-  --accent-bg: 92,26,48;
-  --accent-bg-mid: 26,5,16;
-  --accent-bg-end: 45,10,26;
-  --glow-color: 212,167,106;
+  --color-ink: 68 32 56;            /* 主背景 / 重文字 #442038 */
+  --color-ink-deep: 56 24 48;       /* 深背景 / 输入框底 #381830 */
+  --color-gold: 248 176 200;        /* 主强调·樱花粉 #f8b0c8（历史名，实为粉） */
+  --color-gold-light: 253 216 232;  /* 强调亮阶 #fdd8e8 */
+  --color-gold-dark: 240 144 176;   /* 强调暗阶 #f090b0 */
+  --color-crimson: 248 112 144;     /* 对抗/警示红粉 #f87090 */
+  --color-crimson-light: 255 152 176;
+  --color-surface: 85 42 64;        /* 卡面/面板底 #552a40 */
+  --color-surface-elevated: 102 48 74;
+  --color-border: 136 72 104;
+  --color-muted: 232 192 212;       /* 次级文字 #e8c0d4 */
+  --color-body-bg: 68 32 56;
+  --color-body-text: 254 248 250;
+  --gold-foil: 212 167 106;         /* 金粉（真金，跨主题恒定）#d4a76a */
+  --color-success: 74 222 128;      /* 状态色，跨主题恒定 */
+  --color-warning: 251 146 60;
+  --color-danger: 248 113 113;
+  --color-info: 96 165 250;
+  --accent-primary: 232 164 184;    /* 光晕/和纸纹理基色 #e8a4b8 */
+  --accent-secondary: 248 176 200;
+  --accent-bg: 92 26 48;            /* 深景渐变三段 */
+  --accent-bg-mid: 26 5 16;
+  --accent-bg-end: 45 10 26;
+  --glow-color: 212 167 106;        /* 金色光晕 */
 }
 
+/* 常磐蓝主题（shimapan）：蓝白条纹意象 */
 [data-theme="shimapan"] {
-  --color-ink: #1a2848;
-  --color-ink-deep: #121e38;
-  --color-gold: #5898e0;
-  --color-gold-light: #90c0f8;
-  --color-gold-dark: #3878c0;
-  --color-crimson: #e06080;
-  --color-crimson-light: #f08098;
-  --color-surface: #203050;
-  --color-surface-elevated: #283860;
-  --color-border: #3a5888;
-  --color-muted: #90b0d0;
-  --color-body-bg: #1a2848;
-  --color-body-text: #f0f4f8;
-  --color-pink-accent: rgba(88,152,224,0.15);
-  --accent-primary: 88,152,224;
-  --accent-secondary: 120,180,240;
-  --accent-bg: 20,40,80;
-  --accent-bg-mid: 15,25,50;
-  --accent-bg-end: 25,45,85;
-  --glow-color: 88,152,224;
+  --color-ink: 26 40 72;            /* #1a2848 */
+  --color-ink-deep: 18 30 56;       /* #121e38 */
+  --color-gold: 88 152 224;         /* 主强调·绀青 #5898e0 */
+  --color-gold-light: 144 192 248;
+  --color-gold-dark: 56 120 192;
+  --color-crimson: 224 96 128;
+  --color-crimson-light: 240 128 152;
+  --color-surface: 32 48 80;
+  --color-surface-elevated: 40 56 96;
+  --color-border: 58 88 136;
+  --color-muted: 144 176 208;
+  --color-body-bg: 26 40 72;
+  --color-body-text: 240 244 248;
+  --gold-foil: 212 167 106;         /* 金粉恒定：深蓝底上描金依旧成立 */
+  --color-success: 74 222 128;
+  --color-warning: 251 146 60;
+  --color-danger: 248 113 113;
+  --color-info: 96 165 250;
+  --accent-primary: 88 152 224;
+  --accent-secondary: 120 180 240;
+  --accent-bg: 20 40 80;
+  --accent-bg-mid: 15 25 50;
+  --accent-bg-end: 25 45 85;
+  --glow-color: 88 152 224;
 }
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-/* Shimapan theme overrides - applied via CSS specificity on data-theme attribute */
-[data-theme="shimapan"] {
-  --tw-override: true;
-}
-[data-theme="shimapan"] .bg-ink { background-color: #1a2848 !important; }
-[data-theme="shimapan"] .bg-ink-deep { background-color: #121e38 !important; }
-[data-theme="shimapan"] .bg-surface { background-color: #203050 !important; }
-[data-theme="shimapan"] .border-border { border-color: #3a5888 !important; }
-[data-theme="shimapan"] .text-gold { color: #5898e0 !important; }
-[data-theme="shimapan"] .text-muted { color: #90b0d0 !important; }
-[data-theme="shimapan"] .text-crimson { color: #e06080 !important; }
-[data-theme="shimapan"] .bg-crimson { background-color: #e06080 !important; }
-[data-theme="shimapan"] .bg-crimson\/10 { background-color: rgba(224,96,128,0.1) !important; }
-[data-theme="shimapan"] .bg-crimson\/50 { background-color: rgba(224,96,128,0.5) !important; }
-[data-theme="shimapan"] .border-crimson\/25 { border-color: rgba(224,96,128,0.25) !important; }
-[data-theme="shimapan"] .border-crimson\/30 { border-color: rgba(224,96,128,0.3) !important; }
-[data-theme="shimapan"] .text-crimson\/70 { color: rgba(224,96,128,0.7) !important; }
-[data-theme="shimapan"] .hover\:text-crimson:hover { color: #e06080 !important; }
-[data-theme="shimapan"] .hover\:bg-crimson\/10:hover { background-color: rgba(224,96,128,0.1) !important; }
-[data-theme="shimapan"] .border-crimson\/20 { border-color: rgba(224,96,128,0.2) !important; }
-[data-theme="shimapan"] .border-gold { border-color: #5898e0 !important; }
-[data-theme="shimapan"] .bg-gold { background-color: #5898e0 !important; }
-[data-theme="shimapan"] .hover\:text-gold:hover { color: #90c0f8 !important; }
-[data-theme="shimapan"] .hover\:border-gold:hover { border-color: #5898e0 !important; }
-[data-theme="shimapan"] .btn-gold {
-  background: linear-gradient(135deg, #5898e0 0%, #90c0f8 50%, #3878c0 100%) !important;
-}
-[data-theme="shimapan"] .input-dark {
-  background-color: #121e38 !important;
-  border-color: #3a5888 !important;
-}
-[data-theme="shimapan"] .input-dark:focus {
-  border-color: #5898e0 !important;
-  box-shadow: 0 0 0 1px rgba(88,152,224,0.3) !important;
-}
-[data-theme="shimapan"] .shadow-gold { box-shadow: 0 0 12px rgba(88,152,224,0.4) !important; }
-[data-theme="shimapan"] .shadow-gold-lg { box-shadow: 0 0 24px rgba(88,152,224,0.5) !important; }
-[data-theme="shimapan"] .text-pink-300 { color: #78b4f0 !important; }
-[data-theme="shimapan"] .text-pink-300\/30 { color: rgba(120,180,240,0.3) !important; }
-[data-theme="shimapan"] .text-pink-300\/40 { color: rgba(120,180,240,0.4) !important; }
-[data-theme="shimapan"] .text-pink-300\/50 { color: rgba(120,180,240,0.5) !important; }
-[data-theme="shimapan"] .text-pink-300\/60 { color: rgba(120,180,240,0.6) !important; }
-[data-theme="shimapan"] .text-pink-300\/70 { color: rgba(120,180,240,0.7) !important; }
-[data-theme="shimapan"] .hover\:text-pink-300\/70:hover { color: rgba(120,180,240,0.7) !important; }
-[data-theme="shimapan"] .hover\:border-pink-300\/20:hover { border-color: rgba(120,180,240,0.2) !important; }
-[data-theme="shimapan"] .from-pink-500 { --tw-gradient-from: #5898e0 !important; }
-[data-theme="shimapan"] .to-pink-500 { --tw-gradient-to: #5898e0 !important; }
-[data-theme="shimapan"] .from-pink-500\/10 { --tw-gradient-from: rgba(88,152,224,0.1) !important; }
-[data-theme="shimapan"] .to-pink-500\/10 { --tw-gradient-to: rgba(88,152,224,0.1) !important; }
-[data-theme="shimapan"] .from-pink-500\/15 { --tw-gradient-from: rgba(88,152,224,0.15) !important; }
-[data-theme="shimapan"] .to-pink-500\/15 { --tw-gradient-to: rgba(88,152,224,0.15) !important; }
-[data-theme="shimapan"] .via-pink-500\/20 { --tw-gradient-via: rgba(88,152,224,0.2) !important; }
-[data-theme="shimapan"] .hover\:shadow-pink-500\/10:hover { --tw-shadow-color: rgba(88,152,224,0.1) !important; }
-[data-theme="shimapan"] .from-gold { --tw-gradient-from: #5898e0 !important; }
-[data-theme="shimapan"] .to-gold-light { --tw-gradient-to: #90c0f8 !important; }
-[data-theme="shimapan"] .washi-bg {
-  background-color: #1a2848 !important;
-  background-image: repeating-linear-gradient(
-      0deg,
-      transparent,
-      transparent 2px,
-      rgba(88,152,224,0.03) 2px,
-      rgba(88,152,224,0.03) 4px
-    ),
-    repeating-linear-gradient(
-      90deg,
-      transparent,
-      transparent 2px,
-      rgba(88,152,224,0.02) 2px,
-      rgba(88,152,224,0.02) 4px
-    ) !important;
-}
 
 @layer base {
   *,
@@ -138,11 +82,13 @@
     font-size: 16px;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    /* 中文标题换行均衡 */
+    text-wrap: balance;
   }
 
   body {
-    background-color: var(--color-body-bg);
-    color: var(--color-body-text);
+    background-color: rgb(var(--color-body-bg));
+    color: rgb(var(--color-body-text));
     font-family: system-ui, sans-serif;
     min-height: 100vh;
     overflow-x: hidden;
@@ -153,43 +99,51 @@
     min-height: 100vh;
   }
 
-  /* Scrollbar styles */
+  /* 滚动条 */
   ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
   }
 
   ::-webkit-scrollbar-track {
-    background: var(--color-ink-deep);
+    background: rgb(var(--color-ink-deep));
   }
 
   ::-webkit-scrollbar-thumb {
-    background: var(--color-border);
+    background: rgb(var(--color-border));
     border-radius: 3px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: var(--color-muted);
+    background: rgb(var(--color-muted));
   }
 
   /* Firefox */
   * {
     scrollbar-width: thin;
-    scrollbar-color: var(--color-border) var(--color-ink-deep);
+    scrollbar-color: rgb(var(--color-border)) rgb(var(--color-ink-deep));
   }
 
-  /* Selection */
+  /* 选中文本 */
   ::selection {
-    background-color: rgba(var(--accent-primary), 0.3);
-    color: var(--color-gold-light);
+    background-color: rgb(var(--accent-primary) / 0.3);
+    color: rgb(var(--color-gold-light));
+  }
+
+  /* 键盘可达性：统一焦点环（鼠标点击不闪烁） */
+  :focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px rgb(var(--color-gold) / 0.6);
   }
 }
 
 @layer components {
+  /* 主按钮：樱粉渐变 + 金粉光晕（A2 将被 <Button variant="gold"> 取代） */
   .btn-gold {
     @apply relative overflow-hidden px-6 py-2.5 rounded font-sans font-medium
-           text-ink bg-gold-gradient transition-all duration-300
+           text-ink transition-all duration-300
            hover:shadow-gold-lg hover:scale-105 active:scale-95;
+    background-image: linear-gradient(135deg, rgb(var(--color-gold)) 0%, rgb(var(--color-gold-light)) 50%, rgb(var(--color-gold-dark)) 100%);
   }
 
   .btn-gold::after {
@@ -201,42 +155,59 @@
     @apply bg-white/10;
   }
 
+  .btn-gold:disabled {
+    @apply opacity-50 pointer-events-none;
+  }
+
+  /* 描边按钮 */
   .btn-outline {
     @apply px-6 py-2.5 rounded font-sans font-medium border border-gold/50
            text-gold bg-transparent transition-all duration-300
            hover:border-gold hover:bg-gold/10 hover:shadow-gold;
   }
 
+  .btn-outline:disabled {
+    @apply opacity-50 pointer-events-none;
+  }
+
+  /* 输入框 */
   .input-dark {
     @apply w-full px-4 py-3 rounded bg-ink-deep border border-border
            text-white placeholder-muted outline-none transition-all duration-200
-           focus:border-gold focus:shadow-[0_0_0_1px_rgba(201,168,76,0.3)];
+           focus:border-gold;
+    box-shadow: 0 0 0 0 rgb(var(--color-gold) / 0.3);
+  }
+
+  .input-dark:focus {
+    box-shadow: 0 0 0 1px rgb(var(--gold-foil) / 0.3);
   }
 
   .card-surface {
     @apply bg-surface border border-border rounded-lg;
   }
 
+  /* 和纸质感：细密十字纹理，随主题基色变化 */
   .washi-bg {
-    background-color: var(--color-body-bg);
+    background-color: rgb(var(--color-body-bg));
     background-image: repeating-linear-gradient(
         0deg,
         transparent,
         transparent 2px,
-        rgba(var(--accent-primary), 0.03) 2px,
-        rgba(var(--accent-primary), 0.03) 4px
+        rgb(var(--accent-primary) / 0.03) 2px,
+        rgb(var(--accent-primary) / 0.03) 4px
       ),
       repeating-linear-gradient(
         90deg,
         transparent,
         transparent 2px,
-        rgba(var(--accent-primary), 0.02) 2px,
-        rgba(var(--accent-primary), 0.02) 4px
+        rgb(var(--accent-primary) / 0.02) 2px,
+        rgb(var(--accent-primary) / 0.02) 4px
       );
   }
 
+  /* 金粉流光标题 */
   .text-gold-shimmer {
-    background: linear-gradient(90deg, var(--color-gold), var(--color-gold-light), var(--color-gold));
+    background: linear-gradient(90deg, rgb(var(--color-gold)), rgb(var(--color-gold-light)), rgb(var(--color-gold)));
     background-size: 200% auto;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -256,8 +227,8 @@
 }
 
 @keyframes glowPulse {
-  0%, 100% { box-shadow: 0 0 10px rgba(var(--accent-primary), 0.3); }
-  50% { box-shadow: 0 0 25px rgba(var(--accent-primary), 0.7); }
+  0%, 100% { box-shadow: 0 0 10px rgb(var(--accent-primary) / 0.3); }
+  50% { box-shadow: 0 0 25px rgb(var(--accent-primary) / 0.7); }
 }
 
 @keyframes sakuraFall {

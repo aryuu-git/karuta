@@ -34,7 +34,7 @@ export function Layout({ children }: LayoutProps) {
     <div className="min-h-screen washi-bg flex flex-col">
       {/* Top nav */}
       <header className="sticky top-0 z-50 backdrop-blur-sm"
-        style={{ background: 'rgba(var(--accent-bg-mid),0.85)', borderBottom: '1px solid rgba(var(--accent-primary),0.1)', boxShadow: '0 4px 20px rgba(0,0,0,0.3), 0 1px 0 rgba(var(--accent-primary),0.05)' }}>
+        style={{ background: 'rgb(var(--accent-bg-mid)/ 0.85)', borderBottom: '1px solid rgb(var(--accent-primary)/ 0.1)', boxShadow: '0 4px 20px rgba(0,0,0,0.3), 0 1px 0 rgb(var(--accent-primary)/ 0.05)' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
           {/* Brand + Nav */}
           <div className="flex items-center gap-4">
@@ -72,7 +72,7 @@ export function Layout({ children }: LayoutProps) {
                   ? 'border border-gold/50 bg-gold/10'
                   : 'border border-border hover:border-gold/40 hover:bg-gold/5'
               }`}
-              style={{ color: location.pathname === '/profile' ? 'var(--color-gold)' : 'rgba(var(--accent-primary),0.7)' }}>
+              style={{ color: location.pathname === '/profile' ? 'rgb(var(--color-gold))' : 'rgb(var(--accent-primary)/ 0.7)' }}>
               <span>👤</span>
               <span className="hidden sm:inline">{user.username}</span>
             </Link>

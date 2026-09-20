@@ -264,9 +264,9 @@ export function DeckDetailPage() {
 
         {/* Header with decorative gradient */}
         <div className="relative mb-6 overflow-hidden rounded-2xl p-5"
-          style={{ background: 'linear-gradient(135deg, rgba(var(--accent-bg),0.4) 0%, rgba(var(--accent-bg-mid),0.8) 50%, rgba(var(--accent-bg-end),0.4) 100%)', border: '1px solid rgba(var(--accent-primary),0.15)' }}>
+          style={{ background: 'linear-gradient(135deg, rgb(var(--accent-bg)/ 0.4) 0%, rgb(var(--accent-bg-mid)/ 0.8) 50%, rgb(var(--accent-bg-end)/ 0.4) 100%)', border: '1px solid rgb(var(--accent-primary)/ 0.15)' }}>
           <div className="absolute top-0 right-0 w-28 h-28 opacity-10 pointer-events-none"
-            style={{ background: 'radial-gradient(circle, rgba(var(--glow-color),0.8), transparent 70%)' }} />
+            style={{ background: 'radial-gradient(circle, rgb(var(--glow-color)/ 0.8), transparent 70%)' }} />
           <div className="flex items-start justify-between gap-4 relative">
             <div className="flex items-start gap-3 min-w-0">
               <button onClick={() => navigate('/')}
@@ -283,7 +283,7 @@ export function DeckDetailPage() {
                     {isOwner && (
                       <button onClick={startEdit}
                         className="flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg font-medium transition-all shrink-0"
-                        style={{ background: 'rgba(var(--accent-primary),0.1)', border: '1px solid rgba(var(--accent-primary),0.3)', color: 'var(--color-gold)' }}>
+                        style={{ background: 'rgb(var(--accent-primary)/ 0.1)', border: '1px solid rgb(var(--accent-primary)/ 0.3)', color: 'rgb(var(--color-gold))' }}>
                         ✏️ 修改
                       </button>
                     )}
@@ -325,7 +325,7 @@ export function DeckDetailPage() {
         {/* Share settings (owner only) */}
         {!loading && deck && isOwner && (
           <div className="flex items-center gap-3 mb-6 flex-wrap rounded-xl px-4 py-3"
-            style={{ background: 'rgba(var(--accent-bg-end),0.4)', border: '1px solid rgba(var(--accent-primary),0.08)' }}>
+            style={{ background: 'rgb(var(--accent-bg-end)/ 0.4)', border: '1px solid rgb(var(--accent-primary)/ 0.08)' }}>
             <span className="text-pink-300/50 text-xs font-serif">✦ 共享结界：</span>
             <div className="flex gap-1.5">
               {Object.entries(SHARE_LABELS).map(([key, label]) => (
@@ -379,7 +379,7 @@ export function DeckDetailPage() {
                 {canRemove && cards.length > 0 && !selectMode && (
                   <button onClick={() => setSelectMode(true)}
                     className="text-xs px-3 py-1.5 rounded-full text-muted/60 hover:text-gold transition-all hover:bg-gold/5"
-                    style={{ border: '1px solid rgba(var(--accent-primary),0.15)' }}>
+                    style={{ border: '1px solid rgb(var(--accent-primary)/ 0.15)' }}>
                     ☑ 编辑
                   </button>
                 )}
@@ -395,7 +395,7 @@ export function DeckDetailPage() {
             {/* 多选模式工具栏 */}
             {selectMode && (
               <div className="mb-3 flex items-center justify-between px-4 py-2.5 rounded-xl"
-                style={{ background: 'rgba(var(--accent-primary),0.08)', border: '1px solid rgba(var(--accent-primary),0.2)' }}>
+                style={{ background: 'rgb(var(--accent-primary)/ 0.08)', border: '1px solid rgb(var(--accent-primary)/ 0.2)' }}>
                 <div className="flex items-center gap-3">
                   <button onClick={() => {
                     if (selectedCards.size === cards.length) setSelectedCards(new Set())
@@ -412,12 +412,12 @@ export function DeckDetailPage() {
                   <button onClick={handleBatchRemove}
                     disabled={selectedCards.size === 0 || batchRemoving}
                     className="text-xs px-3 py-1.5 rounded-lg font-medium transition-all disabled:opacity-30 hover:scale-105"
-                    style={{ background: 'rgba(var(--accent-primary),0.15)', border: '1px solid rgba(var(--accent-primary),0.3)', color: 'var(--color-gold)' }}>
+                    style={{ background: 'rgb(var(--accent-primary)/ 0.15)', border: '1px solid rgb(var(--accent-primary)/ 0.3)', color: 'rgb(var(--color-gold))' }}>
                     {batchRemoving ? '移除中…' : `移除选中`}
                   </button>
                   <button onClick={() => { setSelectMode(false); setSelectedCards(new Set()) }}
                     className="text-xs px-3 py-1.5 rounded-lg text-muted hover:text-white transition-colors"
-                    style={{ border: '1px solid rgba(var(--accent-primary),0.1)' }}>
+                    style={{ border: '1px solid rgb(var(--accent-primary)/ 0.1)' }}>
                     完成
                   </button>
                 </div>
@@ -426,7 +426,7 @@ export function DeckDetailPage() {
 
             {cards.length === 0 ? (
               <div className="text-center py-16 rounded-2xl"
-                style={{ background: 'linear-gradient(160deg, rgba(var(--accent-bg-end),0.5), rgba(var(--accent-bg-mid),0.8))', border: '1px dashed rgba(var(--accent-primary),0.2)' }}>
+                style={{ background: 'linear-gradient(160deg, rgb(var(--accent-bg-end)/ 0.5), rgb(var(--accent-bg-mid)/ 0.8))', border: '1px dashed rgb(var(--accent-primary)/ 0.2)' }}>
                 <div className="text-5xl mb-3">🌸</div>
                 <p className="text-gold text-sm font-serif mb-1">战阵尚无一牌…</p>
                 <p className="text-pink-300/40 text-xs mb-4 font-serif">{canAdd ? '从牌库召唤歌牌，铸就你的最强阵容！✧' : '此阵尚空 (◕‿◕✿)'}</p>
@@ -461,7 +461,7 @@ export function DeckDetailPage() {
                       {/* Cover (clickable → card detail) */}
                       <div onClick={() => !selectMode && navigate(`/cards/${card.id}`)}
                         className="w-10 h-14 rounded shrink-0 overflow-hidden flex items-center justify-center cursor-pointer hover:ring-1 hover:ring-gold/30 transition-all"
-                        style={{ background: 'var(--color-ink-deep)', border: '1px solid rgba(var(--accent-primary),0.15)' }}>
+                        style={{ background: 'rgb(var(--color-ink-deep))', border: '1px solid rgb(var(--accent-primary)/ 0.15)' }}>
                         {card.cover_url ? (
                           <img src={card.cover_url} alt="" className="w-full h-full object-cover" />
                         ) : (
@@ -520,14 +520,14 @@ export function DeckDetailPage() {
             <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
               className="w-full max-w-xs rounded-2xl p-5"
-              style={{ background: 'linear-gradient(160deg, var(--color-ink), var(--color-ink-deep))', border: '1px solid rgba(var(--accent-primary),0.2)' }}
+              style={{ background: 'linear-gradient(160deg, rgb(var(--color-ink)), rgb(var(--color-ink-deep)))', border: '1px solid rgb(var(--accent-primary)/ 0.2)' }}
               onClick={e => e.stopPropagation()}>
               <h3 className="font-serif text-gold text-base mb-1">📋 复制战阵</h3>
               <p className="text-pink-300/40 text-xs font-serif mb-4">选择复制方式 ✧</p>
               <div className="space-y-2">
                 <button onClick={() => handleClone('full')}
                   className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all hover:scale-[1.02]"
-                  style={{ background: 'rgba(var(--accent-primary),0.08)', border: '1px solid rgba(var(--accent-primary),0.2)' }}>
+                  style={{ background: 'rgb(var(--accent-primary)/ 0.08)', border: '1px solid rgb(var(--accent-primary)/ 0.2)' }}>
                   <span className="text-xl">🎵</span>
                   <div>
                     <p className="text-white/90 text-sm font-medium">复制牌面 + 歌曲</p>
@@ -536,7 +536,7 @@ export function DeckDetailPage() {
                 </button>
                 <button onClick={() => handleClone('covers_only')}
                   className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all hover:scale-[1.02]"
-                  style={{ background: 'rgba(var(--accent-primary),0.05)', border: '1px solid rgba(var(--accent-primary),0.1)' }}>
+                  style={{ background: 'rgb(var(--accent-primary)/ 0.05)', border: '1px solid rgb(var(--accent-primary)/ 0.1)' }}>
                   <span className="text-xl">🖼️</span>
                   <div>
                     <p className="text-white/90 text-sm font-medium">只复制牌面</p>

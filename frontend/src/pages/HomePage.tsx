@@ -69,9 +69,9 @@ export function HomePage() {
         {/* 邀请码 + 创建房间 */}
         <div className="flex flex-col sm:flex-row gap-4 mb-8">
           <div className="flex-1 rounded-2xl p-5 relative overflow-hidden"
-            style={{ background: 'linear-gradient(135deg, rgba(var(--accent-bg),0.3) 0%, rgba(var(--accent-bg-mid),0.7) 50%, rgba(var(--accent-bg-end),0.3) 100%)', border: '1px solid rgba(var(--accent-primary),0.15)' }}>
+            style={{ background: 'linear-gradient(135deg, rgb(var(--accent-bg)/ 0.3) 0%, rgb(var(--accent-bg-mid)/ 0.7) 50%, rgb(var(--accent-bg-end)/ 0.3) 100%)', border: '1px solid rgb(var(--accent-primary)/ 0.15)' }}>
             <div className="absolute top-0 left-0 w-20 h-20 opacity-10 pointer-events-none"
-              style={{ background: 'radial-gradient(circle, rgba(var(--glow-color),0.8), transparent 70%)' }} />
+              style={{ background: 'radial-gradient(circle, rgb(var(--glow-color)/ 0.8), transparent 70%)' }} />
             <h2 className="font-serif text-base text-gold font-bold mb-1 relative">🔑 凭令入场</h2>
             <p className="text-pink-300/50 text-xs mb-3 font-serif italic relative">持有战场令牌？直接降临！✧</p>
             <form onSubmit={handleJoinByCode} className="flex gap-2 relative">
@@ -96,9 +96,9 @@ export function HomePage() {
           </div>
 
           <div className="sm:w-52 rounded-2xl p-5 flex flex-col items-center justify-center relative overflow-hidden"
-            style={{ background: 'linear-gradient(160deg, rgba(var(--accent-bg-end),0.5), rgba(var(--accent-bg-mid),0.8))', border: '1px solid rgba(var(--accent-primary),0.12)' }}>
+            style={{ background: 'linear-gradient(160deg, rgb(var(--accent-bg-end)/ 0.5), rgb(var(--accent-bg-mid)/ 0.8))', border: '1px solid rgb(var(--accent-primary)/ 0.12)' }}>
             <div className="absolute bottom-0 right-0 w-16 h-16 opacity-10 pointer-events-none"
-              style={{ background: 'radial-gradient(circle, rgba(var(--accent-primary),0.8), transparent 70%)' }} />
+              style={{ background: 'radial-gradient(circle, rgb(var(--accent-primary)/ 0.8), transparent 70%)' }} />
             <button onClick={() => navigate('/rooms/new')}
               className="btn-gold text-sm w-full transition-all duration-200 hover:scale-105 shadow-lg shadow-gold/20 relative">
               ⚔️ 开辟战场
@@ -120,7 +120,7 @@ export function HomePage() {
               {myDecks.slice(0, 4).map(deck => (
                 <div key={deck.id}
                   className="rounded-lg p-3 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-pink-500/10 transition-all cursor-pointer group"
-                  style={{ background: 'linear-gradient(180deg, rgba(var(--accent-bg-end),0.5), rgba(var(--accent-bg-mid),0.8))', border: '1px solid rgba(var(--accent-primary),0.1)' }}
+                  style={{ background: 'linear-gradient(180deg, rgb(var(--accent-bg-end)/ 0.5), rgb(var(--accent-bg-mid)/ 0.8))', border: '1px solid rgb(var(--accent-primary)/ 0.1)' }}
                   onClick={() => navigate(`/decks/${deck.id}`)}>
                   <h3 className="text-white/80 text-xs font-medium truncate">{deck.name}</h3>
                   <div className="flex items-center justify-between mt-1.5">
@@ -139,7 +139,7 @@ export function HomePage() {
         {/* 桌面版下载 */}
         <a href="https://karuta-1321249409.cos-website.ap-shanghai.myqcloud.com/Karuta.exe"
           className="flex items-center gap-2 mb-4 px-4 py-2.5 rounded-xl transition-all hover:scale-[1.01]"
-          style={{ background: 'rgba(var(--accent-primary),0.06)', border: '1px solid rgba(var(--accent-primary),0.15)' }}>
+          style={{ background: 'rgb(var(--accent-primary)/ 0.06)', border: '1px solid rgb(var(--accent-primary)/ 0.15)' }}>
           <span className="text-sm">💻</span>
           <span className="text-xs text-white/70">下载桌面版</span>
           <span className="text-[10px] px-1.5 py-0.5 rounded bg-crimson/20 text-crimson/80">内测</span>
@@ -158,9 +158,9 @@ export function HomePage() {
 
         {/* 战场大厅 */}
         <div className="rounded-2xl overflow-hidden mb-8"
-          style={{ background: 'linear-gradient(180deg, rgba(var(--accent-bg-end),0.4) 0%, rgba(var(--accent-bg-mid),0.7) 100%)', border: '1px solid rgba(var(--accent-primary),0.12)' }}>
+          style={{ background: 'linear-gradient(180deg, rgb(var(--accent-bg-end)/ 0.4) 0%, rgb(var(--accent-bg-mid)/ 0.7) 100%)', border: '1px solid rgb(var(--accent-primary)/ 0.12)' }}>
           <div className="flex items-center justify-between px-5 py-3.5 relative"
-            style={{ borderBottom: '1px solid rgba(var(--accent-primary),0.08)' }}>
+            style={{ borderBottom: '1px solid rgb(var(--accent-primary)/ 0.08)' }}>
             <div className="flex items-center gap-2">
               <h2 className="font-serif text-base text-gold font-bold">🏯 战场大厅</h2>
               <span className="text-pink-300/30 text-xs font-serif italic">群雄争霸之地</span>
@@ -260,7 +260,7 @@ export function HomePage() {
                   {filtered.map((deck) => (
                     <div key={deck.id}
                       className="rounded-lg p-3 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-pink-500/10 transition-all cursor-pointer"
-                      style={{ background: 'linear-gradient(180deg, rgba(var(--accent-bg-end),0.5), rgba(var(--accent-bg-mid),0.8))', border: '1px solid rgba(var(--accent-primary),0.1)' }}
+                      style={{ background: 'linear-gradient(180deg, rgb(var(--accent-bg-end)/ 0.5), rgb(var(--accent-bg-mid)/ 0.8))', border: '1px solid rgb(var(--accent-primary)/ 0.1)' }}
                       onClick={() => navigate(`/rooms/new?deck_id=${deck.id}`)}>
                       <h3 className="text-white/90 text-xs font-medium truncate">{deck.name}</h3>
                       <div className="flex items-center justify-between mt-1">

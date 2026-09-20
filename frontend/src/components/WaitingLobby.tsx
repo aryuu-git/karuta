@@ -171,7 +171,7 @@ export function WaitingLobby({ room, players, currentUserId, onRoleChange, onKic
           <p className="text-pink-300/50 text-sm font-serif mb-2 tracking-widest italic">🌸 将此令牌传递给战友，共赴命运之战！✧</p>
           <div
             className="font-serif text-5xl sm:text-6xl font-bold tracking-[0.2em] text-gold cursor-pointer select-all"
-            style={{ textShadow: '0 0 30px rgba(var(--accent-primary),0.5)' }}
+            style={{ textShadow: '0 0 30px rgb(var(--accent-primary)/ 0.5)' }}
             onClick={copyCode}
           >
             {room.code}
@@ -220,10 +220,10 @@ export function WaitingLobby({ room, players, currentUserId, onRoleChange, onKic
                     className="flex flex-col items-center gap-2 p-4 rounded-xl border"
                     style={{
                       background: seat
-                        ? 'rgba(var(--accent-primary),0.08)'
+                        ? 'rgb(var(--accent-primary)/ 0.08)'
                         : 'rgba(255,255,255,0.02)',
                       border: seat
-                        ? '1px solid rgba(var(--accent-primary),0.3)'
+                        ? '1px solid rgb(var(--accent-primary)/ 0.3)'
                         : '1px dashed rgba(255,255,255,0.15)',
                     }}
                   >
@@ -234,9 +234,9 @@ export function WaitingLobby({ room, players, currentUserId, onRoleChange, onKic
                       <>
                         <div className="w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold"
                           style={{
-                            background: 'linear-gradient(135deg, rgba(var(--accent-primary),0.2), rgba(var(--accent-primary),0.05))',
-                            border: '2px solid rgba(var(--accent-primary),0.4)',
-                            color: 'var(--color-gold)',
+                            background: 'linear-gradient(135deg, rgb(var(--accent-primary)/ 0.2), rgb(var(--accent-primary)/ 0.05))',
+                            border: '2px solid rgb(var(--accent-primary)/ 0.4)',
+                            color: 'rgb(var(--color-gold))',
                           }}>
                           {seat.username.charAt(0).toUpperCase()}
                         </div>
@@ -267,9 +267,9 @@ export function WaitingLobby({ room, players, currentUserId, onRoleChange, onKic
                           onClick={() => onClaimSeat?.(seatNum)}
                           className="text-xs px-3 py-1 rounded-lg transition-all"
                           style={{
-                            background: 'rgba(var(--accent-primary),0.1)',
-                            border: '1px solid rgba(var(--accent-primary),0.3)',
-                            color: 'var(--color-gold)',
+                            background: 'rgb(var(--accent-primary)/ 0.1)',
+                            border: '1px solid rgb(var(--accent-primary)/ 0.3)',
+                            color: 'rgb(var(--color-gold))',
                           }}>
                           入座
                         </motion.button>
@@ -345,7 +345,7 @@ export function WaitingLobby({ room, players, currentUserId, onRoleChange, onKic
             <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
               <motion.div
                 className="h-full rounded-full"
-                style={{ background: 'linear-gradient(90deg, var(--color-gold), var(--color-gold-dark))' }}
+                style={{ background: 'linear-gradient(90deg, rgb(var(--color-gold)), rgb(var(--color-gold-dark)))' }}
                 initial={{ width: 0 }}
                 animate={{ width: `${preloadPercent}%` }}
                 transition={{ duration: 0.3, ease: 'easeOut' }}

@@ -92,26 +92,26 @@ export function JudgePanel({
     <div className="flex flex-col h-full">
       {/* 状态横幅 */}
       <div className="shrink-0 px-4 py-3 border-b"
-        style={{ borderColor: 'rgba(var(--accent-primary),0.12)', background: 'rgba(var(--accent-primary),0.04)' }}>
+        style={{ borderColor: 'rgb(var(--accent-primary)/ 0.12)', background: 'rgb(var(--accent-primary)/ 0.04)' }}>
         <AnimatePresence mode="wait">
           {currentCardId !== null ? (
             <motion.div key="playing" initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 6 }}
               className="flex items-center gap-2">
               <motion.span animate={{ scale: [1, 1.15, 1] }} transition={{ duration: 0.8, repeat: Infinity }} className="text-base">🎵</motion.span>
-              <span className="text-sm font-medium" style={{ color: 'var(--color-gold)' }}>正在播放中… 等待抢牌！</span>
+              <span className="text-sm font-medium" style={{ color: 'rgb(var(--color-gold))' }}>正在播放中… 等待抢牌！</span>
               <span className="ml-auto text-xs text-white/30">{playedItemCount}/{totalCount}</span>
             </motion.div>
           ) : isJudgeWaiting ? (
             <motion.div key="waiting" initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 6 }}
               className="flex items-center gap-2">
               <motion.span animate={{ rotate: [0, 10, -10, 0] }} transition={{ duration: 1.2, repeat: Infinity }} className="text-base">👑</motion.span>
-              <span className="text-sm font-medium" style={{ color: 'var(--color-gold)' }}>选择下一首要播放的歌！</span>
-              <span className="ml-auto text-xs" style={{ color: 'rgba(var(--accent-primary),0.5)' }}>剩余 {totalCount - playedItemCount}</span>
+              <span className="text-sm font-medium" style={{ color: 'rgb(var(--color-gold))' }}>选择下一首要播放的歌！</span>
+              <span className="ml-auto text-xs" style={{ color: 'rgb(var(--accent-primary)/ 0.5)' }}>剩余 {totalCount - playedItemCount}</span>
             </motion.div>
           ) : (
             <motion.div key="idle" initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 6 }}
               className="flex items-center gap-2">
-              <span className="text-sm" style={{ color: 'rgba(var(--accent-primary),0.6)' }}>等待开始…</span>
+              <span className="text-sm" style={{ color: 'rgb(var(--accent-primary)/ 0.6)' }}>等待开始…</span>
             </motion.div>
           )}
         </AnimatePresence>
@@ -135,14 +135,14 @@ export function JudgePanel({
                 whileTap={isClickable ? { scale: 0.98 } : {}}
                 className="flex items-center gap-3 px-3 py-2.5 rounded-lg border text-left transition-all duration-200 w-full"
                 style={{
-                  background: isCurrent ? 'rgba(var(--accent-primary),0.15)' : isClickable ? 'rgba(var(--accent-primary),0.06)' : 'rgba(255,255,255,0.02)',
-                  borderColor: isCurrent ? 'rgba(var(--accent-primary),0.5)' : isClickable ? 'rgba(var(--accent-primary),0.2)' : 'rgba(255,255,255,0.06)',
+                  background: isCurrent ? 'rgb(var(--accent-primary)/ 0.15)' : isClickable ? 'rgb(var(--accent-primary)/ 0.06)' : 'rgba(255,255,255,0.02)',
+                  borderColor: isCurrent ? 'rgb(var(--accent-primary)/ 0.5)' : isClickable ? 'rgb(var(--accent-primary)/ 0.2)' : 'rgba(255,255,255,0.06)',
                   opacity: isPlayed ? 0.4 : 1,
                   cursor: isClickable ? 'pointer' : 'default',
                 }}>
                 {/* 封面 */}
                 <div className="shrink-0 w-9 h-9 rounded overflow-hidden flex items-center justify-center"
-                  style={{ background: 'rgba(var(--accent-primary),0.08)', border: '1px solid rgba(var(--accent-primary),0.15)' }}>
+                  style={{ background: 'rgb(var(--accent-primary)/ 0.08)', border: '1px solid rgb(var(--accent-primary)/ 0.15)' }}>
                   {item.coverUrl ? (
                     <img src={item.coverUrl} alt="" className="w-full h-full object-cover" />
                   ) : (
@@ -153,7 +153,7 @@ export function JudgePanel({
                 {/* 文字 */}
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium truncate"
-                    style={{ color: isCurrent ? 'var(--color-gold)' : isPlayed ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.85)' }}>
+                    style={{ color: isCurrent ? 'rgb(var(--color-gold))' : isPlayed ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.85)' }}>
                     {item.displayText}
                   </div>
                   {item.hintText && (
@@ -167,11 +167,11 @@ export function JudgePanel({
                 <div className="shrink-0 text-xs">
                   {isCurrent ? (
                     <motion.span animate={{ opacity: [1, 0.4, 1] }} transition={{ duration: 0.8, repeat: Infinity }}
-                      style={{ color: 'var(--color-gold)' }}>♪ 播放中</motion.span>
+                      style={{ color: 'rgb(var(--color-gold))' }}>♪ 播放中</motion.span>
                   ) : isPlayed ? (
                     <span style={{ color: 'rgba(255,255,255,0.2)' }}>✓</span>
                   ) : isClickable ? (
-                    <span style={{ color: 'rgba(var(--accent-primary),0.5)' }}>▶</span>
+                    <span style={{ color: 'rgb(var(--accent-primary)/ 0.5)' }}>▶</span>
                   ) : null}
                 </div>
               </motion.button>

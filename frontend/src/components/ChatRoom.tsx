@@ -72,7 +72,7 @@ export function ChatRoom({ messages, players, currentUserId, isSpectator, onSend
               exit={{ opacity: 0, y: 20, scale: 0.9 }}
               transition={{ duration: 0.2 }}
               className="w-72 sm:w-80 rounded-2xl overflow-hidden shadow-2xl flex flex-col"
-              style={{ height: '360px', background: 'rgba(var(--accent-bg-mid),0.96)', border: '1px solid rgba(var(--accent-primary),0.15)', backdropFilter: 'blur(12px)' }}
+              style={{ height: '360px', background: 'rgb(var(--accent-bg-mid)/ 0.96)', border: '1px solid rgb(var(--accent-primary)/ 0.15)', backdropFilter: 'blur(12px)' }}
             >
               {/* 头部 */}
               <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/5">
@@ -127,8 +127,8 @@ export function ChatRoom({ messages, players, currentUserId, isSpectator, onSend
                         </span>
                         <div className="px-3 py-1.5 rounded-2xl text-xs leading-relaxed"
                           style={{
-                            background: msg.user_id === currentUserId ? 'rgba(var(--accent-primary),0.2)' : 'rgba(255,255,255,0.06)',
-                            color: msg.user_id === currentUserId ? 'var(--color-gold-light)' : 'rgba(255,255,255,0.8)',
+                            background: msg.user_id === currentUserId ? 'rgb(var(--accent-primary)/ 0.2)' : 'rgba(255,255,255,0.06)',
+                            color: msg.user_id === currentUserId ? 'rgb(var(--color-gold-light))' : 'rgba(255,255,255,0.8)',
                             borderRadius: msg.user_id === currentUserId ? '16px 4px 16px 16px' : '4px 16px 16px 16px',
                           }}>
                           {msg.text}
@@ -153,7 +153,7 @@ export function ChatRoom({ messages, players, currentUserId, isSpectator, onSend
                 />
                 <button onClick={handleSend} disabled={!input.trim()}
                   className="text-xs px-3 py-1.5 rounded-xl transition-all hover:scale-105 disabled:opacity-40"
-                  style={{ background: 'rgba(var(--accent-primary),0.2)', border: '1px solid rgba(var(--accent-primary),0.3)', color: 'var(--color-gold)' }}>
+                  style={{ background: 'rgb(var(--accent-primary)/ 0.2)', border: '1px solid rgb(var(--accent-primary)/ 0.3)', color: 'rgb(var(--color-gold))' }}>
                   发
                 </button>
               </div>
@@ -167,12 +167,12 @@ export function ChatRoom({ messages, players, currentUserId, isSpectator, onSend
           onClick={() => { setOpen(v => !v); setUnread(0) }}
           className="flex items-center gap-2 px-4 py-2.5 rounded-2xl shadow-2xl relative"
           style={{
-            background: open ? 'rgba(var(--accent-primary),0.2)' : 'rgba(var(--accent-bg-mid),0.95)',
-            border: '1px solid rgba(var(--accent-primary),0.4)',
+            background: open ? 'rgb(var(--accent-primary)/ 0.2)' : 'rgb(var(--accent-bg-mid)/ 0.95)',
+            border: '1px solid rgb(var(--accent-primary)/ 0.4)',
             backdropFilter: 'blur(12px)',
           }}>
           <span className="text-lg">{open ? '✕' : '💬'}</span>
-          {!open && <span className="text-xs font-medium" style={{ color: 'var(--color-gold)' }}>传书</span>}
+          {!open && <span className="text-xs font-medium" style={{ color: 'rgb(var(--color-gold))' }}>传书</span>}
           {unread > 0 && !open && (
             <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}
               className="absolute -top-1.5 -right-1.5 min-w-5 h-5 px-1 rounded-full flex items-center justify-center text-[10px] font-bold"

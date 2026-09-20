@@ -38,7 +38,7 @@ export function DuelGameOver({ data, currentUserId }: DuelGameOverProps) {
         animate={{ scale: 1, opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 0.2, ease: 'easeOut' }}
         className="relative z-10 bg-ink-deep/95 border border-gold/30 rounded-2xl p-5 sm:p-6 max-w-2xl w-full mx-4 shadow-gold-lg overflow-y-auto"
-        style={{ maxHeight: '92vh', boxShadow: '0 0 60px rgba(var(--accent-primary),0.2), 0 20px 40px rgba(0,0,0,0.6)' }}
+        style={{ maxHeight: '92vh', boxShadow: '0 0 60px rgb(var(--accent-primary)/ 0.2), 0 20px 40px rgba(0,0,0,0.6)' }}
       >
         {/* 标题 */}
         <div className="text-center mb-5">
@@ -47,7 +47,7 @@ export function DuelGameOver({ data, currentUserId }: DuelGameOverProps) {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
             className="font-serif text-3xl sm:text-4xl font-bold text-gold-shimmer mb-1"
-            style={{ textShadow: '0 0 40px rgba(var(--accent-primary),0.4)' }}
+            style={{ textShadow: '0 0 40px rgb(var(--accent-primary)/ 0.4)' }}
           >
             {data.isTie ? '🤝 平局！' : isWinner ? '🏆 你赢了！' : `⚔️ ${data.winner} 获胜！`}
           </motion.h1>
@@ -134,8 +134,8 @@ function PlayerResult({ player, isWinner, isTie, isMe, delay }: {
       transition={{ delay }}
       className="rounded-xl p-3 text-center"
       style={{
-        background: isWinner ? 'rgba(var(--accent-primary),0.08)' : 'rgba(255,255,255,0.02)',
-        border: isWinner ? '1px solid rgba(var(--accent-primary),0.3)' : '1px solid rgba(255,255,255,0.08)',
+        background: isWinner ? 'rgb(var(--accent-primary)/ 0.08)' : 'rgba(255,255,255,0.02)',
+        border: isWinner ? '1px solid rgb(var(--accent-primary)/ 0.3)' : '1px solid rgba(255,255,255,0.08)',
       }}
     >
       <div className="text-xs text-muted mb-1">
@@ -183,7 +183,7 @@ function CardSection({ title, cards, color, delay }: {
             className="relative rounded-md overflow-hidden"
             style={{
               aspectRatio: '3/4',
-              border: `1px solid rgba(var(--accent-primary),${color === 'gold' ? '0.2' : '0.08'})`,
+              border: `1px solid rgba(rgb(var(--accent-primary)),${color === 'gold' ? '0.2' : '0.08'})`,
               filter: color === 'muted' ? 'grayscale(0.6)' : undefined,
             }}
             title={card.display_text}
@@ -191,7 +191,7 @@ function CardSection({ title, cards, color, delay }: {
             {card.cover_url ? (
               <img src={card.cover_url} alt="" className="w-full h-full object-cover" loading="lazy" />
             ) : (
-              <div className="w-full h-full flex items-center justify-center" style={{ background: 'var(--color-surface)' }}>
+              <div className="w-full h-full flex items-center justify-center" style={{ background: 'rgb(var(--color-surface))' }}>
                 <span className="text-gold/20 text-xs font-serif">{card.display_text.slice(0, 3)}</span>
               </div>
             )}

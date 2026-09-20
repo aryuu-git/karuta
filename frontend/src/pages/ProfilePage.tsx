@@ -75,7 +75,7 @@ function AdminUserList() {
   )
 }
 
-function StatCard({ icon, label, value, sub, color = 'var(--color-gold)', delay = 0 }: {
+function StatCard({ icon, label, value, sub, color = 'rgb(var(--color-gold))', delay = 0 }: {
   icon: string
   label: string
   value: string | number
@@ -89,7 +89,7 @@ function StatCard({ icon, label, value, sub, color = 'var(--color-gold)', delay 
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay, duration: 0.4 }}
       className="rounded-xl p-5 flex flex-col gap-2 hover:shadow-lg hover:shadow-pink-500/5 transition-all"
-      style={{ background: 'linear-gradient(160deg, rgba(var(--accent-bg-end),0.4), rgba(var(--accent-bg-mid),0.6))', border: '1px solid rgba(var(--accent-primary),0.08)' }}
+      style={{ background: 'linear-gradient(160deg, rgb(var(--accent-bg-end)/ 0.4), rgb(var(--accent-bg-mid)/ 0.6))', border: '1px solid rgb(var(--accent-primary)/ 0.08)' }}
     >
       <div className="text-2xl">{icon}</div>
       <div>
@@ -130,13 +130,13 @@ function Top3Ring({ rate, games, top3 }: { rate: number; games: number; top3: nu
           <defs>
             <linearGradient id="profileGrad" x1="0%" y1="0%" x2="100%" y2="0%">
               <stop offset="0%" stopColor="#FFD700" />
-              <stop offset="50%" stopColor="var(--color-gold)" />
-              <stop offset="100%" stopColor="var(--color-gold-light)" />
+              <stop offset="50%" stopColor="rgb(var(--color-gold))" />
+              <stop offset="100%" stopColor="rgb(var(--color-gold-light))" />
             </linearGradient>
           </defs>
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-3xl font-bold font-serif" style={{ color: 'var(--color-gold)' }}>{pct}%</span>
+          <span className="text-3xl font-bold font-serif" style={{ color: 'rgb(var(--color-gold))' }}>{pct}%</span>
         </div>
       </div>
       <div className="text-center">
@@ -178,13 +178,13 @@ export function ProfilePage() {
           initial={{ opacity: 0, y: -12 }}
           animate={{ opacity: 1, y: 0 }}
           className="flex items-center gap-5 mb-8 p-6 rounded-2xl relative overflow-hidden"
-          style={{ background: 'linear-gradient(135deg, rgba(var(--accent-bg),0.4) 0%, rgba(var(--accent-bg-mid),0.8) 50%, rgba(var(--accent-bg-end),0.4) 100%)', border: '1px solid rgba(var(--accent-primary),0.15)' }}
+          style={{ background: 'linear-gradient(135deg, rgb(var(--accent-bg)/ 0.4) 0%, rgb(var(--accent-bg-mid)/ 0.8) 50%, rgb(var(--accent-bg-end)/ 0.4) 100%)', border: '1px solid rgb(var(--accent-primary)/ 0.15)' }}
         >
           <div className="absolute top-0 right-0 w-32 h-32 opacity-10 pointer-events-none"
-            style={{ background: 'radial-gradient(circle, rgba(var(--glow-color),0.8), transparent 70%)' }} />
+            style={{ background: 'radial-gradient(circle, rgb(var(--glow-color)/ 0.8), transparent 70%)' }} />
           {/* 头像 */}
           <div className="w-16 h-16 rounded-full flex items-center justify-center shrink-0 text-2xl font-bold font-serif relative cursor-pointer group overflow-hidden"
-            style={{ background: 'linear-gradient(135deg, rgba(var(--accent-primary),0.3), rgba(var(--accent-bg-end),0.8))', border: '2px solid rgba(var(--accent-primary),0.4)', color: 'var(--color-gold)', boxShadow: '0 0 20px rgba(var(--accent-primary),0.2)' }}
+            style={{ background: 'linear-gradient(135deg, rgb(var(--accent-primary)/ 0.3), rgb(var(--accent-bg-end)/ 0.8))', border: '2px solid rgb(var(--accent-primary)/ 0.4)', color: 'rgb(var(--color-gold))', boxShadow: '0 0 20px rgb(var(--accent-primary)/ 0.2)' }}
             onClick={() => avatarInputRef.current?.click()}>
             {user?.avatar_url ? (
               <img src={user.avatar_url} alt="" className="w-full h-full object-cover" />
@@ -243,7 +243,7 @@ export function ProfilePage() {
         ) : !stats || stats.total_games === 0 ? (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
             className="text-center py-16 rounded-2xl"
-            style={{ background: 'linear-gradient(160deg, rgba(var(--accent-bg-end),0.5), rgba(var(--accent-bg-mid),0.8))', border: '1px dashed rgba(var(--accent-primary),0.2)' }}>
+            style={{ background: 'linear-gradient(160deg, rgb(var(--accent-bg-end)/ 0.5), rgb(var(--accent-bg-mid)/ 0.8))', border: '1px dashed rgb(var(--accent-primary)/ 0.2)' }}>
             <div className="text-5xl mb-4">🌸</div>
             <p className="text-gold text-base font-serif mb-2">传说的篇章尚未书写…</p>
             <p className="text-pink-300/40 text-sm mb-6 font-serif">踏入战场，用实力刻下你的名字！✧</p>
@@ -280,7 +280,7 @@ export function ProfilePage() {
               <StatCard icon="🏆" label="前三名次数" value={stats.top3_games} delay={0.2}
                 sub={`共 ${stats.total_games} 场`} />
               <StatCard icon="💯" label="历史总得分" value={stats.total_score} delay={0.25}
-                sub="所有场次合计" color="var(--color-gold-light)" />
+                sub="所有场次合计" color="rgb(var(--color-gold-light))" />
               <StatCard icon="✨" label="单场最高分" value={stats.best_score} delay={0.3}
                 sub="个人纪录" color="#4ade80" />
             </div>
@@ -295,10 +295,10 @@ export function ProfilePage() {
                 <div className="flex flex-wrap gap-2">
                   {stats.world_first_count > 0 && (
                     <div className="flex items-center gap-2 px-3 py-2 rounded-lg"
-                      style={{ background: 'rgba(var(--accent-primary),0.1)', border: '1px solid rgba(var(--accent-primary),0.25)' }}>
+                      style={{ background: 'rgb(var(--accent-primary)/ 0.1)', border: '1px solid rgb(var(--accent-primary)/ 0.25)' }}>
                       <span className="text-base">🌐</span>
                       <div>
-                        <p className="text-xs font-medium" style={{ color: 'var(--color-gold)' }}>世一网</p>
+                        <p className="text-xs font-medium" style={{ color: 'rgb(var(--color-gold))' }}>世一网</p>
                         <p className="text-muted text-xs">已获得 {stats.world_first_count} 次</p>
                       </div>
                     </div>
@@ -323,7 +323,7 @@ export function ProfilePage() {
         {/* 邀请码 */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}
           className="mt-6 rounded-2xl p-5"
-          style={{ background: 'linear-gradient(180deg, rgba(var(--accent-bg-end),0.5) 0%, rgba(var(--accent-bg-mid),0.8) 100%)', border: '1px solid rgba(var(--accent-primary),0.12)' }}>
+          style={{ background: 'linear-gradient(180deg, rgb(var(--accent-bg-end)/ 0.5) 0%, rgb(var(--accent-bg-mid)/ 0.8) 100%)', border: '1px solid rgb(var(--accent-primary)/ 0.12)' }}>
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-serif text-sm font-bold text-gold">🎫 我的邀请码</h2>
             <button onClick={async () => {
@@ -331,7 +331,7 @@ export function ProfilePage() {
               setInvites(prev => [{ ...inv, created_at: new Date().toISOString() }, ...prev])
             }}
               className="text-xs px-3 py-1.5 rounded-lg transition-all hover:scale-105"
-              style={{ background: 'rgba(var(--accent-primary),0.15)', border: '1px solid rgba(var(--accent-primary),0.3)', color: 'var(--color-gold)' }}>
+              style={{ background: 'rgb(var(--accent-primary)/ 0.15)', border: '1px solid rgb(var(--accent-primary)/ 0.3)', color: 'rgb(var(--color-gold))' }}>
               + 生成邀请码
             </button>
           </div>
@@ -356,7 +356,7 @@ export function ProfilePage() {
         {user?.is_admin && (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}
             className="mt-6 rounded-2xl p-5"
-            style={{ background: 'linear-gradient(180deg, rgba(255,100,50,0.05) 0%, rgba(var(--accent-bg-mid),0.8) 100%)', border: '1px solid rgba(255,100,50,0.2)' }}>
+            style={{ background: 'linear-gradient(180deg, rgba(255,100,50,0.05) 0%, rgb(var(--accent-bg-mid)/ 0.8) 100%)', border: '1px solid rgba(255,100,50,0.2)' }}>
             <h2 className="font-serif text-sm font-bold text-orange-300 mb-1">⚡ 管理员面板</h2>
 			<p className="text-muted text-[10px] mb-3">关闭邀请码时允许公开注册；开启后仅接受未使用的邀请码。</p>
             <AdminUserList />

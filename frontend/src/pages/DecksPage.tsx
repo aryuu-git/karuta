@@ -76,9 +76,9 @@ export function DecksPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
         {/* Header with decorative gradient */}
         <div className="relative mb-8 overflow-hidden rounded-2xl p-6"
-          style={{ background: 'linear-gradient(135deg, rgba(var(--accent-bg),0.4) 0%, rgba(var(--accent-bg-mid),0.8) 50%, rgba(var(--accent-bg-end),0.4) 100%)', border: '1px solid rgba(var(--accent-primary),0.15)' }}>
+          style={{ background: 'linear-gradient(135deg, rgb(var(--accent-bg)/ 0.4) 0%, rgb(var(--accent-bg-mid)/ 0.8) 50%, rgb(var(--accent-bg-end)/ 0.4) 100%)', border: '1px solid rgb(var(--accent-primary)/ 0.15)' }}>
           <div className="absolute top-0 right-0 w-32 h-32 opacity-10 pointer-events-none"
-            style={{ background: 'radial-gradient(circle, rgba(var(--glow-color),0.8), transparent 70%)' }} />
+            style={{ background: 'radial-gradient(circle, rgb(var(--glow-color)/ 0.8), transparent 70%)' }} />
           <div className="flex items-center justify-between relative">
             <div>
               <h1 className="font-serif text-2xl text-gold font-bold tracking-wide">
@@ -160,7 +160,7 @@ export function DecksPage() {
         {!loading && decks.length === 0 && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
             className="text-center py-20 rounded-2xl"
-            style={{ background: 'linear-gradient(160deg, rgba(var(--accent-bg-end),0.5), rgba(var(--accent-bg-mid),0.8))', border: '1px dashed rgba(var(--accent-primary),0.2)' }}>
+            style={{ background: 'linear-gradient(160deg, rgb(var(--accent-bg-end)/ 0.5), rgb(var(--accent-bg-mid)/ 0.8))', border: '1px dashed rgb(var(--accent-primary)/ 0.2)' }}>
             <div className="text-5xl mb-3">🌸</div>
             {tab === 'mine' ? (
               <>
@@ -192,10 +192,10 @@ export function DecksPage() {
                   transition={{ delay: i * 0.04 }}
                   className="group relative rounded-xl overflow-hidden
                              cursor-pointer hover:-translate-y-1 hover:shadow-lg hover:shadow-pink-500/10 transition-all duration-250"
-                  style={{ background: 'linear-gradient(180deg, var(--color-ink) 0%, var(--color-ink-deep) 100%)', border: '1px solid rgba(var(--accent-primary),0.12)' }}
+                  style={{ background: 'linear-gradient(180deg, rgb(var(--color-ink)) 0%, rgb(var(--color-ink-deep)) 100%)', border: '1px solid rgb(var(--accent-primary)/ 0.12)' }}
                   onClick={() => navigate(`/decks/${deck.id}`)}>
                   {/* Top accent gradient */}
-                  <div className="h-0.5 w-full" style={{ background: 'linear-gradient(90deg, rgba(var(--glow-color),0.4), rgba(var(--accent-primary),0.4), rgba(var(--glow-color),0.4))' }} />
+                  <div className="h-0.5 w-full" style={{ background: 'linear-gradient(90deg, rgb(var(--glow-color)/ 0.4), rgb(var(--accent-primary)/ 0.4), rgb(var(--glow-color)/ 0.4))' }} />
                   <div className="p-4">
                     <div className="flex items-start justify-between gap-2 mb-1">
                       <h3 className="font-sans font-semibold text-white text-sm truncate">{deck.name}</h3>
@@ -210,7 +210,7 @@ export function DecksPage() {
                         <span className="text-muted/50 text-xs">by {deck.owner_name}</span>
                       )}
                     </div>
-                    <div className="flex items-center justify-between mt-3 pt-3" style={{ borderTop: '1px solid rgba(var(--accent-primary),0.08)' }}>
+                    <div className="flex items-center justify-between mt-3 pt-3" style={{ borderTop: '1px solid rgb(var(--accent-primary)/ 0.08)' }}>
                       <button
                         onClick={e => { e.stopPropagation(); navigate(`/decks/${deck.id}`) }}
                         className="text-xs text-gold/70 hover:text-gold transition-all px-2.5 py-1.5 rounded-lg border border-gold/20 hover:border-gold/50 hover:bg-gold/5">
@@ -240,7 +240,7 @@ export function DecksPage() {
             <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
               className="bg-ink-deep rounded-xl p-6 w-full max-w-sm"
-              style={{ border: '1px solid rgba(var(--accent-primary),0.15)', boxShadow: '0 0 60px rgba(var(--accent-primary),0.1)' }}
+              style={{ border: '1px solid rgb(var(--accent-primary)/ 0.15)', boxShadow: '0 0 60px rgb(var(--accent-primary)/ 0.1)' }}
               onClick={e => e.stopPropagation()}>
               <h3 className="font-serif font-bold text-gold mb-1 text-lg">✨ 铸造新阵</h3>
               <p className="text-pink-300/50 text-xs mb-5 font-serif italic">赐予你的战阵一个响彻天下的名号吧！✧</p>

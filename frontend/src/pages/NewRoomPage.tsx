@@ -91,9 +91,9 @@ export function NewRoomPage() {
       <div className="max-w-lg mx-auto px-4 sm:px-6 py-12">
         {/* Header with decorative gradient */}
         <div className="relative mb-8 overflow-hidden rounded-2xl p-5"
-          style={{ background: 'linear-gradient(135deg, rgba(var(--accent-bg),0.4) 0%, rgba(var(--accent-bg-mid),0.8) 50%, rgba(var(--accent-bg-end),0.4) 100%)', border: '1px solid rgba(var(--accent-primary),0.15)' }}>
+          style={{ background: 'linear-gradient(135deg, rgb(var(--accent-bg)/ 0.4) 0%, rgb(var(--accent-bg-mid)/ 0.8) 50%, rgb(var(--accent-bg-end)/ 0.4) 100%)', border: '1px solid rgb(var(--accent-primary)/ 0.15)' }}>
           <div className="absolute top-0 right-0 w-24 h-24 opacity-10 pointer-events-none"
-            style={{ background: 'radial-gradient(circle, rgba(var(--glow-color),0.8), transparent 70%)' }} />
+            style={{ background: 'radial-gradient(circle, rgb(var(--glow-color)/ 0.8), transparent 70%)' }} />
           <div className="flex items-center gap-4 relative">
             <button onClick={() => navigate(-1)} className="text-pink-300/50 hover:text-gold transition-all duration-200 text-sm hover:scale-110">
               ← 撤退
@@ -119,7 +119,7 @@ export function NewRoomPage() {
               <p className="text-muted text-xs mb-4 tracking-widest">把邀请码发给战友，一起来抢！(ﾉ◕ヮ◕)ﾉ*:･ﾟ✧</p>
               <div
                 className="font-serif text-6xl font-bold tracking-[0.2em] text-gold cursor-pointer mb-2 hover:scale-105 transition-transform duration-200"
-                style={{ textShadow: '0 0 30px rgba(var(--accent-primary),0.5)' }}
+                style={{ textShadow: '0 0 30px rgb(var(--accent-primary)/ 0.5)' }}
                 onClick={copyCode}
               >
                 {createdRoom.code}
@@ -151,7 +151,7 @@ export function NewRoomPage() {
               <form
                 onSubmit={handleSubmit}
                 className="rounded-2xl p-6 flex flex-col gap-6"
-                style={{ background: 'linear-gradient(180deg, rgba(var(--accent-bg-end),0.6) 0%, rgba(var(--accent-bg-mid),0.9) 100%)', border: '1px solid rgba(var(--accent-primary),0.12)' }}
+                style={{ background: 'linear-gradient(180deg, rgb(var(--accent-bg-end)/ 0.6) 0%, rgb(var(--accent-bg-mid)/ 0.9) 100%)', border: '1px solid rgb(var(--accent-primary)/ 0.12)' }}
               >
                 {/* Deck selection */}
                 <div>
@@ -190,8 +190,8 @@ export function NewRoomPage() {
                           <div
                             className="w-8 h-8 rounded flex items-center justify-center font-serif text-gold text-sm shrink-0"
                             style={{
-                              background: 'rgba(var(--accent-primary),0.1)',
-                              border: '1px solid rgba(var(--accent-primary),0.2)',
+                              background: 'rgb(var(--accent-primary)/ 0.1)',
+                              border: '1px solid rgb(var(--accent-primary)/ 0.2)',
                             }}
                           >
                             歌
@@ -226,7 +226,7 @@ export function NewRoomPage() {
                     onChange={(e) => setIntervalSec(parseInt(e.target.value, 10))}
                     className="w-full h-1.5 rounded-full appearance-none cursor-pointer"
                     style={{
-                      background: `linear-gradient(to right, var(--color-gold) ${((intervalSec - 3) / 27) * 100}%, var(--color-surface) ${((intervalSec - 3) / 27) * 100}%)`,
+                      background: `linear-gradient(to right, rgb(var(--color-gold)) ${((intervalSec - 3) / 27) * 100}%, rgb(var(--color-surface)) ${((intervalSec - 3) / 27) * 100}%)`,
                     }}
                   />
                   <div className="flex justify-between text-muted text-xs mt-1.5">
@@ -289,7 +289,7 @@ export function NewRoomPage() {
                 {/* Duel mode config */}
                 {selectedMode === 'duel' && (
                   <div className="rounded-xl p-4"
-                    style={{ background: 'linear-gradient(135deg, rgba(var(--accent-bg),0.15), rgba(var(--accent-bg-mid),0.4))', border: '1px solid rgba(var(--accent-primary),0.12)' }}>
+                    style={{ background: 'linear-gradient(135deg, rgb(var(--accent-bg)/ 0.15), rgb(var(--accent-bg-mid)/ 0.4))', border: '1px solid rgb(var(--accent-primary)/ 0.12)' }}>
                     <h3 className="text-gold/80 text-xs font-serif mb-3">⚔️ 对阵配置</h3>
                     <div className="space-y-3">
                       {/* 总牌数 */}
@@ -298,11 +298,11 @@ export function NewRoomPage() {
                           <p className="text-xs text-white/70">总牌数</p>
                           <p className="text-[10px] text-muted/50">每人分到一半</p>
                         </div>
-                        <div className="flex items-center rounded-lg overflow-hidden" style={{ border: '1px solid rgba(var(--accent-primary),0.2)' }}>
+                        <div className="flex items-center rounded-lg overflow-hidden" style={{ border: '1px solid rgb(var(--accent-primary)/ 0.2)' }}>
                           <button type="button" onClick={() => setDuelTotalCards(Math.max(10, duelTotalCards - 10))}
                             className="px-2.5 py-1 text-gold/70 hover:text-gold hover:bg-gold/10 transition-colors text-sm font-bold">-</button>
                           <span className="w-10 text-center text-sm text-white/90 font-medium py-1"
-                            style={{ background: 'rgba(var(--accent-primary),0.05)' }}>{duelTotalCards}</span>
+                            style={{ background: 'rgb(var(--accent-primary)/ 0.05)' }}>{duelTotalCards}</span>
                           <button type="button" onClick={() => setDuelTotalCards(Math.min(100, duelTotalCards + 10))}
                             className="px-2.5 py-1 text-gold/70 hover:text-gold hover:bg-gold/10 transition-colors text-sm font-bold">+</button>
                         </div>
@@ -313,11 +313,11 @@ export function NewRoomPage() {
                           <p className="text-xs text-white/70">每轮时间</p>
                           <p className="text-[10px] text-muted/50">超时则无人得牌</p>
                         </div>
-                        <div className="flex items-center rounded-lg overflow-hidden" style={{ border: '1px solid rgba(var(--accent-primary),0.2)' }}>
+                        <div className="flex items-center rounded-lg overflow-hidden" style={{ border: '1px solid rgb(var(--accent-primary)/ 0.2)' }}>
                           <button type="button" onClick={() => setDuelRoundTime(Math.max(30, duelRoundTime - 10))}
                             className="px-2.5 py-1 text-gold/70 hover:text-gold hover:bg-gold/10 transition-colors text-sm font-bold">-</button>
                           <span className="w-10 text-center text-sm text-white/90 font-medium py-1"
-                            style={{ background: 'rgba(var(--accent-primary),0.05)' }}>{duelRoundTime}s</span>
+                            style={{ background: 'rgb(var(--accent-primary)/ 0.05)' }}>{duelRoundTime}s</span>
                           <button type="button" onClick={() => setDuelRoundTime(Math.min(120, duelRoundTime + 10))}
                             className="px-2.5 py-1 text-gold/70 hover:text-gold hover:bg-gold/10 transition-colors text-sm font-bold">+</button>
                         </div>
@@ -328,11 +328,11 @@ export function NewRoomPage() {
                           <p className="text-xs text-white/70">拍牌次数</p>
                           <p className="text-[10px] text-muted/50">每轮可拍错几次</p>
                         </div>
-                        <div className="flex items-center rounded-lg overflow-hidden" style={{ border: '1px solid rgba(var(--accent-primary),0.2)' }}>
+                        <div className="flex items-center rounded-lg overflow-hidden" style={{ border: '1px solid rgb(var(--accent-primary)/ 0.2)' }}>
                           <button type="button" onClick={() => setDuelGrabChances(Math.max(1, duelGrabChances - 1))}
                             className="px-2.5 py-1 text-gold/70 hover:text-gold hover:bg-gold/10 transition-colors text-sm font-bold">-</button>
                           <span className="w-10 text-center text-sm text-white/90 font-medium py-1"
-                            style={{ background: 'rgba(var(--accent-primary),0.05)' }}>{duelGrabChances}</span>
+                            style={{ background: 'rgb(var(--accent-primary)/ 0.05)' }}>{duelGrabChances}</span>
                           <button type="button" onClick={() => setDuelGrabChances(Math.min(5, duelGrabChances + 1))}
                             className="px-2.5 py-1 text-gold/70 hover:text-gold hover:bg-gold/10 transition-colors text-sm font-bold">+</button>
                         </div>
@@ -343,11 +343,11 @@ export function NewRoomPage() {
                           <p className="text-xs text-white/70">最大轮次</p>
                           <p className="text-[10px] text-muted/50">0 = 无限</p>
                         </div>
-                        <div className="flex items-center rounded-lg overflow-hidden" style={{ border: '1px solid rgba(var(--accent-primary),0.2)' }}>
+                        <div className="flex items-center rounded-lg overflow-hidden" style={{ border: '1px solid rgb(var(--accent-primary)/ 0.2)' }}>
                           <button type="button" onClick={() => setDuelMaxRounds(Math.max(0, duelMaxRounds - 5))}
                             className="px-2.5 py-1 text-gold/70 hover:text-gold hover:bg-gold/10 transition-colors text-sm font-bold">-</button>
                           <span className="w-10 text-center text-sm text-white/90 font-medium py-1"
-                            style={{ background: 'rgba(var(--accent-primary),0.05)' }}>{duelMaxRounds || '∞'}</span>
+                            style={{ background: 'rgb(var(--accent-primary)/ 0.05)' }}>{duelMaxRounds || '∞'}</span>
                           <button type="button" onClick={() => setDuelMaxRounds(duelMaxRounds + 5)}
                             className="px-2.5 py-1 text-gold/70 hover:text-gold hover:bg-gold/10 transition-colors text-sm font-bold">+</button>
                         </div>
@@ -358,11 +358,11 @@ export function NewRoomPage() {
                           <p className="text-xs text-white/70">排阵时间</p>
                           <p className="text-[10px] text-muted/50">开局前调整布局(秒)</p>
                         </div>
-                        <div className="flex items-center rounded-lg overflow-hidden" style={{ border: '1px solid rgba(var(--accent-primary),0.2)' }}>
+                        <div className="flex items-center rounded-lg overflow-hidden" style={{ border: '1px solid rgb(var(--accent-primary)/ 0.2)' }}>
                           <button type="button" onClick={() => setDuelArrangeTime(Math.max(10, duelArrangeTime - 10))}
                             className="px-2.5 py-1 text-gold/70 hover:text-gold hover:bg-gold/10 transition-colors text-sm font-bold">-</button>
                           <span className="w-12 text-center text-sm text-white/90 font-medium py-1"
-                            style={{ background: 'rgba(var(--accent-primary),0.05)' }}>{duelArrangeTime}s</span>
+                            style={{ background: 'rgb(var(--accent-primary)/ 0.05)' }}>{duelArrangeTime}s</span>
                           <button type="button" onClick={() => setDuelArrangeTime(Math.min(300, duelArrangeTime + 10))}
                             className="px-2.5 py-1 text-gold/70 hover:text-gold hover:bg-gold/10 transition-colors text-sm font-bold">+</button>
                         </div>
@@ -482,7 +482,7 @@ export function NewRoomPage() {
 
                 {/* 扣分设置 */}
                 <div className="rounded-xl p-4"
-                  style={{ background: 'linear-gradient(135deg, rgba(var(--accent-bg),0.15), rgba(var(--accent-bg-mid),0.4))', border: '1px solid rgba(var(--accent-primary),0.12)' }}>
+                  style={{ background: 'linear-gradient(135deg, rgb(var(--accent-bg)/ 0.15), rgb(var(--accent-bg-mid)/ 0.4))', border: '1px solid rgb(var(--accent-primary)/ 0.12)' }}>
                   <h3 className="text-gold/80 text-xs font-serif mb-3">⚡ 惩罚规则</h3>
                   <div className="space-y-3">
                     {[
@@ -518,16 +518,16 @@ export function NewRoomPage() {
                   <p className="text-muted/40 text-[10px] mt-2 text-center font-serif">关闭后仅禁止本轮继续抢，不扣分 ♪</p>
                   {/* 倒数N首开启惩罚 */}
                   {selectedMode !== 'duel' && penaltyWrong && (
-                    <div className="flex items-center justify-between mt-3 pt-3" style={{ borderTop: '1px solid rgba(var(--accent-primary),0.08)' }}>
+                    <div className="flex items-center justify-between mt-3 pt-3" style={{ borderTop: '1px solid rgb(var(--accent-primary)/ 0.08)' }}>
                       <div>
                         <p className="text-xs text-white/70">倒数N首开启</p>
                         <p className="text-[10px] text-muted/50">0=全程扣分</p>
                       </div>
-                      <div className="flex items-center rounded-lg overflow-hidden" style={{ border: '1px solid rgba(var(--accent-primary),0.2)' }}>
+                      <div className="flex items-center rounded-lg overflow-hidden" style={{ border: '1px solid rgb(var(--accent-primary)/ 0.2)' }}>
                         <button type="button" onClick={() => setPenaltyLast(Math.max(0, penaltyLast - 5))}
                           className="px-2.5 py-1 text-gold/70 hover:text-gold hover:bg-gold/10 transition-colors text-sm font-bold">-</button>
                         <span className="w-12 text-center text-sm text-white/90 font-medium py-1"
-                          style={{ background: 'rgba(var(--accent-primary),0.05)' }}>{penaltyLast || '全程'}</span>
+                          style={{ background: 'rgb(var(--accent-primary)/ 0.05)' }}>{penaltyLast || '全程'}</span>
                         <button type="button" onClick={() => setPenaltyLast(penaltyLast + 5)}
                           className="px-2.5 py-1 text-gold/70 hover:text-gold hover:bg-gold/10 transition-colors text-sm font-bold">+</button>
                       </div>
@@ -537,7 +537,7 @@ export function NewRoomPage() {
 
                 {/* 牌面打乱（对阵模式不需要） */}
                 {selectedMode !== 'duel' && <div className="rounded-xl p-4"
-                  style={{ background: 'linear-gradient(135deg, rgba(var(--accent-bg),0.15), rgba(var(--accent-bg-mid),0.4))', border: '1px solid rgba(var(--accent-primary),0.12)' }}>
+                  style={{ background: 'linear-gradient(135deg, rgb(var(--accent-bg)/ 0.15), rgb(var(--accent-bg-mid)/ 0.4))', border: '1px solid rgb(var(--accent-primary)/ 0.12)' }}>
                   <h3 className="text-gold/80 text-xs font-serif mb-3">🔀 牌面打乱</h3>
                   <div onClick={() => setShuffleEnabled(!shuffleEnabled)}
                     className={`flex items-center gap-3 p-2.5 rounded-lg cursor-pointer transition-all ${
@@ -560,13 +560,13 @@ export function NewRoomPage() {
                   {shuffleEnabled && (
                     <div className="mt-3 flex items-center gap-2">
                       <span className="text-muted text-xs">剩余</span>
-                      <div className="flex items-center rounded-lg overflow-hidden" style={{ border: '1px solid rgba(var(--accent-primary),0.2)' }}>
+                      <div className="flex items-center rounded-lg overflow-hidden" style={{ border: '1px solid rgb(var(--accent-primary)/ 0.2)' }}>
                         <button type="button" onClick={() => setShuffleRemaining(Math.max(1, shuffleRemaining - 1))}
                           className="px-2.5 py-1 text-gold/70 hover:text-gold hover:bg-gold/10 transition-colors text-sm font-bold">−</button>
                         <input type="text" value={shuffleRemaining}
                           onChange={e => { const v = parseInt(e.target.value); if (!isNaN(v)) setShuffleRemaining(Math.min(99, Math.max(1, v))) }}
                           className="w-8 text-center text-sm text-white/90 font-medium bg-transparent outline-none py-1"
-                          style={{ background: 'rgba(var(--accent-primary),0.05)' }} />
+                          style={{ background: 'rgb(var(--accent-primary)/ 0.05)' }} />
                         <button type="button" onClick={() => setShuffleRemaining(Math.min(99, shuffleRemaining + 1))}
                           className="px-2.5 py-1 text-gold/70 hover:text-gold hover:bg-gold/10 transition-colors text-sm font-bold">+</button>
                       </div>
@@ -577,14 +577,14 @@ export function NewRoomPage() {
 
                 {/* 多音频牌模式（duel 模式强制 once，不展示选择） */}
                 {selectedMode !== 'duel' && <div className="rounded-xl p-4"
-                  style={{ background: 'linear-gradient(135deg, rgba(var(--accent-bg),0.15), rgba(var(--accent-bg-mid),0.4))', border: '1px solid rgba(var(--accent-primary),0.12)' }}>
+                  style={{ background: 'linear-gradient(135deg, rgb(var(--accent-bg)/ 0.15), rgb(var(--accent-bg-mid)/ 0.4))', border: '1px solid rgb(var(--accent-primary)/ 0.12)' }}>
                   <h3 className="text-gold/80 text-xs font-serif mb-3">🎵 多音频牌</h3>
                   <div className="flex gap-2">
                     <button type="button" onClick={() => setMultiAudioMode('all')}
                       className="flex-1 p-2.5 rounded-lg text-center transition-all"
                       style={{
-                        background: multiAudioMode === 'all' ? 'rgba(var(--accent-primary),0.1)' : 'rgba(255,255,255,0.03)',
-                        border: multiAudioMode === 'all' ? '1px solid rgba(var(--accent-primary),0.4)' : '1px solid rgba(255,255,255,0.08)',
+                        background: multiAudioMode === 'all' ? 'rgb(var(--accent-primary)/ 0.1)' : 'rgba(255,255,255,0.03)',
+                        border: multiAudioMode === 'all' ? '1px solid rgb(var(--accent-primary)/ 0.4)' : '1px solid rgba(255,255,255,0.08)',
                       }}>
                       <p className={`text-xs font-medium ${multiAudioMode === 'all' ? 'text-gold' : 'text-white/50'}`}>全部播完</p>
                       <p className="text-[9px] text-muted/50 mt-0.5">N首全抢完才消失</p>
@@ -592,8 +592,8 @@ export function NewRoomPage() {
                     <button type="button" onClick={() => setMultiAudioMode('once')}
                       className="flex-1 p-2.5 rounded-lg text-center transition-all"
                       style={{
-                        background: multiAudioMode === 'once' ? 'rgba(var(--accent-primary),0.1)' : 'rgba(255,255,255,0.03)',
-                        border: multiAudioMode === 'once' ? '1px solid rgba(var(--accent-primary),0.4)' : '1px solid rgba(255,255,255,0.08)',
+                        background: multiAudioMode === 'once' ? 'rgb(var(--accent-primary)/ 0.1)' : 'rgba(255,255,255,0.03)',
+                        border: multiAudioMode === 'once' ? '1px solid rgb(var(--accent-primary)/ 0.4)' : '1px solid rgba(255,255,255,0.08)',
                       }}>
                       <p className={`text-xs font-medium ${multiAudioMode === 'once' ? 'text-gold' : 'text-white/50'}`}>拍一次消失</p>
                       <p className="text-[9px] text-muted/50 mt-0.5">抢到第一首就消失</p>
@@ -604,15 +604,15 @@ export function NewRoomPage() {
                 {/* 最短播放时间 */}
                 {selectedMode !== 'duel' && (
                   <div className="rounded-xl p-4"
-                    style={{ background: 'linear-gradient(135deg, rgba(var(--accent-bg),0.15), rgba(var(--accent-bg-mid),0.4))', border: '1px solid rgba(var(--accent-primary),0.12)' }}>
+                    style={{ background: 'linear-gradient(135deg, rgb(var(--accent-bg)/ 0.15), rgb(var(--accent-bg-mid)/ 0.4))', border: '1px solid rgb(var(--accent-primary)/ 0.12)' }}>
                     <h3 className="text-gold/80 text-xs font-serif mb-3">⏱️ 最短播放时间</h3>
                     <div className="flex items-center justify-between">
                       <p className="text-xs text-white/60">短歌也要播够这么久才能进入下一首</p>
-                      <div className="flex items-center rounded-lg overflow-hidden" style={{ border: '1px solid rgba(var(--accent-primary),0.2)' }}>
+                      <div className="flex items-center rounded-lg overflow-hidden" style={{ border: '1px solid rgb(var(--accent-primary)/ 0.2)' }}>
                         <button type="button" onClick={() => setMinPlayTime(minPlayTime <= 10 ? 0 : minPlayTime - 5)}
                           className="px-2.5 py-1 text-gold/70 hover:text-gold hover:bg-gold/10 transition-colors text-sm font-bold">-</button>
                         <span className="w-12 text-center text-sm text-white/90 font-medium py-1"
-                          style={{ background: 'rgba(var(--accent-primary),0.05)' }}>{minPlayTime || '关闭'}</span>
+                          style={{ background: 'rgb(var(--accent-primary)/ 0.05)' }}>{minPlayTime || '关闭'}</span>
                         <button type="button" onClick={() => setMinPlayTime(minPlayTime === 0 ? 10 : Math.min(60, minPlayTime + 5))}
                           className="px-2.5 py-1 text-gold/70 hover:text-gold hover:bg-gold/10 transition-colors text-sm font-bold">+</button>
                       </div>
@@ -623,7 +623,7 @@ export function NewRoomPage() {
 
                 {/* 随机片段播放 */}
                 <div className="rounded-xl p-4"
-                  style={{ background: 'linear-gradient(135deg, rgba(var(--accent-bg),0.15), rgba(var(--accent-bg-mid),0.4))', border: '1px solid rgba(var(--accent-primary),0.12)' }}>
+                  style={{ background: 'linear-gradient(135deg, rgb(var(--accent-bg)/ 0.15), rgb(var(--accent-bg-mid)/ 0.4))', border: '1px solid rgb(var(--accent-primary)/ 0.12)' }}>
                   <h3 className="text-gold/80 text-xs font-serif mb-3">🎲 随机片段</h3>
                   <div onClick={() => setRandomStart(!randomStart)}
                     className={`flex items-center gap-3 p-2.5 rounded-lg cursor-pointer transition-all ${
@@ -646,13 +646,13 @@ export function NewRoomPage() {
                   {randomStart && (
                     <div className="mt-3 flex items-center gap-2">
                       <span className="text-muted text-xs">最大起始位置</span>
-                      <div className="flex items-center rounded-lg overflow-hidden" style={{ border: '1px solid rgba(var(--accent-primary),0.2)' }}>
+                      <div className="flex items-center rounded-lg overflow-hidden" style={{ border: '1px solid rgb(var(--accent-primary)/ 0.2)' }}>
                         <button type="button" onClick={() => setRandomStartMax(Math.max(10, randomStartMax - 10))}
                           className="px-2.5 py-1 text-gold/70 hover:text-gold hover:bg-gold/10 transition-colors text-sm font-bold">−</button>
                         <input type="text" value={randomStartMax}
                           onChange={e => { const v = parseInt(e.target.value); if (!isNaN(v)) setRandomStartMax(Math.min(80, Math.max(10, v))) }}
                           className="w-8 text-center text-sm text-white/90 font-medium bg-transparent outline-none py-1"
-                          style={{ background: 'rgba(var(--accent-primary),0.05)' }} />
+                          style={{ background: 'rgb(var(--accent-primary)/ 0.05)' }} />
                         <span className="text-white/50 text-xs pr-1">%</span>
                         <button type="button" onClick={() => setRandomStartMax(Math.min(80, randomStartMax + 10))}
                           className="px-2.5 py-1 text-gold/70 hover:text-gold hover:bg-gold/10 transition-colors text-sm font-bold">+</button>

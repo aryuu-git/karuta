@@ -110,9 +110,9 @@ export function CardPicker({ open, onClose, onSelect, excludeIds = [] }: CardPic
 
           {/* Header with gradient */}
           <div className="p-5 shrink-0 relative overflow-hidden"
-            style={{ background: 'linear-gradient(135deg, rgba(var(--accent-bg),0.4) 0%, rgba(var(--accent-bg-mid),0.8) 50%, rgba(var(--accent-bg-end),0.4) 100%)', borderBottom: '1px solid rgba(var(--accent-primary),0.1)' }}>
+            style={{ background: 'linear-gradient(135deg, rgb(var(--accent-bg)/ 0.4) 0%, rgb(var(--accent-bg-mid)/ 0.8) 50%, rgb(var(--accent-bg-end)/ 0.4) 100%)', borderBottom: '1px solid rgb(var(--accent-primary)/ 0.1)' }}>
             <div className="absolute top-0 right-0 w-20 h-20 opacity-10 pointer-events-none"
-              style={{ background: 'radial-gradient(circle, rgba(var(--glow-color),0.8), transparent 70%)' }} />
+              style={{ background: 'radial-gradient(circle, rgb(var(--glow-color)/ 0.8), transparent 70%)' }} />
             <h3 className="font-serif text-gold text-lg font-bold mb-1 relative">🎴 召唤歌牌</h3>
             <p className="text-pink-300/50 text-xs font-serif italic relative">从牌库中召唤命定之牌加入战阵 ✧</p>
           </div>
@@ -151,7 +151,7 @@ export function CardPicker({ open, onClose, onSelect, excludeIds = [] }: CardPic
                 </div>
                 <button onClick={handleSearch}
                   className="px-3 py-1.5 text-xs rounded-lg transition-all hover:scale-105 shrink-0"
-                  style={{ background: 'linear-gradient(135deg, rgba(var(--glow-color),0.2), rgba(var(--accent-primary),0.2))', border: '1px solid rgba(var(--glow-color),0.3)', color: 'var(--color-gold)' }}>
+                  style={{ background: 'linear-gradient(135deg, rgb(var(--glow-color)/ 0.2), rgb(var(--accent-primary)/ 0.2))', border: '1px solid rgb(var(--glow-color)/ 0.3)', color: 'rgb(var(--color-gold))' }}>
                   搜索
                 </button>
               </div>
@@ -202,15 +202,15 @@ export function CardPicker({ open, onClose, onSelect, excludeIds = [] }: CardPic
                       }`}
                       style={{
                         aspectRatio: '3/4',
-                        border: isChecked ? '2px solid rgba(var(--accent-primary),0.6)' : isExcluded ? '1px solid rgba(255,255,255,0.05)' : '1px solid rgba(var(--accent-primary),0.12)',
-                        boxShadow: isChecked ? '0 0 10px rgba(var(--glow-color),0.3)' : 'none',
+                        border: isChecked ? '2px solid rgb(var(--accent-primary)/ 0.6)' : isExcluded ? '1px solid rgba(255,255,255,0.05)' : '1px solid rgb(var(--accent-primary)/ 0.12)',
+                        boxShadow: isChecked ? '0 0 10px rgb(var(--glow-color)/ 0.3)' : 'none',
                       }}
                       title={`${card.display_text}${card.series ? ' · ' + card.series : ''}${card.owner_name ? ' by ' + card.owner_name : ''}`}
                     >
                       {card.cover_url ? (
                         <img src={card.cover_url} alt="" className="w-full h-full object-cover" loading="lazy" />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center" style={{ background: 'var(--color-ink-deep)' }}>
+                        <div className="w-full h-full flex items-center justify-center" style={{ background: 'rgb(var(--color-ink-deep))' }}>
                           <span className="text-gold/15 font-serif text-lg">♪</span>
                         </div>
                       )}
@@ -232,7 +232,7 @@ export function CardPicker({ open, onClose, onSelect, excludeIds = [] }: CardPic
                       {/* 音频数 */}
                       {(card.audio_count ?? 1) > 1 && (
                         <div className="absolute top-0.5 left-0.5 px-1 py-0.5 rounded text-[8px] font-bold"
-                          style={{ background: 'rgba(0,0,0,0.7)', color: 'var(--color-gold)' }}>
+                          style={{ background: 'rgba(0,0,0,0.7)', color: 'rgb(var(--color-gold))' }}>
                           ♪{card.audio_count}
                         </div>
                       )}
@@ -246,12 +246,12 @@ export function CardPicker({ open, onClose, onSelect, excludeIds = [] }: CardPic
           {/* Pagination (public tab only) */}
           {tab === 'public' && (publicCards.length > 0 || page > 1) && (
             <div className="px-5 py-2 shrink-0 flex items-center justify-center gap-2"
-              style={{ borderTop: '1px solid rgba(var(--accent-primary),0.05)' }}>
+              style={{ borderTop: '1px solid rgb(var(--accent-primary)/ 0.05)' }}>
               <button
                 disabled={page <= 1}
                 onClick={() => loadPublicCards(search, filterTag, filterOwner, page - 1)}
                 className="text-xs px-2.5 py-1 rounded text-muted hover:text-gold disabled:opacity-30 transition-all"
-                style={{ border: '1px solid rgba(var(--accent-primary),0.1)' }}>
+                style={{ border: '1px solid rgb(var(--accent-primary)/ 0.1)' }}>
                 ← 上页
               </button>
               <span className="text-muted text-xs tabular-nums">第 {page} 页</span>
@@ -259,7 +259,7 @@ export function CardPicker({ open, onClose, onSelect, excludeIds = [] }: CardPic
                 disabled={!hasMore}
                 onClick={() => loadPublicCards(search, filterTag, filterOwner, page + 1)}
                 className="text-xs px-2.5 py-1 rounded text-muted hover:text-gold disabled:opacity-30 transition-all"
-                style={{ border: '1px solid rgba(var(--accent-primary),0.1)' }}>
+                style={{ border: '1px solid rgb(var(--accent-primary)/ 0.1)' }}>
                 下页 →
               </button>
             </div>
@@ -267,7 +267,7 @@ export function CardPicker({ open, onClose, onSelect, excludeIds = [] }: CardPic
 
           {/* Footer */}
           <div className="p-4 shrink-0 flex items-center justify-between"
-            style={{ borderTop: '1px solid rgba(var(--accent-primary),0.08)' }}>
+            style={{ borderTop: '1px solid rgb(var(--accent-primary)/ 0.08)' }}>
             <span className="text-pink-300/40 text-xs font-serif">
               {selected.size > 0 ? `已选中 ${selected.size} 张命运之牌 ✧` : `共 ${cards.length} 张`}
             </span>

@@ -271,9 +271,9 @@ export function CardCreatePage() {
       <Layout>
         <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
           <div className="relative mb-6 overflow-hidden rounded-2xl p-5"
-            style={{ background: 'linear-gradient(135deg, rgba(var(--accent-bg),0.4) 0%, rgba(var(--accent-bg-mid),0.8) 50%, rgba(var(--accent-bg-end),0.4) 100%)', border: '1px solid rgba(var(--accent-primary),0.15)' }}>
+            style={{ background: 'linear-gradient(135deg, rgb(var(--accent-bg)/ 0.4) 0%, rgb(var(--accent-bg-mid)/ 0.8) 50%, rgb(var(--accent-bg-end)/ 0.4) 100%)', border: '1px solid rgb(var(--accent-primary)/ 0.15)' }}>
             <div className="absolute top-0 right-0 w-24 h-24 opacity-10 pointer-events-none"
-              style={{ background: 'radial-gradient(circle, rgba(var(--glow-color),0.8), transparent 70%)' }} />
+              style={{ background: 'radial-gradient(circle, rgb(var(--glow-color)/ 0.8), transparent 70%)' }} />
             <div className="flex items-center gap-3 relative">
               <button onClick={() => navigate('/cards')}
                 className="text-pink-300/50 hover:text-gold transition-all text-sm shrink-0 hover:scale-110">
@@ -284,7 +284,7 @@ export function CardCreatePage() {
               </h1>
             </div>
           </div>
-          <div className="rounded-2xl p-6" style={{ background: 'linear-gradient(180deg, rgba(var(--accent-bg-end),0.5) 0%, rgba(var(--accent-bg-mid),0.8) 100%)', border: '1px solid rgba(var(--accent-primary),0.12)' }}>
+          <div className="rounded-2xl p-6" style={{ background: 'linear-gradient(180deg, rgb(var(--accent-bg-end)/ 0.5) 0%, rgb(var(--accent-bg-mid)/ 0.8) 100%)', border: '1px solid rgb(var(--accent-primary)/ 0.12)' }}>
             <div className="flex gap-5">
               {coverPreview && (
                 <img src={coverPreview} alt="" className="w-24 rounded-lg object-cover shrink-0" style={{ aspectRatio: '3/4' }} />
@@ -329,9 +329,9 @@ export function CardCreatePage() {
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
         {/* Header with decorative gradient */}
         <div className="relative mb-6 overflow-hidden rounded-2xl p-5"
-          style={{ background: 'linear-gradient(135deg, rgba(var(--accent-bg),0.4) 0%, rgba(var(--accent-bg-mid),0.8) 50%, rgba(var(--accent-bg-end),0.4) 100%)', border: '1px solid rgba(var(--accent-primary),0.15)' }}>
+          style={{ background: 'linear-gradient(135deg, rgb(var(--accent-bg)/ 0.4) 0%, rgb(var(--accent-bg-mid)/ 0.8) 50%, rgb(var(--accent-bg-end)/ 0.4) 100%)', border: '1px solid rgb(var(--accent-primary)/ 0.15)' }}>
           <div className="absolute top-0 right-0 w-24 h-24 opacity-10 pointer-events-none"
-            style={{ background: 'radial-gradient(circle, rgba(var(--glow-color),0.8), transparent 70%)' }} />
+            style={{ background: 'radial-gradient(circle, rgb(var(--glow-color)/ 0.8), transparent 70%)' }} />
           <div className="flex items-center gap-3 relative">
             <button onClick={() => {
               if (!isEdit && (audioFile || coverFile || displayText.trim())) {
@@ -353,7 +353,7 @@ export function CardCreatePage() {
           </div>
         </div>
 
-        <div className="rounded-2xl p-6" style={{ background: 'linear-gradient(180deg, rgba(var(--accent-bg-end),0.5) 0%, rgba(var(--accent-bg-mid),0.8) 100%)', border: '1px solid rgba(var(--accent-primary),0.12)' }}>
+        <div className="rounded-2xl p-6" style={{ background: 'linear-gradient(180deg, rgb(var(--accent-bg-end)/ 0.5) 0%, rgb(var(--accent-bg-mid)/ 0.8) 100%)', border: '1px solid rgb(var(--accent-primary)/ 0.12)' }}>
           <form onSubmit={isEdit ? (e) => { e.preventDefault(); handleSave() } : handleCreate} className="flex flex-col gap-5">
 
             {/* Cover image */}
@@ -365,9 +365,9 @@ export function CardCreatePage() {
                     className="w-24 border border-dashed rounded-lg overflow-hidden cursor-pointer transition-all duration-200 shrink-0"
                     style={{
                       aspectRatio: '3/4',
-                      borderColor: dragOverCover ? 'rgba(var(--accent-primary),0.8)' : 'rgba(var(--accent-bg),0.8)',
-                      boxShadow: dragOverCover ? '0 0 16px rgba(var(--accent-primary),0.3)' : 'none',
-                      background: dragOverCover ? 'rgba(var(--accent-primary),0.05)' : 'var(--color-ink-deep)',
+                      borderColor: dragOverCover ? 'rgb(var(--accent-primary)/ 0.8)' : 'rgb(var(--accent-bg)/ 0.8)',
+                      boxShadow: dragOverCover ? '0 0 16px rgb(var(--accent-primary)/ 0.3)' : 'none',
+                      background: dragOverCover ? 'rgb(var(--accent-primary)/ 0.05)' : 'rgb(var(--color-ink-deep))',
                     }}
                     onClick={() => coverInputRef.current?.click()}
                     onDragOver={e => { e.preventDefault(); setDragOverCover(true) }}
@@ -422,9 +422,9 @@ export function CardCreatePage() {
                 <div
                   className="border border-dashed rounded-lg p-3 cursor-pointer transition-all duration-200 text-center"
                   style={{
-                    borderColor: dragOverAudio ? 'rgba(var(--accent-primary),0.8)' : 'rgba(var(--accent-bg),0.8)',
-                    boxShadow: dragOverAudio ? '0 0 16px rgba(var(--accent-primary),0.3)' : 'none',
-                    background: dragOverAudio ? 'rgba(var(--accent-primary),0.05)' : 'transparent',
+                    borderColor: dragOverAudio ? 'rgb(var(--accent-primary)/ 0.8)' : 'rgb(var(--accent-bg)/ 0.8)',
+                    boxShadow: dragOverAudio ? '0 0 16px rgb(var(--accent-primary)/ 0.3)' : 'none',
+                    background: dragOverAudio ? 'rgb(var(--accent-primary)/ 0.05)' : 'transparent',
                   }}
                   onClick={() => audioInputRef.current?.click()}
                   onDragOver={e => { e.preventDefault(); setDragOverAudio(true) }}
@@ -492,8 +492,8 @@ export function CardCreatePage() {
               {/* Bangumi search panel */}
               {showBangumi && (
                 <div className="absolute z-20 left-0 right-0 mt-2 rounded-xl overflow-hidden"
-                  style={{ background: 'var(--color-ink-deep)', border: '1px solid rgba(var(--accent-primary),0.2)', boxShadow: '0 8px 32px rgba(0,0,0,0.5)', maxHeight: '320px' }}>
-                  <div className="p-3 flex gap-2" style={{ borderBottom: '1px solid rgba(var(--accent-primary),0.1)' }}>
+                  style={{ background: 'rgb(var(--color-ink-deep))', border: '1px solid rgb(var(--accent-primary)/ 0.2)', boxShadow: '0 8px 32px rgba(0,0,0,0.5)', maxHeight: '320px' }}>
+                  <div className="p-3 flex gap-2" style={{ borderBottom: '1px solid rgb(var(--accent-primary)/ 0.1)' }}>
                     <input type="text" value={bangumiQuery}
                       onChange={e => {
                         setBangumiQuery(e.target.value)
@@ -552,7 +552,7 @@ export function CardCreatePage() {
                           setShowBangumi(false)
                         }}
                         className="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-white/5 transition-colors"
-                        style={{ borderBottom: '1px solid rgba(var(--accent-primary),0.05)' }}>
+                        style={{ borderBottom: '1px solid rgb(var(--accent-primary)/ 0.05)' }}>
                         <div className="w-10 h-14 rounded shrink-0 overflow-hidden bg-black/30">
                           {item.images?.common && <img src={item.images.common} alt="" className="w-full h-full object-cover" />}
                         </div>
@@ -637,8 +637,8 @@ export function CardCreatePage() {
                       onClick={() => { setShareLevel(opt.value); setIsShared(opt.value !== 'private') }}
                       className="flex-1 p-2.5 rounded-lg text-center transition-all duration-200"
                       style={{
-                        background: shareLevel === opt.value ? 'rgba(var(--accent-primary),0.1)' : 'rgba(255,255,255,0.03)',
-                        border: shareLevel === opt.value ? '1px solid rgba(var(--accent-primary),0.4)' : '1px solid rgba(255,255,255,0.08)',
+                        background: shareLevel === opt.value ? 'rgb(var(--accent-primary)/ 0.1)' : 'rgba(255,255,255,0.03)',
+                        border: shareLevel === opt.value ? '1px solid rgb(var(--accent-primary)/ 0.4)' : '1px solid rgba(255,255,255,0.08)',
                       }}
                     >
                       <p className={`text-xs font-medium ${shareLevel === opt.value ? 'text-gold' : 'text-white/50'}`}>
@@ -741,9 +741,9 @@ export function CardCreatePage() {
                 {/* Drop zone + file selector */}
                 <div
                   className="border border-dashed rounded-lg p-4 text-center cursor-pointer transition-all duration-200 hover:border-gold/40"
-                  style={{ borderColor: 'rgba(var(--accent-primary),0.3)' }}
+                  style={{ borderColor: 'rgb(var(--accent-primary)/ 0.3)' }}
                   onClick={() => newAudioInputRef.current?.click()}
-                  onDragOver={e => { e.preventDefault(); e.currentTarget.style.borderColor = 'rgba(var(--accent-primary),0.8)'; e.currentTarget.style.background = 'rgba(var(--accent-primary),0.05)' }}
+                  onDragOver={e => { e.preventDefault(); e.currentTarget.style.borderColor = 'rgb(var(--accent-primary)/ 0.8)'; e.currentTarget.style.background = 'rgb(var(--accent-primary)/ 0.05)' }}
                   onDragLeave={e => { e.currentTarget.style.borderColor = ''; e.currentTarget.style.background = '' }}
                   onDrop={e => {
                     e.preventDefault()
@@ -826,7 +826,7 @@ export function CardCreatePage() {
             <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
               className="w-full max-w-xs rounded-2xl p-5"
-              style={{ background: 'linear-gradient(160deg, var(--color-ink), var(--color-ink-deep))', border: '1px solid rgba(var(--accent-primary),0.2)' }}
+              style={{ background: 'linear-gradient(160deg, rgb(var(--color-ink)), rgb(var(--color-ink-deep)))', border: '1px solid rgb(var(--accent-primary)/ 0.2)' }}
               onClick={e => e.stopPropagation()}>
               <h3 className="font-serif text-gold text-base mb-1">✦ 自定义标签</h3>
               <p className="text-pink-300/40 text-xs mb-4 font-serif">为歌牌赋予独特属性吧～</p>
