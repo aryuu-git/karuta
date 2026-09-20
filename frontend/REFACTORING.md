@@ -11,13 +11,13 @@
 | A1 设计系统 | ✅ 完成 | `docs/design-system.md` ✅ · token 落地（index.css + tailwind.config）✅ · `!important` 段删除 ✅ · 双主题截图 6 张 ✅ | `a1-sakura-*` / `a1-shimapan-*` |
 | A2 组件库 | ✅ 完成 | `components/ui/` 十件（Button/Input/Textarea/Select/Dialog/Panel/Spinner/Badge/EmptyState/Toast+useToast）· 全部调用点替换（17 文件 40 按钮 + 25 输入 + RoomPage toast 43 处迁移）· 主包保住 178.85KB | 冒烟 3 页无 JS 错误 |
 | A3.1 Home+Login+Register | ✅ 完成 | 导航/首页/认证页图标化（lucide）· 房间状态 Badge 化 · 空态 EmptyState · 删除桌面版死链横幅 | `a31-*` |
-| A3.2 牌库三件套 | ⬜ 待办 | | |
-| A3.3 CardCreate | ⬜ 待办 | | |
+| A3.2 牌库三件套 | ✅ 完成 | 72 处 emoji → lucide 图标 · 三态补全（错误态+重试为新增）· EmptyState/PageSpinner/Badge 组件化 · 行为零改动 | `a32-*` |
+| A3.3 CardCreate | 🔄 进行中 | | |
 | A3.4 NewRoom+JoinRoom+Profile | ⬜ 待办 | | |
 | A3.5 RoomPage 拆分 + B1 回合时钟 | ⬜ 待办 | | |
 | A4 类型与清扫 | ⬜ 待办 | | |
 | B2 媒体资产生命周期 | ⬜ 待办 | | |
-| B3 可观测性基线 | ⬜ 待办 | | |
+| B3 可观测性基线 | ✅ 完成 | `backend/obs/`（slog JSON + 请求日志 + 计数器）· `/metrics` 端点实测 · ws 日志结构化 · 测试绿 | — |
 | 收尾总结 | ⬜ 待办 | | |
 
 状态图例：⬜ 待办 · 🔄 进行中 · ✅ 完成 · 🚫 blocked（附原因）· ↩️ 已回滚
@@ -76,6 +76,12 @@
 - 表单：昵称=`UserRound`、密码=`Lock`、邀请码=`Sparkles`
 - emoji 保留范围：品牌 Logo 🌸、空状态插画、结算/氛围语气符号——符合设计系统 §2 图标体系原则
 
+
+### D3-B3 · 可观测性最小切面
+- 结构化日志：`obs.Setup()` 将 slog 默认 logger 切为 JSON（snake_case 字段：user_id/room_id/duration_ms/err），chi 文本 Logger 替换为 `obs.RequestLogger`（method/path/status/duration_ms/remote_addr）；ws 包 5 处 log.Printf → slog。
+- `/metrics` 免鉴权（与 healthz 同级）：rooms 按状态分布、WS 在线连接数（HubManager.Stats 遍历 hub 计数）、media_assets 总量/字节、进程 uptime/goroutines/heap。
+- 刻意不做：Prometheus/直方图/标签维度——消费方是日志文件与人眼检查的 JSON 端点，符合"简单计数端点"规格。
+- 心智负担控制：卡牌上传过程性日志（handler/card.go）保留原 log.Printf，B3 只统一基础设施与核心链路（WS/请求），迁移全量日志留给后续按需推进。
 ## 冒烟清单（每 Phase 收口前过一遍）
 
 - [ ] `cd frontend && npm run build`（含 tsc）全绿

@@ -1,8 +1,12 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
+import {
+  AlertCircle, ChevronLeft, ChevronRight, Copy, Eye, Globe, Lock, Music,
+  Pencil, Plus, RotateCcw, Search, Trash2, UserRound, X,
+} from 'lucide-react'
 import { Layout } from '../components/Layout'
-import { Button, Input } from '../components/ui'
+import { Button, EmptyState, Input } from '../components/ui'
 import { api } from '../api/client'
 import type { Card } from '../api/types'
 
@@ -24,6 +28,7 @@ export function CardLibraryPage() {
   const [batchDeleting, setBatchDeleting] = useState(false)
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [filterTag, setFilterTag] = useState('')
   const [allPublicTags, setAllPublicTags] = useState<string[]>([])
 
@@ -37,8 +42,11 @@ export function CardLibraryPage() {
     try {
       const cards = await api.cards.listMine()
       setMyCards(cards)
-    } catch { /* ignore */ }
-    finally { setLoading(false) }
+      setError(null)
+    } catch (err) {
+      // 三态补全：加载失败时展示错误态而非静默吞掉
+      setError((err as Error).message || '歌牌典籍暂时无法翻阅')
+    } finally { setLoading(false) }
   }, [])
 
   const [filterOwner, setFilterOwner] = useState('')
@@ -50,8 +58,11 @@ export function CardLibraryPage() {
       setPublicCards(cards)
       setHasMore(cards.length >= PAGE_SIZE)
       setPage(pageNum)
-    } catch { /* ignore */ }
-    finally { setLoading(false) }
+      setError(null)
+    } catch (err) {
+      // 三态补全：加载失败时展示错误态而非静默吞掉
+      setError((err as Error).message || '歌牌典籍暂时无法翻阅')
+    } finally { setLoading(false) }
   }, [])
 
   useEffect(() => {
@@ -66,6 +77,12 @@ export function CardLibraryPage() {
     if (tab === 'public') {
       loadPublicCards(search, filterTag, 1, filterOwner)
     }
+  }
+
+  // 错误态重试：按当前页签与筛选条件重新拉取
+  const handleRetry = () => {
+    if (tab === 'mine') loadMyCards()
+    else loadPublicCards(search, filterTag, page, filterOwner)
   }
 
 
@@ -129,11 +146,12 @@ export function CardLibraryPage() {
             {tab === 'mine' && !selectMode && (
               <div className="flex items-center gap-2">
                 <button onClick={() => setSelectMode(true)}
-                  className="text-xs px-3 py-1.5 rounded-full text-muted/60 hover:text-gold transition-all hover:bg-gold/5"
+                  className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-full text-muted/60 hover:text-gold transition-all hover:bg-gold/5"
                   style={{ border: '1px solid rgb(var(--accent-primary)/ 0.15)' }}>
-                  ☑ 编辑
+                  <Pencil size={12} />
+                  编辑
                 </button>
-                <Button onClick={() => navigate('/cards/new')}>✨ 召唤新牌</Button>
+                <Button onClick={() => navigate('/cards/new')} icon={<Plus size={15} />}>召唤新牌</Button>
               </div>
             )}
           </div>
@@ -143,21 +161,23 @@ export function CardLibraryPage() {
         <div className="flex gap-0.5 mb-6 bg-white/5 rounded-xl p-1 w-fit">
           <button
             onClick={() => { setTab('mine'); setSelectMode(false); setSelectedCards(new Set()) }}
-            className={`px-5 py-2 text-sm font-medium rounded-lg transition-all ${
+            className={`inline-flex items-center gap-1.5 px-5 py-2 text-sm font-medium rounded-lg transition-all ${
               tab === 'mine'
                 ? 'bg-gradient-to-r from-gold/20 to-pink-500/10 text-gold shadow-sm'
                 : 'text-muted hover:text-white/70'
             }`}>
-            🎵 我的收藏
+            <UserRound size={14} />
+            我的收藏
           </button>
           <button
             onClick={() => { setTab('public'); setSelectMode(false); setSelectedCards(new Set()) }}
-            className={`px-5 py-2 text-sm font-medium rounded-lg transition-all ${
+            className={`inline-flex items-center gap-1.5 px-5 py-2 text-sm font-medium rounded-lg transition-all ${
               tab === 'public'
                 ? 'bg-gradient-to-r from-gold/20 to-pink-500/10 text-gold shadow-sm'
                 : 'text-muted hover:text-white/70'
             }`}>
-            🌐 万牌共享
+            <Globe size={14} />
+            万牌共享
           </button>
         </div>
 
@@ -174,7 +194,7 @@ export function CardLibraryPage() {
                   className="text-sm pl-9"
                   placeholder="输入关键词，寻找你的命定之牌…"
                 />
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted/40 text-sm">🔮</span>
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted/40" />
               </div>
               <button onClick={handleSearch}
                 className="px-4 py-2 text-sm rounded-lg transition-all hover:scale-105 shrink-0"
@@ -230,29 +250,40 @@ export function CardLibraryPage() {
         )}
 
         {/* Empty state */}
-        {!loading && cards.length === 0 && (
+        {!loading && !error && cards.length === 0 && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-            className="text-center py-20 rounded-2xl"
+            className="rounded-2xl"
             style={{ background: 'linear-gradient(160deg, rgb(var(--accent-bg-end)/ 0.5), rgb(var(--accent-bg-mid)/ 0.8))', border: '1px dashed rgb(var(--accent-primary)/ 0.2)' }}>
-            <div className="text-5xl mb-3">🌸</div>
             {tab === 'mine' ? (
-              <>
-                <p className="text-gold text-base font-serif mb-1">此处空无一物…</p>
-                <p className="text-pink-300/50 text-sm mb-5 font-serif">命运之牌尚未觉醒，去召唤你的第一张吧！✧</p>
-                <Button onClick={() => navigate('/cards/new')}>✨ 召唤第一张歌牌</Button>
-              </>
+              <EmptyState
+                icon="🎴"
+                title="此处空无一物…"
+                description="命运之牌尚未觉醒，去召唤你的第一张吧！✧"
+                action={<Button onClick={() => navigate('/cards/new')} icon={<Plus size={15} />}>召唤第一张歌牌</Button>} />
             ) : (
-              <>
-                <p className="text-gold text-base font-serif mb-1">未寻得匹配之牌…</p>
-                <p className="text-pink-300/40 text-sm font-serif">换个咒语再试试？(◕‿◕✿)</p>
-              </>
+              <EmptyState icon="🎴" title="未寻得匹配之牌…" description="换个咒语再试试？(◕‿◕✿)" />
             )}
+          </motion.div>
+        )}
+
+        {/* Error state */}
+        {!loading && error && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+            className="rounded-2xl text-center py-14 px-6"
+            style={{ background: 'linear-gradient(160deg, rgb(var(--accent-bg-end)/ 0.5), rgb(var(--accent-bg-mid)/ 0.8))', border: '1px dashed rgba(192,57,43,0.35)' }}>
+            <div className="w-12 h-12 mx-auto mb-4 rounded-full flex items-center justify-center"
+              style={{ background: 'rgba(192,57,43,0.12)', border: '1px solid rgba(192,57,43,0.3)' }}>
+              <AlertCircle size={22} className="text-crimson" />
+            </div>
+            <h3 className="font-serif text-title text-gold mb-2">典籍翻页受阻…</h3>
+            <p className="text-muted text-body max-w-sm mx-auto mb-5">{error}</p>
+            <Button variant="outline" onClick={handleRetry} icon={<RotateCcw size={14} />}>重试</Button>
           </motion.div>
         )}
 
         {/* Card list */}
         {/* 多选工具栏 */}
-        {selectMode && tab === 'mine' && (
+        {selectMode && tab === 'mine' && !error && (
           <div className="mb-3 flex items-center justify-between px-4 py-2.5 rounded-xl"
             style={{ background: 'rgb(var(--accent-primary)/ 0.08)', border: '1px solid rgb(var(--accent-primary)/ 0.2)' }}>
             <div className="flex items-center gap-3">
@@ -269,8 +300,10 @@ export function CardLibraryPage() {
             </div>
             <div className="flex items-center gap-2 flex-wrap">
               {(['private', 'playable', 'editable'] as const).map(level => {
-                const labels = { private: '🔒 私有', playable: '👁 可使用', editable: '✏️ 可编辑' }
-                const colors = { private: 'rgba(150,150,150,', playable: 'rgba(74,144,217,', editable: 'rgba(34,197,94,' }
+                const labels: Record<'private' | 'playable' | 'editable', string> = { private: '私有', playable: '可使用', editable: '可编辑' }
+                const icons: Record<'private' | 'playable' | 'editable', typeof Lock> = { private: Lock, playable: Eye, editable: Pencil }
+                const colors: Record<'private' | 'playable' | 'editable', string> = { private: 'rgba(150,150,150,', playable: 'rgba(74,144,217,', editable: 'rgba(34,197,94,' }
+                const LevelIcon = icons[level]
                 return (
                   <button key={level}
                     disabled={selectedCards.size === 0}
@@ -282,17 +315,18 @@ export function CardLibraryPage() {
                         setTimeout(() => setCloneMsg(null), 2000)
                       } catch { }
                     }}
-                    className="text-[10px] px-2 py-1 rounded-lg font-medium transition-all disabled:opacity-30 hover:scale-105"
+                    className="inline-flex items-center gap-1 text-[10px] px-2 py-1 rounded-lg font-medium transition-all disabled:opacity-30 hover:scale-105"
                     style={{ background: `${colors[level]}0.12)`, border: `1px solid ${colors[level]}0.35)`, color: `${colors[level]}0.9)` }}>
+                    <LevelIcon size={10} />
                     {labels[level]}
                   </button>
                 )
               })}
               <button onClick={handleBatchDelete}
                 disabled={selectedCards.size === 0 || batchDeleting}
-                className="text-[10px] px-2 py-1 rounded-lg font-medium transition-all disabled:opacity-30 hover:scale-105"
+                className="inline-flex items-center gap-1 text-[10px] px-2 py-1 rounded-lg font-medium transition-all disabled:opacity-30 hover:scale-105"
                 style={{ background: 'rgba(192,57,43,0.15)', border: '1px solid rgba(192,57,43,0.3)', color: 'rgba(192,57,43,0.9)' }}>
-                {batchDeleting ? '…' : '🗑️ 删除'}
+                {batchDeleting ? '…' : (<><Trash2 size={10} /> 删除</>)}
               </button>
               <button onClick={() => { setSelectMode(false); setSelectedCards(new Set()) }}
                 className="text-[10px] px-2 py-1 rounded-lg text-muted hover:text-white transition-colors"
@@ -303,7 +337,7 @@ export function CardLibraryPage() {
           </div>
         )}
 
-        {!loading && cards.length > 0 && (
+        {!loading && !error && cards.length > 0 && (
           <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-2.5">
             <AnimatePresence>
               {cards.map((card, i) => (
@@ -334,9 +368,10 @@ export function CardLibraryPage() {
                       style={{ background: 'linear-gradient(180deg, transparent 60%, rgb(var(--glow-color)/ 0.1) 100%)' }} />
                     {/* Audio count badge */}
                     {(card.audio_count ?? 1) > 1 && (
-                      <div className="absolute top-1 left-1 px-1.5 py-0.5 rounded text-[9px] font-bold"
+                      <div className="absolute top-1 left-1 px-1.5 py-0.5 rounded text-[9px] font-bold inline-flex items-center gap-0.5"
                         style={{ background: 'rgba(0,0,0,0.7)', color: 'rgb(var(--color-gold))', border: '1px solid rgb(var(--glow-color)/ 0.3)' }}>
-                        ♪{card.audio_count}
+                        <Music size={9} />
+                        {card.audio_count}
                       </div>
                     )}
                   </div>
@@ -357,7 +392,7 @@ export function CardLibraryPage() {
                                  w-5 h-5 rounded-full flex items-center justify-center text-pink-200/60 hover:text-crimson
                                  hover:bg-crimson/20 text-[10px]"
                       style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}>
-                      ×
+                      <X size={11} />
                     </button>
                   )}
                   {/* Clone */}
@@ -375,8 +410,9 @@ export function CardLibraryPage() {
                         }
                       }}
                       className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity
-                                 px-1.5 py-0.5 rounded flex items-center justify-center text-[9px] font-medium"
+                                 px-1.5 py-0.5 rounded inline-flex items-center gap-0.5 text-[9px] font-medium"
                       style={{ background: 'rgba(0,0,0,0.7)', color: 'rgb(var(--color-gold))', border: '1px solid rgb(var(--glow-color)/ 0.3)', backdropFilter: 'blur(4px)' }}>
+                      <Copy size={10} />
                       复制
                     </button>
                   )}
@@ -387,7 +423,7 @@ export function CardLibraryPage() {
         )}
 
         {/* Pagination */}
-        {!loading && tab === 'public' && cards.length > 0 && (
+        {!loading && !error && tab === 'public' && cards.length > 0 && (
           <div className="flex items-center justify-center gap-2 mt-6">
             <button onClick={() => { setPage(1); loadPublicCards(search, filterTag, 1, filterOwner) }}
               disabled={page <= 1}
@@ -396,16 +432,18 @@ export function CardLibraryPage() {
             </button>
             <button onClick={() => { const p = page - 1; setPage(p); loadPublicCards(search, filterTag, p, filterOwner) }}
               disabled={page <= 1}
-              className="text-xs px-3 py-1.5 rounded-lg disabled:opacity-30 transition-all hover:bg-gold/10 text-muted hover:text-gold border border-white/5">
-              ‹ 上一页
+              className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg disabled:opacity-30 transition-all hover:bg-gold/10 text-muted hover:text-gold border border-white/5">
+              <ChevronLeft size={12} />
+              上一页
             </button>
             <span className="text-xs px-3 py-1.5 rounded-lg bg-gold/15 text-gold border border-gold/30 font-medium">
               第 {page} 页
             </span>
             <button onClick={() => { const p = page + 1; setPage(p); loadPublicCards(search, filterTag, p, filterOwner) }}
               disabled={!hasMore}
-              className="text-xs px-3 py-1.5 rounded-lg disabled:opacity-30 transition-all hover:bg-gold/10 text-muted hover:text-gold border border-white/5">
-              下一页 ›
+              className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg disabled:opacity-30 transition-all hover:bg-gold/10 text-muted hover:text-gold border border-white/5">
+              下一页
+              <ChevronRight size={12} />
             </button>
           </div>
         )}
@@ -422,7 +460,10 @@ export function CardLibraryPage() {
               exit={{ scale: 0.9, opacity: 0 }}
               className="bg-ink-deep border border-border rounded-xl p-6 w-full max-w-xs text-center"
               onClick={e => e.stopPropagation()}>
-              <div className="text-4xl mb-3">🗑️</div>
+              <div className="w-12 h-12 mx-auto mb-3 rounded-full flex items-center justify-center"
+                style={{ background: 'rgba(192,57,43,0.12)', border: '1px solid rgba(192,57,43,0.3)' }}>
+                <Trash2 size={22} className="text-crimson" />
+              </div>
               <h3 className="font-sans font-semibold text-white mb-2">真的要删除这张牌吗？(；′⌒`)</h3>
               <p className="text-muted text-sm mb-6">删掉后所有引用这张牌的牌组也会受影响！</p>
               <div className="flex gap-3">

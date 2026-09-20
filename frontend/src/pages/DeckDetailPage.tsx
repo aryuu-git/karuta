@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
+import { ArrowLeft, Pencil, Swords, Download, Copy, Trash2, Plus, Lock, Play, Pause, Music, ListChecks, Check, Tv, Tag, PackageMinus, Bomb, Image as ImageIcon } from 'lucide-react'
 import { Layout } from '../components/Layout'
-import { Button, Input } from '../components/ui'
+import { Button, Input, EmptyState, PageSpinner } from '../components/ui'
 import { api } from '../api/client'
 import type { Card, Deck } from '../api/types'
 import { CardPicker } from '../components/CardPicker'
@@ -248,10 +249,11 @@ export function DeckDetailPage() {
   const canAdd = isOwner || (deck?.share_level === 'editable')
   const canRemove = isOwner || (deck?.share_level === 'editable' && deck?.edit_level === 'full')
 
-  const SHARE_LABELS: Record<string, string> = {
-    private: '🔒 私有',
-    playable: '🎮 可使用',
-    editable: '✏️ 可编辑',
+  // 共享级别标签：文字 + lucide 图标（原功能性 emoji 已全部图标化）
+  const SHARE_LABELS: Record<string, { label: string; icon: typeof Lock }> = {
+    private: { label: '私有', icon: Lock },
+    playable: { label: '可使用', icon: Play },
+    editable: { label: '可编辑', icon: Pencil },
   }
 
   const EDIT_LABELS: Record<string, string> = {
@@ -271,8 +273,9 @@ export function DeckDetailPage() {
           <div className="flex items-start justify-between gap-4 relative">
             <div className="flex items-start gap-3 min-w-0">
               <button onClick={() => navigate('/')}
-                className="text-pink-300/50 hover:text-gold transition-all duration-200 text-sm mt-1 shrink-0 hover:scale-110">
-                ← 撤退
+                className="flex items-center gap-1 text-pink-300/50 hover:text-gold transition-all duration-200 text-sm mt-1 shrink-0 hover:scale-110">
+                <ArrowLeft size={14} aria-hidden="true" />
+                撤退
               </button>
 
               {loading ? (
@@ -285,7 +288,8 @@ export function DeckDetailPage() {
                       <button onClick={startEdit}
                         className="flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg font-medium transition-all shrink-0"
                         style={{ background: 'rgb(var(--accent-primary)/ 0.1)', border: '1px solid rgb(var(--accent-primary)/ 0.3)', color: 'rgb(var(--color-gold))' }}>
-                        ✏️ 修改
+                        <Pencil size={12} aria-hidden="true" />
+                        修改
                       </button>
                     )}
                   </div>
@@ -298,15 +302,15 @@ export function DeckDetailPage() {
 
             {!loading && deck && (
               <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
-                <Button onClick={() => navigate(`/rooms/new?deck_id=${deckId}`)}>⚔️ 出阵！</Button>
+                <Button onClick={() => navigate(`/rooms/new?deck_id=${deckId}`)} icon={<Swords size={16} />}>出阵！</Button>
                 <Button variant="outline" onClick={handleExport} loading={exporting} disabled={cards.length === 0}
-                  title="下载所有牌面封面图的压缩包">🗡️ 线下决斗</Button>
-                <Button variant="outline" onClick={() => setShowCloneOptions(true)} loading={cloning}>📋 复制</Button>
+                  title="下载所有牌面封面图的压缩包" icon={<Download size={16} />}>线下决斗</Button>
+                <Button variant="outline" onClick={() => setShowCloneOptions(true)} loading={cloning} icon={<Copy size={16} />}>复制</Button>
                 {isOwner && (
                   <button onClick={() => setShowDeleteDeck(true)}
-                    className="text-xs px-3 py-2 rounded-lg transition-all duration-200 hover:scale-105"
+                    className="flex items-center text-xs px-3 py-2 rounded-lg transition-all duration-200 hover:scale-105"
                     style={{ background: 'rgba(192,57,43,0.1)', border: '1px solid rgba(192,57,43,0.3)', color: 'rgba(192,57,43,0.8)' }}>
-                    🗑️
+                    <Trash2 size={14} aria-hidden="true" />
                   </button>
                 )}
               </div>
@@ -320,15 +324,16 @@ export function DeckDetailPage() {
             style={{ background: 'rgb(var(--accent-bg-end)/ 0.4)', border: '1px solid rgb(var(--accent-primary)/ 0.08)' }}>
             <span className="text-pink-300/50 text-xs font-serif">✦ 共享结界：</span>
             <div className="flex gap-1.5">
-              {Object.entries(SHARE_LABELS).map(([key, label]) => (
+              {Object.entries(SHARE_LABELS).map(([key, { label, icon: Icon }]) => (
                 <button key={key}
                   onClick={() => handleShareChange(key)}
                   disabled={savingShare}
-                  className={`text-xs px-3 py-1.5 rounded-full transition-all ${
+                  className={`inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full transition-all ${
                     shareLevel === key
                       ? 'bg-gradient-to-r from-gold/25 to-pink-500/15 text-gold border border-gold/40'
                       : 'bg-white/5 text-white/40 border border-white/5 hover:border-pink-300/20 hover:text-pink-300/70'
                   }`}>
+                  <Icon size={12} aria-hidden="true" />
                   {label}
                 </button>
               ))}
@@ -362,21 +367,27 @@ export function DeckDetailPage() {
           </div>
         )}
 
+        {/* 加载态：列表区域统一 PageSpinner（头部保留原有 pulse 文案） */}
+        {loading && <PageSpinner />}
+
         {/* Card list */}
         {!loading && !error && (
           <div>
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-pink-300/50 text-xs tracking-widest font-serif">🎵 战阵曲目 ({cards.length} 张)</h2>
+              <h2 className="text-pink-300/50 text-xs tracking-widest font-serif flex items-center gap-1.5">
+                <Music size={12} aria-hidden="true" />战阵曲目 ({cards.length} 张)
+              </h2>
               <div className="flex items-center gap-2">
                 {canRemove && cards.length > 0 && !selectMode && (
                   <button onClick={() => setSelectMode(true)}
-                    className="text-xs px-3 py-1.5 rounded-full text-muted/60 hover:text-gold transition-all hover:bg-gold/5"
+                    className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-full text-muted/60 hover:text-gold transition-all hover:bg-gold/5"
                     style={{ border: '1px solid rgb(var(--accent-primary)/ 0.15)' }}>
-                    ☑ 编辑
+                    <ListChecks size={12} aria-hidden="true" />
+                    编辑
                   </button>
                 )}
                 {canAdd && !selectMode && (
-                  <Button onClick={() => setShowPicker(true)}>➕ 召唤歌牌</Button>
+                  <Button onClick={() => setShowPicker(true)} icon={<Plus size={14} />}>召唤歌牌</Button>
                 )}
               </div>
             </div>
@@ -414,14 +425,16 @@ export function DeckDetailPage() {
             )}
 
             {cards.length === 0 ? (
-              <div className="text-center py-16 rounded-2xl"
+              <div className="rounded-2xl"
                 style={{ background: 'linear-gradient(160deg, rgb(var(--accent-bg-end)/ 0.5), rgb(var(--accent-bg-mid)/ 0.8))', border: '1px dashed rgb(var(--accent-primary)/ 0.2)' }}>
-                <div className="text-5xl mb-3">🌸</div>
-                <p className="text-gold text-sm font-serif mb-1">战阵尚无一牌…</p>
-                <p className="text-pink-300/40 text-xs mb-4 font-serif">{canAdd ? '从牌库召唤歌牌，铸就你的最强阵容！✧' : '此阵尚空 (◕‿◕✿)'}</p>
-                {canAdd && (
-                  <Button onClick={() => setShowPicker(true)}>➕ 召唤歌牌</Button>
-                )}
+                {/* 空态：EmptyState 统一组件（默认樱花插画，空状态插画允许 emoji），保留和纸渐变容器 */}
+                <EmptyState
+                  title="战阵尚无一牌…"
+                  description={canAdd ? '从牌库召唤歌牌，铸就你的最强阵容！✧' : '此阵尚空 (◕‿◕✿)'}
+                  action={canAdd && (
+                    <Button onClick={() => setShowPicker(true)} icon={<Plus size={14} />}>召唤歌牌</Button>
+                  )}
+                />
               </div>
             ) : (
               <div className="space-y-2">
@@ -441,7 +454,7 @@ export function DeckDetailPage() {
                               ? 'bg-gold text-ink scale-110'
                               : 'border-2 border-muted/30 hover:border-gold/50'
                           }`}>
-                          {selectedCards.has(card.id) && <span className="text-xs font-bold">✓</span>}
+                          {selectedCards.has(card.id) && <Check size={12} strokeWidth={3} aria-hidden="true" />}
                         </div>
                       )}
                       {/* Cover (clickable → card detail) */}
@@ -462,12 +475,20 @@ export function DeckDetailPage() {
                           )}
                         </p>
                         {card.series && (
-                          <p className="text-muted text-xs truncate mt-0.5">📺 {card.series}</p>
+                          <p className="text-muted text-xs truncate mt-0.5 flex items-center gap-1">
+                            <Tv size={12} className="shrink-0" aria-hidden="true" />
+                            <span className="truncate">{card.series}</span>
+                          </p>
                         )}
                         <div className="flex items-center gap-2 mt-0.5">
-                          <span className="text-gold/40 text-xs">♪×{card.audio_count ?? 1}</span>
+                          <span className="text-gold/40 text-xs inline-flex items-center gap-0.5">
+                            <Music size={12} aria-hidden="true" />×{card.audio_count ?? 1}
+                          </span>
                           {card.tags && (
-                            <span className="text-muted/60 text-xs">🏷️ {card.tags}</span>
+                            <span className="text-muted/60 text-xs inline-flex items-center gap-1">
+                              <Tag size={12} className="shrink-0" aria-hidden="true" />
+                              {card.tags}
+                            </span>
                           )}
                         </div>
                       </div>
@@ -476,7 +497,7 @@ export function DeckDetailPage() {
                       <button onClick={() => togglePlay(card)}
                         className="text-gold/60 hover:text-gold text-sm px-2 py-1 rounded hover:bg-gold/10 transition-all shrink-0"
                         title={playingCardId === card.id ? '暂停' : '播放预览'}>
-                        {playingCardId === card.id ? '⏸' : '▶'}
+                        {playingCardId === card.id ? <Pause size={14} aria-hidden="true" /> : <Play size={14} aria-hidden="true" />}
                       </button>
 
                       {/* Remove from deck */}
@@ -508,13 +529,15 @@ export function DeckDetailPage() {
               className="w-full max-w-xs rounded-2xl p-5"
               style={{ background: 'linear-gradient(160deg, rgb(var(--color-ink)), rgb(var(--color-ink-deep)))', border: '1px solid rgb(var(--accent-primary)/ 0.2)' }}
               onClick={e => e.stopPropagation()}>
-              <h3 className="font-serif text-gold text-base mb-1">📋 复制战阵</h3>
+              <h3 className="font-serif text-gold text-base mb-1 flex items-center gap-1.5">
+                <Copy size={16} aria-hidden="true" />复制战阵
+              </h3>
               <p className="text-pink-300/40 text-xs font-serif mb-4">选择复制方式 ✧</p>
               <div className="space-y-2">
                 <button onClick={() => handleClone('full')}
                   className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all hover:scale-[1.02]"
                   style={{ background: 'rgb(var(--accent-primary)/ 0.08)', border: '1px solid rgb(var(--accent-primary)/ 0.2)' }}>
-                  <span className="text-xl">🎵</span>
+                  <Music size={20} className="text-gold/80 shrink-0" aria-hidden="true" />
                   <div>
                     <p className="text-white/90 text-sm font-medium">复制牌面 + 歌曲</p>
                     <p className="text-muted text-xs">引用相同的牌，完整保留歌曲</p>
@@ -523,7 +546,7 @@ export function DeckDetailPage() {
                 <button onClick={() => handleClone('covers_only')}
                   className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all hover:scale-[1.02]"
                   style={{ background: 'rgb(var(--accent-primary)/ 0.05)', border: '1px solid rgb(var(--accent-primary)/ 0.1)' }}>
-                  <span className="text-xl">🖼️</span>
+                  <ImageIcon size={20} className="text-gold/80 shrink-0" aria-hidden="true" />
                   <div>
                     <p className="text-white/90 text-sm font-medium">只复制牌面</p>
                     <p className="text-muted text-xs">创建新牌只有封面，自行配歌</p>
@@ -556,7 +579,9 @@ export function DeckDetailPage() {
             <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }}
               className="bg-ink-deep border border-border rounded-xl p-6 w-full max-w-xs text-center"
               onClick={e => e.stopPropagation()}>
-              <div className="text-3xl mb-3">📤</div>
+              <div className="flex justify-center mb-3">
+                <PackageMinus size={30} className="text-crimson/80" aria-hidden="true" />
+              </div>
               <p className="text-white font-medium mb-1">从牌组中移除这张牌？</p>
               <p className="text-muted text-sm mb-5">牌本身不会被删除，只是不再属于此牌组 (ᵔ◡ᵔ)</p>
               <div className="flex gap-3">
@@ -583,7 +608,9 @@ export function DeckDetailPage() {
               exit={{ scale: 0.9, opacity: 0 }}
               className="bg-ink-deep border border-border rounded-xl p-6 w-full max-w-xs text-center"
               onClick={e => e.stopPropagation()}>
-              <div className="text-4xl mb-3">💣</div>
+              <div className="flex justify-center mb-3">
+                <Bomb size={34} className="text-crimson/80" aria-hidden="true" />
+              </div>
               <p className="text-white font-medium mb-1">真的要解散这个牌组吗？</p>
               <p className="text-muted text-sm mb-1">「{deck?.name}」将被删除！</p>
               <p className="text-muted/60 text-xs mb-5">（牌库里的牌不会被删除，只是解除绑定）</p>
@@ -610,7 +637,9 @@ export function DeckDetailPage() {
               exit={{ scale: 0.9, opacity: 0 }}
               className="bg-ink-deep border border-border rounded-xl p-6 w-full max-w-sm"
               onClick={e => e.stopPropagation()}>
-              <h3 className="font-serif text-gold text-lg font-medium mb-1">✏️ 修改牌组</h3>
+              <h3 className="font-serif text-gold text-lg font-medium mb-1 flex items-center gap-1.5">
+                <Pencil size={16} aria-hidden="true" />修改牌组
+              </h3>
               <p className="text-muted text-xs mb-5">改个更霸气的名字吧！(ง •̀_•́)ง</p>
               <div className="flex flex-col gap-4">
                 <div>
@@ -628,7 +657,7 @@ export function DeckDetailPage() {
                 <div className="flex gap-3 mt-1">
                   <Button variant="outline" className="flex-1" onClick={() => setEditingName(false)}>算了</Button>
                   <Button onClick={saveEdit} loading={savingName} disabled={!editName.trim()}
-                    className="flex-1">✓ 搞定！</Button>
+                    icon={<Check size={14} strokeWidth={3} />} className="flex-1">搞定！</Button>
                 </div>
               </div>
             </motion.div>
