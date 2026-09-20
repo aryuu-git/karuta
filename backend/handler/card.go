@@ -211,7 +211,7 @@ func (h *CardHandler) CreateCard(w http.ResponseWriter, r *http.Request) {
 	coverKey, err := h.media.Put(r.Context(), "cover", "covers", coverExt, coverContentType, coverBytes, userID)
 	if err != nil {
 		log.Printf("[card] media Put cover failed: %v (size=%d)", err, len(coverBytes))
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to save cover file")
+		writeMediaPutError(w, err)
 		return
 	}
 	coverPath := coverKey
@@ -256,7 +256,7 @@ func (h *CardHandler) CreateCard(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Printf("[card] media Put audio failed: %v (size=%d)", err, len(audioBytes))
 		h.deleteCoverIfUnreferenced(r.Context(), coverKey)
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to save audio file")
+		writeMediaPutError(w, err)
 		return
 	}
 	audioPath := audioKey
@@ -551,7 +551,7 @@ func (h *CardHandler) UpdateCover(w http.ResponseWriter, r *http.Request) {
 	}
 	coverKey, err := h.media.Put(r.Context(), "cover", "covers", coverExt, contentType, coverBytes, userID)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to upload cover")
+		writeMediaPutError(w, err)
 		return
 	}
 
@@ -639,7 +639,7 @@ func (h *CardHandler) AddAudio(w http.ResponseWriter, r *http.Request) {
 	}
 	audioKey, err := h.media.Put(r.Context(), "audio", "audio", audioExt, audioContentType, audioBytes, userID)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to save audio file")
+		writeMediaPutError(w, err)
 		return
 	}
 	audioPath := audioKey
@@ -770,17 +770,15 @@ func (h *CardHandler) DeleteAudio(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// deleteCoverIfUnreferenced / deleteAudioIfUnreferenced：
+// B2 状态机——真实引用归零后仅标记 pending_delete，物理删除由 media gc 执行。
 func (h *CardHandler) deleteCoverIfUnreferenced(ctx context.Context, path string) {
 	if path == "" {
 		return
 	}
 	count, err := h.store.Cards.CountCoverPathReferences(path)
 	if err == nil && count == 0 {
-		key := storage.PathToKey(path)
-		if h.storage.Delete(ctx, key) == nil {
-			// Physical object is gone; drop the content-addressed record too.
-			_ = h.media.Forget(key)
-		}
+		_ = h.media.Forget(storage.PathToKey(path))
 	}
 }
 
@@ -790,10 +788,7 @@ func (h *CardHandler) deleteAudioIfUnreferenced(ctx context.Context, path string
 	}
 	count, err := h.store.CardAudios.CountPathReferences(path)
 	if err == nil && count == 0 {
-		key := storage.PathToKey(path)
-		if h.storage.Delete(ctx, key) == nil {
-			_ = h.media.Forget(key)
-		}
+		_ = h.media.Forget(storage.PathToKey(path))
 	}
 }
 

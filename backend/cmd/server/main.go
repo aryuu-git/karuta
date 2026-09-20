@@ -94,7 +94,11 @@ func main() {
 	wsTickets := security.NewWSTicketManager(30 * time.Second)
 
 	// Media service: content-addressed dedup shared by upload handlers.
-	mediaSvc := media.NewService(stor, s.MediaAssets)
+	// B2：接入用户配额（QUOTA_USER_BYTES / QUOTA_DAILY_UPLOADS，0=不限）。
+	mediaSvc := media.NewServiceWithQuota(stor, s.MediaAssets, media.QuotaLimits{
+		TotalBytes:   cfg.QuotaUserBytes,
+		DailyUploads: cfg.QuotaDailyUploads,
+	})
 
 	// Handlers
 	authH, err := handler.NewAuthHandler(s, stor, mediaSvc, cfg.JWTSecret, cfg.InviteRequired)

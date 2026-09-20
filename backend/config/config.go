@@ -33,6 +33,10 @@ type Config struct {
 	// Expensive compatibility maintenance job is opt-in. It must not scan
 	// the complete bucket on every normal application restart.
 	COSFixCacheOnStart bool
+
+	// B2 媒体配额：每用户总容量（字节）与单日上传次数；0 = 不限制。
+	QuotaUserBytes   int64
+	QuotaDailyUploads int64
 }
 
 func Load() *Config {
@@ -55,10 +59,22 @@ func Load() *Config {
 		COSSecretKey: getEnv("COS_SECRET_KEY", ""),
 		COSBucket:    getEnv("COS_BUCKET", "karuta-1321249409"),
 		COSRegion:    getEnv("COS_REGION", "ap-shanghai"),
-		COSCDNDomain: getEnv("COS_CDN_DOMAIN", ""),
-
 		COSFixCacheOnStart: getEnv("COS_FIX_CACHE_ON_START", "") == "true",
+
+		QuotaUserBytes:    getEnvInt64("QUOTA_USER_BYTES", 0),
+		QuotaDailyUploads: getEnvInt64("QUOTA_DAILY_UPLOADS", 0),
 	}
+}
+
+// getEnvInt64 读取整型环境变量，非法值回退默认。
+func getEnvInt64(key string, defaultVal int64) int64 {
+	if v := os.Getenv(key); v != "" {
+		var n int64
+		if _, err := fmt.Sscanf(v, "%d", &n); err == nil {
+			return n
+		}
+	}
+	return defaultVal
 }
 
 // Validate rejects unsafe or incomplete configuration. COS credentials are
