@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import { UserRound, Lock } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { Button, Input } from '../components/ui'
 
@@ -80,7 +81,7 @@ export function LoginPage() {
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <Input
-              label="💭 你的战士昵称"
+              label={<><UserRound size={12} className="inline-block mr-1 -mt-0.5 text-muted/70" />你的战士昵称</>}
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
@@ -90,7 +91,7 @@ export function LoginPage() {
             />
 
             <Input
-              label="🔑 密码"
+              label={<><Lock size={12} className="inline-block mr-1 -mt-0.5 text-muted/70" />密码</>}
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}

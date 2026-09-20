@@ -1,9 +1,10 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useState, useEffect, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import { UserRound, Lock, Sparkles } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { api } from '../api/client'
-import { Button, Input } from '../components/ui'
+import { Input, Button } from '../components/ui'
 
 
 export function RegisterPage() {
@@ -111,7 +112,7 @@ export function RegisterPage() {
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             {/* 用户名 */}
             <Input
-              label={<>💭 战士昵称 <span className="text-muted/50">（2-20字符）</span></>}
+              label={<><UserRound size={12} className="inline-block mr-1 -mt-0.5 text-muted/70" />战士昵称 <span className="text-muted/50">（2-20字符）</span></>}
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
@@ -123,7 +124,7 @@ export function RegisterPage() {
 
             {/* 密码 */}
             <Input
-              label={<>🔑 密码 <span className="text-muted/50">（至少6位）</span></>}
+              label={<><Lock size={12} className="inline-block mr-1 -mt-0.5 text-muted/70" />密码 <span className="text-muted/50">（至少6位）</span></>}
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -134,7 +135,7 @@ export function RegisterPage() {
 
             {/* 确认密码 */}
             <Input
-              label="🔑 确认密码"
+              label={<><Lock size={12} className="inline-block mr-1 -mt-0.5 text-muted/70" />确认密码</>}
               type="password"
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
@@ -146,7 +147,7 @@ export function RegisterPage() {
             {/* 邀请码：开放注册时不显示，服务端仍是最终权威。 */}
             {inviteRequired && (
               <Input
-                label={<>🔮 神秘代号 <span className="text-muted/40 ml-1">（只有被邀请的人才知道哦）</span></>}
+                label={<><Sparkles size={12} className="inline-block mr-1 -mt-0.5 text-gold-dark" />神秘代号 <span className="text-muted/40 ml-1">（只有被邀请的人才知道哦）</span></>}
                 type="text"
                 value={secretCode}
                 onChange={(e) => setSecretCode(e.target.value)}

@@ -1,5 +1,6 @@
 import { type ReactNode } from 'react'
 import { Link, useNavigate, Navigate, useLocation } from 'react-router-dom'
+import { Images, Layers, CircleUserRound, LogOut } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { Changelog } from './Changelog'
 import { ThemeSwitcher } from './ThemeSwitcher'
@@ -8,6 +9,7 @@ interface LayoutProps {
   children: ReactNode
 }
 
+/** 全局导航与页面骨架：品牌区（🌸 保留品牌瞬间）+ 功能导航（lucide 图标）+ 用户区 */
 export function Layout({ children }: LayoutProps) {
   const { user, logout, loading } = useAuth()
   const navigate = useNavigate()
@@ -32,11 +34,11 @@ export function Layout({ children }: LayoutProps) {
 
   return (
     <div className="min-h-screen washi-bg flex flex-col">
-      {/* Top nav */}
+      {/* 顶部导航 */}
       <header className="sticky top-0 z-50 backdrop-blur-sm"
         style={{ background: 'rgb(var(--accent-bg-mid)/ 0.85)', borderBottom: '1px solid rgb(var(--accent-primary)/ 0.1)', boxShadow: '0 4px 20px rgba(0,0,0,0.3), 0 1px 0 rgb(var(--accent-primary)/ 0.05)' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
-          {/* Brand + Nav */}
+          {/* 品牌 + 导航 */}
           <div className="flex items-center gap-4">
             <Link to="/" className="flex items-center gap-2 group">
               <span className="font-serif text-xl font-bold text-gold-shimmer group-hover:opacity-90 transition-opacity">
@@ -45,49 +47,51 @@ export function Layout({ children }: LayoutProps) {
             </Link>
             <nav className="hidden sm:flex items-center gap-1">
               <Link to="/cards"
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 hover:scale-105 ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-fast hover:scale-105 ${
                   location.pathname.startsWith('/cards')
                     ? 'text-gold border border-gold/50 bg-gold/10'
                     : 'text-muted hover:text-gold/70 border border-transparent hover:border-gold/20'
                 }`}>
-                🎴 牌库
+                <Images size={16} />
+                牌库
               </Link>
               <Link to="/decks"
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 hover:scale-105 ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-fast hover:scale-105 ${
                   location.pathname === '/decks'
                     ? 'text-gold border border-gold/50 bg-gold/10'
                     : 'text-muted hover:text-gold/70 border border-transparent hover:border-gold/20'
                 }`}>
-                🃏 牌组
+                <Layers size={16} />
+                牌组
               </Link>
             </nav>
           </div>
 
-          {/* User area */}
+          {/* 用户区 */}
           <div className="flex items-center gap-2">
             {/* 个人战绩页入口 */}
             <Link to="/profile"
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 hover:scale-105 ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-fast hover:scale-105 ${
                 location.pathname === '/profile'
                   ? 'border border-gold/50 bg-gold/10'
                   : 'border border-border hover:border-gold/40 hover:bg-gold/5'
               }`}
               style={{ color: location.pathname === '/profile' ? 'rgb(var(--color-gold))' : 'rgb(var(--accent-primary)/ 0.7)' }}>
-              <span>👤</span>
+              <CircleUserRound size={16} />
               <span className="hidden sm:inline">{user.username}</span>
             </Link>
             <button
               onClick={handleLogout}
-              className="text-muted text-sm hover:text-crimson transition-all duration-200 px-3 py-1.5 rounded-lg border border-border hover:border-crimson/40 hover:scale-105"
+              className="flex items-center gap-1.5 text-muted text-sm hover:text-crimson transition-all duration-fast px-3 py-1.5 rounded-lg border border-border hover:border-crimson/40 hover:scale-105"
             >
-              <span className="hidden sm:inline">下线 (－ω－ ) zzZ</span>
-              <span className="sm:hidden text-base">🚪</span>
+              <LogOut size={15} />
+              <span className="hidden sm:inline">下线</span>
             </button>
           </div>
         </div>
       </header>
 
-      {/* Main content */}
+      {/* 主内容 */}
       <main className="flex-1">{children}</main>
 
       {/* 更新日志（只显示一次） */}
