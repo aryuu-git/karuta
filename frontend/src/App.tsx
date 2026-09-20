@@ -1,28 +1,25 @@
+import { lazy, Suspense } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './hooks/useAuth'
-import { LoginPage } from './pages/LoginPage'
-import { RegisterPage } from './pages/RegisterPage'
-import { GuestPage } from './pages/GuestPage'
-import { HomePage } from './pages/HomePage'
-import { ProfilePage } from './pages/ProfilePage'
-import { DecksPage } from './pages/DecksPage'
-import { DeckDetailPage } from './pages/DeckDetailPage'
-import { CardLibraryPage } from './pages/CardLibraryPage'
-import { CardCreatePage } from './pages/CardCreatePage'
-import { NewRoomPage } from './pages/NewRoomPage'
-import { JoinRoomPage } from './pages/JoinRoomPage'
-import { RoomPage } from './pages/RoomPage'
-import { QuadrantLobby } from './pages/quadrant/QuadrantLobby'
-import { QuadrantRoom } from './pages/quadrant/QuadrantRoom'
-import { QuadrantBankList } from './pages/quadrant/QuadrantBankList'
-import { QuadrantBankEdit } from './pages/quadrant/QuadrantBankEdit'
-import { CcpLobby } from './pages/ccp/CcpLobby'
-import { CcpRoom } from './pages/ccp/CcpRoom'
-import { CcpGame } from './pages/ccp/CcpGame'
-import { CcpResult } from './pages/ccp/CcpResult'
-import { CcpThemes } from './pages/ccp/CcpThemes'
-import { CcpLocalPage } from './pages/CcpLocalPage'
-import { SettingsPage } from './pages/SettingsPage'
+
+const LoginPage = lazy(() => import('./pages/LoginPage').then(m => ({ default: m.LoginPage })))
+const RegisterPage = lazy(() => import('./pages/RegisterPage').then(m => ({ default: m.RegisterPage })))
+const GuestPage = lazy(() => import('./pages/GuestPage').then(m => ({ default: m.GuestPage })))
+const HomePage = lazy(() => import('./pages/HomePage').then(m => ({ default: m.HomePage })))
+const ProfilePage = lazy(() => import('./pages/ProfilePage').then(m => ({ default: m.ProfilePage })))
+const DecksPage = lazy(() => import('./pages/DecksPage').then(m => ({ default: m.DecksPage })))
+const DeckDetailPage = lazy(() => import('./pages/DeckDetailPage').then(m => ({ default: m.DeckDetailPage })))
+const CardLibraryPage = lazy(() => import('./pages/CardLibraryPage').then(m => ({ default: m.CardLibraryPage })))
+const CardCreatePage = lazy(() => import('./pages/CardCreatePage').then(m => ({ default: m.CardCreatePage })))
+const NewRoomPage = lazy(() => import('./pages/NewRoomPage').then(m => ({ default: m.NewRoomPage })))
+const JoinRoomPage = lazy(() => import('./pages/JoinRoomPage').then(m => ({ default: m.JoinRoomPage })))
+const RoomPage = lazy(() => import('./pages/RoomPage').then(m => ({ default: m.RoomPage })))
+
+const routeFallback = (
+  <div className="min-h-screen washi-bg flex items-center justify-center">
+    <div className="text-gold animate-pulse font-serif text-lg">加载中…</div>
+  </div>
+)
 
 export default function App() {
   const { user } = useAuth()
@@ -31,15 +28,18 @@ export default function App() {
   // Guest users only see guest page + room page
   if (isGuest) {
     return (
+      <Suspense fallback={routeFallback}>
       <Routes>
         <Route path="/guest" element={<GuestPage />} />
         <Route path="/rooms/:id" element={<RoomPage />} />
         <Route path="*" element={<Navigate to="/guest" replace />} />
       </Routes>
+      </Suspense>
     )
   }
 
   return (
+    <Suspense fallback={routeFallback}>
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
@@ -56,23 +56,9 @@ export default function App() {
       <Route path="/rooms/join" element={<JoinRoomPage />} />
       <Route path="/rooms/:id" element={<RoomPage />} />
 
-      <Route path="/quadrant" element={<QuadrantLobby />} />
-      <Route path="/quadrant/rooms/:id" element={<QuadrantRoom />} />
-      <Route path="/quadrant/banks" element={<QuadrantBankList />} />
-      <Route path="/quadrant/banks/:id" element={<QuadrantBankEdit />} />
-
-      <Route path="/ccp" element={<CcpLobby />} />
-      <Route path="/ccp/rooms/:code" element={<CcpRoom />} />
-      <Route path="/ccp/game/:code" element={<CcpGame />} />
-      <Route path="/ccp/result/:code" element={<CcpResult />} />
-      <Route path="/ccp/themes" element={<CcpThemes />} />
-      <Route path="/ccp/local" element={<CcpLocalPage />} />
-      <Route path="/ccp/local/host" element={<CcpLocalPage />} />
-      <Route path="/ccp/local/player" element={<CcpLocalPage />} />
-
-      <Route path="/settings" element={<SettingsPage />} />
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </Suspense>
   )
 }

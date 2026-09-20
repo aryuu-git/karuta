@@ -142,7 +142,7 @@ export interface RoomState {
 // WebSocket events
 export type WSEvent =
   | { type: 'room_state'; data: RoomState }
-  | { type: 'card_start'; card_id: number; card_audio_id?: number; audio_url: string; hint_text: string; index?: number; total?: number; is_last?: boolean; start_ratio?: number }
+  | { type: 'card_start'; card_id: number; card_audio_id?: number; round_id?: number; audio_url: string; hint_text: string; index?: number; total?: number; is_last?: boolean; start_ratio?: number; next_audio_urls?: string[] }
   | { type: 'card_claimed'; card_id: number; winner_id: number; winner_name: string; remaining?: number; hint_text?: string }
   | { type: 'card_missed'; card_id: number; remaining?: number }
   | { type: 'card_exhausted'; card_id: number }
@@ -207,6 +207,7 @@ export interface UserStats {
 export interface AuthResponse {
   token: string
   user: User
+	guest_recovery_token?: string
 }
 
 export interface ApiError {

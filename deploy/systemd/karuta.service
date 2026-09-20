@@ -1,0 +1,23 @@
+[Unit]
+Description=Karuta Game Server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=karuta
+Group=karuta
+WorkingDirectory=/opt/karuta/current
+EnvironmentFile=/opt/karuta/shared/karuta.env
+ExecStart=/opt/karuta/current/karuta-server
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=35
+KillSignal=SIGTERM
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/data/karuta
+
+[Install]
+WantedBy=multi-user.target

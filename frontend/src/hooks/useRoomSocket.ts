@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback, useState } from 'react'
 import type { WSEvent } from '../api/types'
-import { buildWsUrl } from '../config'
+import { openAuthenticatedWebSocket } from '../config'
 
 const MAX_RETRIES = 10
 const BASE_DELAY_MS = 1000
@@ -27,13 +27,23 @@ export function useRoomSocket(
     onEventRef.current = onEvent
   }, [onEvent])
 
-  const connect = useCallback(() => {
+  const connect = useCallback(async () => {
     if (!mountedRef.current) return
 
-    const token = localStorage.getItem('karuta_token') ?? ''
-    const url = buildWsUrl(`/ws/rooms/${roomId}`, token)
-
-    const ws = new WebSocket(url)
+    let ws: WebSocket
+    try {
+      ws = await openAuthenticatedWebSocket(`/ws/rooms/${roomId}`)
+    } catch {
+      if (!mountedRef.current || retriesRef.current >= MAX_RETRIES) return
+      const delay = Math.min(BASE_DELAY_MS * Math.pow(2, retriesRef.current), MAX_DELAY_MS)
+      retriesRef.current += 1
+      retryTimerRef.current = setTimeout(() => { void connect() }, delay)
+      return
+    }
+    if (!mountedRef.current) {
+      ws.close()
+      return
+    }
     wsRef.current = ws
 
     ws.onopen = () => {
@@ -65,7 +75,7 @@ export function useRoomSocket(
       )
       retriesRef.current += 1
       retryTimerRef.current = setTimeout(() => {
-        if (mountedRef.current) connect()
+        if (mountedRef.current) void connect()
       }, delay)
     }
 
@@ -76,7 +86,7 @@ export function useRoomSocket(
 
   useEffect(() => {
     mountedRef.current = true
-    connect()
+    void connect()
 
     return () => {
       mountedRef.current = false

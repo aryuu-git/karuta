@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { cacheMedia } from '../utils/mediaCache'
 
 interface ReadingPanelProps {
   hintText: string | null
@@ -22,7 +21,7 @@ export function ReadingPanel({ hintText, audioUrl, startRatio, intervalSec: _int
   const [audioError, setAudioError] = useState(false)
   const [progress, setProgress] = useState(0)
 
-  // 音频加载和播放（含重试机制 + 本地缓存）
+  // 音频加载和播放（含重试机制）
   useEffect(() => {
     const audio = audioRef.current
     if (!audio || !audioUrl) return
@@ -33,11 +32,9 @@ export function ReadingPanel({ hintText, audioUrl, startRatio, intervalSec: _int
     audio.pause()
     audio.currentTime = 0
 
-    // 优先使用本地缓存，然后加载并播放
-    cacheMedia(audioUrl).then((resolvedUrl) => {
-      if (cancelled) return
-      audio.src = resolvedUrl
-      audio.load()
+    // 加载并播放
+    audio.src = audioUrl
+    audio.load()
 
       // 随机片段：加载完 metadata 后 seek 到指定位置
       const currentStartRatio = startRatio
@@ -75,7 +72,6 @@ export function ReadingPanel({ hintText, audioUrl, startRatio, intervalSec: _int
         audio.removeEventListener('loadedmetadata', seekHandler)
         audio.pause()
       }
-    })
 
     return () => {
       cancelled = true

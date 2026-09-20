@@ -23,6 +23,11 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null)
 
 const TOKEN_KEY = 'karuta_token'
+const GUEST_RECOVERY_PREFIX = 'karuta_guest_recovery:'
+
+function guestRecoveryKey(username: string): string {
+  return GUEST_RECOVERY_PREFIX + username.trim().toLocaleLowerCase()
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
@@ -43,6 +48,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .then((u) => {
         setUser(u)
         setToken(storedToken)
+		if (u.is_guest && !localStorage.getItem(guestRecoveryKey(u.username))) {
+			void api.auth.issueGuestRecovery().then(({ guest_recovery_token }) => {
+				localStorage.setItem(guestRecoveryKey(u.username), guest_recovery_token)
+			}).catch(() => undefined)
+		}
       })
       .catch(() => {
         localStorage.removeItem(TOKEN_KEY)
@@ -70,8 +80,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const guestLogin = useCallback(
     async (username: string) => {
-      const res = await api.auth.guestLogin(username)
+		const recoveryKey = guestRecoveryKey(username)
+		const recoveryToken = localStorage.getItem(recoveryKey) ?? undefined
+		const res = await api.auth.guestLogin(username, recoveryToken)
       localStorage.setItem(TOKEN_KEY, res.token)
+		if (res.guest_recovery_token) {
+			localStorage.setItem(recoveryKey, res.guest_recovery_token)
+		}
       setToken(res.token)
       setUser(res.user)
     },

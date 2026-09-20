@@ -1,7 +1,8 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useAuth } from '../hooks/useAuth'
+import { api } from '../api/client'
 
 
 export function RegisterPage() {
@@ -12,8 +13,15 @@ export function RegisterPage() {
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [secretCode, setSecretCode] = useState('')
+	const [inviteRequired, setInviteRequired] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+
+	useEffect(() => {
+		api.auth.inviteStatus()
+			.then((result) => setInviteRequired(result.invite_required))
+			.catch(() => setInviteRequired(true))
+	}, [])
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -34,7 +42,7 @@ export function RegisterPage() {
       return
     }
 
-    if (!secretCode.trim()) {
+    if (inviteRequired && !secretCode.trim()) {
       setError('需要邀请码才能注册哦！找朋友要一个吧 (；′⌒`)')
       return
     }
@@ -149,8 +157,8 @@ export function RegisterPage() {
               />
             </div>
 
-            {/* 神秘代号 */}
-            <div>
+            {/* 邀请码：开放注册时不显示，服务端仍是最终权威。 */}
+            {inviteRequired && <div>
               <label className="block text-muted text-xs mb-1.5">
                 🔮 神秘代号
                 <span className="text-muted/40 ml-1">（只有被邀请的人才知道哦）</span>
@@ -162,9 +170,9 @@ export function RegisterPage() {
                 className="input-dark tracking-[0.3em] text-center"
                 placeholder="？？？？？"
                 autoComplete="off"
-                required
+                required={inviteRequired}
               />
-            </div>
+            </div>}
 
             {error && (
               <motion.p

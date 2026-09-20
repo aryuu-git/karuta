@@ -133,6 +133,9 @@ export function RoomPage() {
   const [isSpectator, setIsSpectator] = useState(false)
   const [preloadProgress, setPreloadProgress] = useState<{ loaded: number; total: number } | null>(null)
   const preloadStartedRef = useRef(false)
+	const prefetchedAudioRef = useRef(new Map<string, HTMLAudioElement>())
+	const prefetchingAudioRef = useRef(new Set<string>())
+  const currentRoundIdRef = useRef(0)
 
   // Duel mode state
   const [duelState, setDuelState] = useState<DuelState | null>(null)
@@ -276,28 +279,69 @@ export function RoomPage() {
     prevBoardCountRef.current = boardCount
   }, [cardRemaining, shuffleThreshold, cards.length, showToast])
 
-  // 等待大厅阶段预加载所有封面图和音频（含本地缓存）
+	const prefetchAudioUrls = useCallback(async (urls: string[]) => {
+		for (const url of urls) {
+			if (!url || prefetchedAudioRef.current.has(url) || prefetchingAudioRef.current.has(url)) continue
+			prefetchingAudioRef.current.add(url)
+			try {
+				await new Promise<void>((resolve) => {
+					const audio = new Audio()
+					let settled = false
+					const finish = () => {
+						if (settled) return
+						settled = true
+						prefetchedAudioRef.current.set(url, audio)
+						while (prefetchedAudioRef.current.size > 3) {
+							const oldest = prefetchedAudioRef.current.keys().next().value as string | undefined
+							if (!oldest) break
+							const oldAudio = prefetchedAudioRef.current.get(oldest)
+							oldAudio?.pause()
+							prefetchedAudioRef.current.delete(oldest)
+						}
+						resolve()
+					}
+					audio.addEventListener('canplaythrough', finish, { once: true })
+					audio.addEventListener('error', finish, { once: true })
+					audio.preload = 'auto'
+					audio.src = url
+					audio.load()
+					setTimeout(finish, 15000)
+				})
+			} finally {
+				prefetchingAudioRef.current.delete(url)
+			}
+		}
+	}, [])
+
+  // 等待大厅阶段加载全部轻量封面，但音频只预取前三首；之后滚动预取下一批。
   useEffect(() => {
     if (!cards.length || gameStatus !== 'waiting' || preloadStartedRef.current) return
     preloadStartedRef.current = true
 
     const items: { type: 'image' | 'audio'; url: string }[] = []
-    cards.forEach(card => {
+	let audioSlots = 3
+	cards.forEach(card => {
       if (card.cover_url) items.push({ type: 'image', url: card.cover_url })
-      if (card.audios?.length) {
-        card.audios.forEach(a => { if (a.audio_url) items.push({ type: 'audio', url: a.audio_url }) })
-      } else if (card.audio_url) {
-        items.push({ type: 'audio', url: card.audio_url })
+		if (audioSlots > 0 && card.audios?.length) {
+			for (const audio of card.audios) {
+				if (audioSlots <= 0) break
+				if (audio.audio_url) {
+					items.push({ type: 'audio', url: audio.audio_url })
+					audioSlots--
+				}
+			}
+		} else if (audioSlots > 0 && card.audio_url) {
+			items.push({ type: 'audio', url: card.audio_url })
+			audioSlots--
       }
     })
     if (!items.length) return
 
     setPreloadProgress({ loaded: 0, total: items.length })
 
-    // 异步缓存 + 预加载
+    // 浏览器预加载（确保解码完成）
     let cancelled = false
     ;(async () => {
-      const { cacheMedia } = await import('../utils/mediaCache')
       let loaded = 0
       const tick = () => {
         loaded++
@@ -307,25 +351,16 @@ export function RoomPage() {
       for (const item of items) {
         if (cancelled) break
         try {
-          // 先缓存到本地
-          const localUrl = await cacheMedia(item.url)
-          // 再用浏览器预加载（确保解码完成）
           if (item.type === 'image') {
             await new Promise<void>((resolve) => {
               const img = new Image()
               img.onload = () => { tick(); resolve() }
               img.onerror = () => { tick(); resolve() }
-              img.src = localUrl
+              img.src = item.url
             })
-          } else {
-            await new Promise<void>((resolve) => {
-              const audio = new Audio()
-              audio.addEventListener('canplaythrough', () => { tick(); resolve() }, { once: true })
-              audio.addEventListener('error', () => { tick(); resolve() }, { once: true })
-              audio.preload = 'auto'
-              audio.src = localUrl
-              audio.load()
-            })
+			} else {
+				await prefetchAudioUrls([item.url])
+				tick()
           }
         } catch {
           tick()
@@ -334,7 +369,7 @@ export function RoomPage() {
     })()
 
     return () => { cancelled = true }
-  }, [cards, gameStatus])
+  }, [cards, gameStatus, prefetchAudioUrls])
 
   const handleEvent = useCallback((event: WSEvent) => {
     switch (event.type) {
@@ -388,6 +423,8 @@ export function RoomPage() {
       }
 
       case 'card_start': {
+		currentRoundIdRef.current = event.round_id ?? event.index ?? 0
+		void prefetchAudioUrls(event.next_audio_urls ?? [])
         // 清除间隔倒计时，重置 remaining
         if (intervalTimerRef.current) { clearInterval(intervalTimerRef.current); intervalTimerRef.current = null }
         setIntervalCountdown(null)
@@ -828,7 +865,7 @@ export function RoomPage() {
         break
       }
     }
-  }, [user, roomId, playSound, showToast, navigate, roomState, duelState, shufflePending, duelArranging])
+  }, [user, roomId, playSound, showToast, navigate, roomState, duelState, shufflePending, duelArranging, prefetchAudioUrls])
 
   const { send, connected } = useRoomSocket(roomId, handleEvent)
 
@@ -907,7 +944,7 @@ export function RoomPage() {
   const handleAudioEnded = useCallback(() => {
     // 重试最多3次，间隔500ms，确保消息送达
     const trySend = (attempts: number) => {
-      send({ type: 'audio_ended' })
+      send({ type: 'audio_ended', round_id: currentRoundIdRef.current })
       if (attempts > 1) setTimeout(() => trySend(attempts - 1), 500)
     }
     trySend(3)

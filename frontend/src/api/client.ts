@@ -51,10 +51,10 @@ function register(username: string, password: string, inviteCode?: string): Prom
   })
 }
 
-function guestLogin(username: string): Promise<AuthResponse> {
+function guestLogin(username: string, recoveryToken?: string): Promise<AuthResponse> {
   return request('/auth/guest', {
     method: 'POST',
-    body: JSON.stringify({ username }),
+	body: JSON.stringify({ username, recovery_token: recoveryToken || '' }),
   })
 }
 
@@ -318,6 +318,8 @@ function nextCard(id: number): Promise<void> {
 export const api = {
   auth: {
     register, login, guestLogin, me, myStats,
+	inviteStatus: () => request<{ invite_required: boolean }>('/auth/invite-status'),
+	issueGuestRecovery: () => request<{ guest_recovery_token: string }>('/me/guest-recovery', { method: 'POST' }),
     updateMe: (username: string) => request<User>('/me', { method: 'PATCH', body: JSON.stringify({ username }) }),
     uploadAvatar: (formData: FormData) => uploadRequest<User>('/me/avatar', formData),
     generateInvite: () => request<{ id: number; code: string }>('/me/invites', { method: 'POST' }),

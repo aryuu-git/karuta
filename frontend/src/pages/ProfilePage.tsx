@@ -37,7 +37,7 @@ function AdminUserList() {
           setInviteRequired(res.invite_required)
         }}
           className={`px-3 py-1 rounded text-[10px] font-medium transition-all ${inviteRequired ? 'bg-green-500/15 text-green-400' : 'bg-white/10 text-muted'}`}>
-          {inviteRequired ? '已开启（需邀请码）' : '未开启（暗号 33989）'}
+          {inviteRequired ? '已开启（需邀请码）' : '未开启（开放注册）'}
         </button>
       </div>
 
@@ -358,7 +358,7 @@ export function ProfilePage() {
             className="mt-6 rounded-2xl p-5"
             style={{ background: 'linear-gradient(180deg, rgba(255,100,50,0.05) 0%, rgba(var(--accent-bg-mid),0.8) 100%)', border: '1px solid rgba(255,100,50,0.2)' }}>
             <h2 className="font-serif text-sm font-bold text-orange-300 mb-1">⚡ 管理员面板</h2>
-            <p className="text-muted text-[10px] mb-3">固定暗号：<code className="text-gold">33989</code>（邀请码系统关闭时生效）</p>
+			<p className="text-muted text-[10px] mb-3">关闭邀请码时允许公开注册；开启后仅接受未使用的邀请码。</p>
             <AdminUserList />
           </motion.div>
         )}

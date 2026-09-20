@@ -1,7 +1,6 @@
 import { useMemo } from 'react'
 import { motion } from 'framer-motion'
 import type { Card, CardMask } from '../api/types'
-import { useCachedUrl } from '../hooks/useCachedUrl'
 
 interface KarutaCardProps {
   card: Card
@@ -101,7 +100,6 @@ export function KarutaCard({ card, isExhausted, remaining, audioCount, claimedBy
   const count = audioCount ?? card.audio_count ?? 1
   const left = remaining ?? count
   const showStack = count > 1 && left > 0
-  const cachedCoverUrl = useCachedUrl(card.cover_url)
 
   const maskStyle = useMemo(() => {
     if (!card.mask || isExhausted || left <= 0) return null
@@ -151,8 +149,8 @@ export function KarutaCard({ card, isExhausted, remaining, audioCount, claimedBy
         }}>
 
         {/* 封面图 */}
-        {cachedCoverUrl && (
-          <img src={cachedCoverUrl} alt=""
+        {card.cover_url && (
+          <img src={card.cover_url} alt=""
             className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
         )}
 

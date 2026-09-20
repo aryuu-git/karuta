@@ -1,0 +1,67 @@
+name: Build release artifact
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [master]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.21.x'
+          cache: true
+          cache-dependency-path: backend/go.sum
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Test backend
+        working-directory: backend
+        run: go test ./...
+
+      - name: Validate deployment scripts
+        run: bash -n deploy/scripts/deploy-server.sh deploy/scripts/rollback-server.sh
+
+      - name: Build frontend
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+
+      - name: Build Linux binaries
+        working-directory: backend
+        env:
+          CGO_ENABLED: '0'
+          GOOS: linux
+          GOARCH: amd64
+        run: |
+          mkdir -p ../release/frontend
+          go build -trimpath -ldflags "-s -w -X main.version=${GITHUB_SHA::12} -X main.commit=$GITHUB_SHA -X main.buildTime=$(date -u +%Y-%m-%dT%H:%M:%SZ)" -o ../release/karuta-server ./cmd/server
+          go build -trimpath -ldflags "-s -w" -o ../release/karuta-admin ./cmd/admin
+          cp -R ../data/dist ../release/frontend/dist
+          printf '%s\n' "$GITHUB_SHA" > ../release/VERSION
+
+      - name: Package release
+        run: |
+          tar --zstd -cf "karuta-${GITHUB_SHA::12}.tar.zst" -C release .
+          sha256sum "karuta-${GITHUB_SHA::12}.tar.zst" > "karuta-${GITHUB_SHA::12}.sha256"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: karuta-${{ github.sha }}
+          path: |
+            karuta-*.tar.zst
+            karuta-*.sha256
+          if-no-files-found: error
+          retention-days: 30
