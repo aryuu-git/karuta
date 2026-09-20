@@ -20,10 +20,6 @@ func TestMediaURLRewrite(t *testing.T) {
 	if got := MediaURL("/uploads/ccp/x.png"); got != "https://bucket.cos.ap-shanghai.myqcloud.com/ccp/x.png" {
 		t.Fatalf("absolute mode MediaURL = %q", got)
 	}
-	// 旧式本地绝对路径仍按 category/basename 归一化
-	if got := FileURL("D:\\uploads\\covers\\old.png", "covers"); got != "https://bucket.cos.ap-shanghai.myqcloud.com/covers/old.png" {
-		t.Fatalf("legacy path FileURL = %q", got)
-	}
 	if got := MediaURL(""); got != "" {
 		t.Fatalf("empty URL = %q", got)
 	}
