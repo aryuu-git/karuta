@@ -53,7 +53,7 @@ export function HomePage() {
       const res = await api.rooms.join(code)
       navigate(`/rooms/${res.room.id}`)
     } catch (err) {
-      setJoinError(err instanceof Error ? err.message : '加入失败啦 (>_<)')
+      setJoinError(err instanceof Error ? err.message : '未能入阵——请核对令牌。')
     } finally { setJoining(false) }
   }
 
@@ -78,7 +78,7 @@ export function HomePage() {
               <KeyRound size={16} className="text-gold-dark" />
               凭令入场
             </h2>
-            <p className="text-muted/50 text-caption mb-3 font-serif italic relative">持有战场令牌？直接降临！✧</p>
+            <p className="text-muted/50 text-caption mb-3 font-serif italic relative">持令者，径直入阵。</p>
             <form onSubmit={handleJoinByCode} className="flex gap-2 relative">
               <Input
                 type="text"
@@ -95,7 +95,7 @@ export function HomePage() {
             </form>
             {joinError && (
               <p className="text-crimson text-xs mt-2 text-center bg-crimson/10 border border-crimson/20 rounded-lg px-2 py-1.5">
-                😣 {joinError}
+                {joinError}
               </p>
             )}
           </div>
@@ -107,7 +107,7 @@ export function HomePage() {
             <Button onClick={() => navigate('/rooms/new')} className="w-full" icon={<Swords size={16} />}>
               开辟战场
             </Button>
-            <p className="text-muted/40 text-xs mt-2 text-center font-serif italic relative">选定阵容，向命运宣战 ♪</p>
+            <p className="text-muted/40 text-xs mt-2 text-center font-serif italic relative">选定阵容，向命运宣战。</p>
           </div>
         </div>
 
@@ -173,14 +173,14 @@ export function HomePage() {
           </div>
 
           {roomsLoading && (
-            <div className="text-muted/50 text-xs animate-pulse py-8 text-center font-serif">～ 探查各方战场中 ～ ♪</div>
+            <div className="text-muted/50 text-xs animate-pulse py-8 text-center font-serif">～ 探查各方战场中 ～</div>
           )}
 
           {!roomsLoading && rooms.length === 0 && (
             <EmptyState
-              icon="🌸"
+              icon={<Castle size={44} strokeWidth={1.5} />}
               title="群雄尚未集结…"
-              description="率先开辟战场者，乃真勇士也！(ง •̀_•́)ง"
+              description="率先开辟战场者，乃真勇士也。"
               className="py-8"
             />
           )}
@@ -279,7 +279,7 @@ export function HomePage() {
                   ))}
                 </div>
               ) : (
-                <p className="text-muted/40 text-xs text-center py-4 font-serif">未寻得匹配之阵… 换个咒语试试？(◕‿◕✿)</p>
+                <p className="text-muted/40 text-xs text-center py-4 font-serif">未寻得匹配之阵…换个名字试试。</p>
               )}
             </div>
           )

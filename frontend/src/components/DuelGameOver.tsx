@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
+import { Handshake, Swords, Trophy } from 'lucide-react'
 import { Button } from './ui'
 
 interface CardInfo {
@@ -48,9 +49,12 @@ export function DuelGameOver({ data, currentUserId }: DuelGameOverProps) {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
             className="font-serif text-3xl sm:text-4xl font-bold text-gold-shimmer mb-1"
-            style={{ textShadow: '0 0 40px rgb(var(--accent-primary)/ 0.4)' }}
           >
-            {data.isTie ? '🤝 平局！' : isWinner ? '🏆 你赢了！' : `⚔️ ${data.winner} 获胜！`}
+            {data.isTie
+              ? <span className="inline-flex items-center gap-2"><Handshake size={26} strokeWidth={1.5} /> 平局！</span>
+              : isWinner
+                ? <span className="inline-flex items-center gap-2"><Trophy size={26} strokeWidth={1.5} /> 你赢了！</span>
+                : <span className="inline-flex items-center gap-2"><Swords size={26} strokeWidth={1.5} /> {data.winner} 获胜！</span>}
           </motion.h1>
           <p className="text-muted text-xs">共 {data.rounds} 轮</p>
           <div className="h-px bg-gradient-to-r from-transparent via-gold/50 to-transparent mt-3" />
@@ -113,7 +117,7 @@ export function DuelGameOver({ data, currentUserId }: DuelGameOverProps) {
           onClick={() => navigate('/')}
           className="w-full mt-6 font-serif"
         >
-          {isPlayer ? '「再战江湖！」(ง •̀_•́)ง' : '返回大厅'}
+          {isPlayer ? '「再战江湖」' : '返回大厅'}
         </Button>
       </motion.div>
     </motion.div>
@@ -139,7 +143,7 @@ function PlayerResult({ player, isWinner, isTie, isMe, delay }: {
       }}
     >
       <div className="text-xs text-muted mb-1">
-        {isWinner && !isTie ? '👑 胜者' : isTie ? '🤝' : ''}
+        {isWinner && !isTie ? '胜者' : isTie ? '平局' : ''}
       </div>
       <div className={`font-serif text-sm font-bold ${isMe ? 'text-gold' : 'text-white/80'}`}>
         {player.username}

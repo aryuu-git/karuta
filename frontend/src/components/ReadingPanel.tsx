@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { Flame } from 'lucide-react'
 
 interface ReadingPanelProps {
   hintText: string | null
@@ -125,11 +126,11 @@ export function ReadingPanel({ hintText, audioUrl, startRatio, intervalSec: _int
             className="absolute top-0 left-0 right-0 z-10 flex items-center justify-center gap-2 py-1.5"
             style={{ background: 'linear-gradient(90deg, rgba(192,57,43,0.6), rgba(231,76,60,0.4), rgba(192,57,43,0.6))', borderBottom: '1px solid rgba(231,76,60,0.4)' }}
           >
-            <motion.span animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 0.6, repeat: Infinity }}>🔥</motion.span>
+            <motion.span animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 0.6, repeat: Infinity }} className="inline-flex"><Flame size={14} className="text-white" /></motion.span>
             <span className="text-white text-xs font-medium tracking-widest">
-              最后一张！网速对决开始！(ง •̀_•́)ง
+              最后一张！网速对决开始！
             </span>
-            <motion.span animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 0.6, repeat: Infinity, delay: 0.3 }}>🔥</motion.span>
+            <motion.span animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 0.6, repeat: Infinity, delay: 0.3 }} className="inline-flex"><Flame size={14} className="text-white" /></motion.span>
           </motion.div>
         )}
       </AnimatePresence>
@@ -148,7 +149,7 @@ export function ReadingPanel({ hintText, audioUrl, startRatio, intervalSec: _int
               style={{ fontSize: '5rem', lineHeight: 1, color: 'rgb(var(--color-gold))', textShadow: '0 0 60px rgb(var(--accent-primary)/ 0.8), 0 0 120px rgb(var(--accent-primary)/ 0.4)' }}>
               {countdown}
             </motion.span>
-            <span className="text-muted text-sm mt-2 tracking-widest">深呼吸… 全神贯注！(ง •̀_•́)ง</span>
+            <span className="text-muted text-sm mt-2 tracking-widest">深呼吸…全神贯注。</span>
           </motion.div>
         )}
         {countdown === 0 && (
@@ -159,7 +160,7 @@ export function ReadingPanel({ hintText, audioUrl, startRatio, intervalSec: _int
             style={{ background: 'rgb(var(--accent-bg-mid)/ 0.85)', backdropFilter: 'blur(4px)' }}>
             <span className="font-serif font-bold text-gold"
               style={{ fontSize: '3.5rem', textShadow: '0 0 40px rgb(var(--accent-primary)/ 1)' }}>
-              開始！(ง •̀_•́)ง
+              開始！
             </span>
           </motion.div>
         )}
@@ -181,7 +182,7 @@ export function ReadingPanel({ hintText, audioUrl, startRatio, intervalSec: _int
                 {/* 上句文字 */}
                 <div className="flex-1 text-center">
                   {audioError ? (
-                    <span className="text-crimson text-sm">😣 音频加载失败 (；′⌒`) 靠直觉找牌！</span>
+                    <span className="text-crimson text-sm">音频加载失败——靠直觉寻牌吧。</span>
                   ) : hintText ? (
                     <motion.p initial={{ opacity: 0, letterSpacing: '0.1em' }} animate={{ opacity: 1, letterSpacing: '0.3em' }}
                       transition={{ duration: 0.4 }}
@@ -191,7 +192,7 @@ export function ReadingPanel({ hintText, audioUrl, startRatio, intervalSec: _int
                     </motion.p>
                   ) : (
                     <p className="text-muted text-base font-serif tracking-widest animate-pulse">
-                      ♪ 竖起耳朵！快找到那张牌！(ง •̀_•́)ง
+                      竖起耳朵——快找到那张牌！
                     </p>
                   )}
                 </div>

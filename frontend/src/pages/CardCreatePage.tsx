@@ -178,7 +178,7 @@ export function CardCreatePage() {
 
       navigate('/cards')
     } catch (err) {
-      setUploadError(err instanceof Error ? err.message : '上传失败了 (>_<)')
+      setUploadError(err instanceof Error ? err.message : '上传失败，请重试。')
     } finally {
       setUploading(false)
       setProcessing(false)
@@ -233,7 +233,7 @@ export function CardCreatePage() {
       <Layout>
         <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
           <div className="text-pink-300/50 animate-pulse font-serif text-xl text-center py-24">
-            ～ 解封歌牌中 ～ ♪
+            解封歌牌中…
           </div>
         </div>
       </Layout>
@@ -261,7 +261,7 @@ export function CardCreatePage() {
           <div className="flex items-center gap-3 relative">
             <button onClick={() => {
               if (!isEdit && (audioFile || coverFile || displayText.trim())) {
-                if (!confirm('确定放弃制作这张牌吗？已填内容不会保存 (；′⌒`)')) return
+                if (!confirm('确定放弃制作这张牌吗？已填内容不会保存。')) return
               }
               navigate('/cards')
             }}
@@ -414,7 +414,7 @@ export function CardCreatePage() {
             {uploadError && (
               <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
                 className="text-crimson text-xs bg-crimson/10 border border-crimson/30 rounded-lg px-3 py-2.5">
-                😣 {uploadError}
+                {uploadError}
               </motion.p>
             )}
 

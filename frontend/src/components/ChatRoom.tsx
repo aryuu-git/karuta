@@ -148,7 +148,7 @@ export function ChatRoom({ messages, players, currentUserId, isSpectator, onSend
                   onKeyDown={handleKey}
                   className="flex-1 text-xs rounded-xl px-3 py-2 outline-none"
                   style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.85)' }}
-                  placeholder={isSpectator ? '旁观者也能发言 (｡•̀ᴗ-)' : '说点什么... (回车发送)'}
+                  placeholder={isSpectator ? '旁观者亦可发言（回车发送）' : '说点什么…（回车发送）'}
                   maxLength={100}
                 />
                 <button onClick={handleSend} disabled={!input.trim()}

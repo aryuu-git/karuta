@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion'
+import { Zap } from 'lucide-react'
 import { api } from '../../api/client'
 import type { User, RoomPlayer } from '../../api/types'
 import type { GameResult } from './types'
@@ -86,7 +87,8 @@ export function RoomControlBar({
           whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
           className="px-3 py-1.5 rounded-lg text-xs transition-all ml-1"
           style={{ background: 'rgba(255,165,0,0.12)', border: '1px solid rgba(255,165,0,0.35)', color: 'rgba(255,165,0,0.9)' }}>
-          ⚡ 强制结束
+          <Zap size={12} className="inline-block mr-1 align-middle" aria-hidden="true" />
+          强制结束
         </motion.button>
       )}
       {/* 跳到结算画面（调试用） */}

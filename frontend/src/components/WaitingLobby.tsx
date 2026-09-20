@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, type RefObject } from 'react'
 import { motion } from 'framer-motion'
+import { Crown, Eye } from 'lucide-react'
 import type { Room, RoomPlayer } from '../api/types'
 import { api } from '../api/client'
 import { Avatar } from './Avatar'
@@ -151,7 +152,7 @@ export function WaitingLobby({ room, players, currentUserId, onRoleChange, onKic
       await api.rooms.start(room.id)
       // 不直接切换 UI，等待 WS room_state 事件（status=reading）触发切换
     } catch (e) {
-      setError(e instanceof Error ? e.message : '出错啦 (>_<) 再试试吧～')
+      setError(e instanceof Error ? e.message : '出了点差错，请再试一次。')
       setStarting(false)
     }
   }
@@ -172,7 +173,7 @@ export function WaitingLobby({ room, players, currentUserId, onRoleChange, onKic
           animate={{ opacity: 1, y: 0 }}
           className="text-center"
         >
-          <p className="text-pink-300/50 text-sm font-serif mb-2 tracking-widest italic">🌸 将此令牌传递给战友，共赴命运之战！✧</p>
+          <p className="text-pink-300/50 text-sm font-serif mb-2 tracking-widest italic">将此令牌传递给战友，共赴命运之战。</p>
           <div
             className="font-serif text-5xl sm:text-6xl font-bold tracking-[0.2em] text-gold cursor-pointer select-all"
             style={{ textShadow: '0 0 30px rgb(var(--accent-primary)/ 0.5)' }}
@@ -185,13 +186,13 @@ export function WaitingLobby({ room, players, currentUserId, onRoleChange, onKic
             animate={{ opacity: copied ? 1 : 0 }}
             className="text-green-400 text-xs mt-2"
           >
-            复制成功 ✓ 去分享吧！(◕‿◕)
+            已复制——去分享吧。
           </motion.p>
           <button
             onClick={copyCode}
             className="mt-3 text-muted text-xs hover:text-gold transition-all duration-200 underline underline-offset-2 hover:scale-110"
           >
-            点击复制邀请码 (｡•̀ᴗ-)✧
+            点击复制邀请码
           </button>
         </motion.div>
 
@@ -317,10 +318,10 @@ export function WaitingLobby({ room, players, currentUserId, onRoleChange, onKic
                 >
                   {player.username}
                   {player.user_id === room.host_id && (
-                    <span className="text-crimson text-xs ml-1">👑</span>
+                    <Crown size={11} className="text-crimson inline-block ml-1" aria-label="房主" />
                   )}
                   {player.role === 'spectator' && (
-                    <span className="text-xs ml-1" style={{ color: 'rgba(128,90,213,0.7)' }}>👁旁观</span>
+                    <Eye size={11} className="inline-block ml-0.5" style={{ color: 'rgb(var(--color-muted)/ 0.8)' }} aria-label="旁观" />
                   )}
                 </span>
                 {onKick && currentUserId === room.host_id && player.user_id !== currentUserId && (
@@ -361,7 +362,7 @@ export function WaitingLobby({ room, players, currentUserId, onRoleChange, onKic
         {/* Error */}
         {error && (
           <p className="text-crimson text-sm text-center bg-crimson/10 border border-crimson/30 rounded-lg px-4 py-2">
-            😣 {error}
+            {error}
           </p>
         )}
 
@@ -393,7 +394,7 @@ export function WaitingLobby({ room, players, currentUserId, onRoleChange, onKic
             className="w-full"
             style={{ animation: !starting ? 'glowPulse 2s ease-in-out infinite' : 'none' }}
           >
-            「全军出击！命运之战，开始！」(ง •̀_•́)ง
+            「全军出击——命运之战，开始！」
           </Button>
         ) : (
           <div className="text-center">

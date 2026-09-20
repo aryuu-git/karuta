@@ -203,7 +203,7 @@ export function GameOver({ results, currentUserId, lastCardWinnerId }: GameOverP
             className="font-serif text-4xl sm:text-5xl font-bold text-gold-shimmer mb-2"
             style={{ textShadow: '0 0 40px rgb(var(--accent-primary)/ 0.4)' }}
           >
-            🌸 战局终焉！华丽落幕！
+            🌸 战局终焉，华丽落幕
           </motion.h1>
           <motion.p
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }}
@@ -280,7 +280,7 @@ export function GameOver({ results, currentUserId, lastCardWinnerId }: GameOverP
               <div className="flex items-center gap-2 mb-3">
                 <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gold/20 to-transparent" />
                 <span className="text-gold/70 text-xs font-serif shrink-0">
-                  🌸 本局你抢到的 {myCards.length} 张牌
+                  本局你抢到的 {myCards.length} 张牌
                 </span>
                 <div className="h-px flex-1 bg-gradient-to-r from-gold/20 via-transparent to-transparent" />
               </div>
@@ -328,7 +328,7 @@ export function GameOver({ results, currentUserId, lastCardWinnerId }: GameOverP
             className="flex-1 text-center font-serif"
             onClick={() => navigate('/rooms/new')}
           >
-            「再战一次！」ヽ(°〇°)ﾉ
+            「再战一次」
           </Button>
           <Button
             variant="outline"

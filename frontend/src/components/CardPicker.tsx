@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { Images } from 'lucide-react'
 import { api } from '../api/client'
 import type { Card } from '../api/types'
 import { Button, Input } from './ui'
@@ -114,8 +115,8 @@ export function CardPicker({ open, onClose, onSelect, excludeIds = [] }: CardPic
             style={{ background: 'linear-gradient(135deg, rgb(var(--accent-bg)/ 0.4) 0%, rgb(var(--accent-bg-mid)/ 0.8) 50%, rgb(var(--accent-bg-end)/ 0.4) 100%)', borderBottom: '1px solid rgb(var(--accent-primary)/ 0.1)' }}>
             <div className="absolute top-0 right-0 w-20 h-20 opacity-10 pointer-events-none"
               style={{ background: 'radial-gradient(circle, rgb(var(--glow-color)/ 0.8), transparent 70%)' }} />
-            <h3 className="font-serif text-gold text-lg font-bold mb-1 relative">🎴 召唤歌牌</h3>
-            <p className="text-pink-300/50 text-xs font-serif italic relative">从牌库中召唤命定之牌加入战阵 ✧</p>
+            <h3 className="font-serif text-gold text-lg font-bold mb-1 relative">召唤歌牌</h3>
+            <p className="text-pink-300/50 text-xs font-serif italic relative">从牌库中召唤命定之牌，加入战阵。</p>
           </div>
 
           {/* Tabs + Search */}
@@ -181,13 +182,13 @@ export function CardPicker({ open, onClose, onSelect, excludeIds = [] }: CardPic
           {/* Card list */}
           <div className="flex-1 overflow-y-auto px-5 py-2">
             {loading && (
-              <div className="text-pink-300/50 text-xs animate-pulse text-center py-8 font-serif">～ 正在翻阅歌牌典籍 ～ ♪</div>
+              <div className="text-pink-300/50 text-xs animate-pulse text-center py-8 font-serif">正在翻阅歌牌典籍…</div>
             )}
             {!loading && cards.length === 0 && (
               <div className="text-center py-8">
-                <div className="text-3xl mb-2">🌸</div>
+                <Images size={30} strokeWidth={1.5} className="text-gold/60 mx-auto mb-2" aria-hidden="true" />
                 <p className="text-gold text-sm font-serif mb-1">未寻得可选之牌…</p>
-                <p className="text-pink-300/40 text-xs font-serif">换个咒语再试试？(◕‿◕✿)</p>
+                <p className="text-pink-300/40 text-xs font-serif">换个咒语再试试。</p>
               </div>
             )}
             {!loading && cards.length > 0 && (

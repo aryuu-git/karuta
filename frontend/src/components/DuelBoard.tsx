@@ -211,7 +211,7 @@ function DuelCardGrid({ cards, flipped, onGrab, isOpponent, onCardClickWithIndex
     return (
       <div className="flex items-center justify-center h-full py-8">
         <span className="text-muted text-sm font-serif italic">
-          {isOpponent ? '对方场上还没有牌 (o_O)' : '你的场上还没有牌 (>_<)'}
+          {isOpponent ? '对方场上尚无牌' : '你的场上尚无牌'}
         </span>
       </div>
     )

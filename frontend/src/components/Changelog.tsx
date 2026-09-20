@@ -266,9 +266,9 @@ export function Changelog() {
             {/* 底部按钮 */}
             <div className="px-6 pb-5 pt-3 border-t border-white/5 shrink-0">
               <Button variant="gold" size="lg" className="w-full" onClick={handleClose}>
-                知道啦，冲！(ง •̀_•́)ง
+                知道了
               </Button>
-              <p className="text-muted/40 text-xs text-center mt-2">下次不会再弹了 (｡•̀ᴗ-)</p>
+              <p className="text-muted/40 text-xs text-center mt-2">下次不再自动弹出</p>
             </div>
           </motion.div>
         </motion.div>

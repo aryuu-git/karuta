@@ -27,7 +27,7 @@ export function ReadOnlyCardView({ card, coverPreview, audios, playingAudioId, o
               <ArrowLeft className="mr-0.5 inline h-3.5 w-3.5" /> 撤退
             </button>
             <h1 className="font-serif text-xl text-gold font-bold tracking-wide">
-              🎴 {card.display_text || '未命名'}
+              {card.display_text || '未命名'}
             </h1>
           </div>
         </div>

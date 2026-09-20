@@ -4,7 +4,7 @@ import { motion } from 'framer-motion'
 // 图标统一走 lucide-react（映射约定见 A3.1–A3.4）
 import {
   Swords, Medal, Trophy, Star, Sparkles, Award, Globe, Ticket,
-  Plus, Check, X, Pencil, Camera, Zap, Shield, type LucideIcon,
+  Plus, Check, X, Pencil, Camera, Zap, Shield, Flower2, type LucideIcon,
 } from 'lucide-react'
 import { Layout } from '../components/Layout'
 import { Button, Input, Spinner } from '../components/ui'
@@ -252,8 +252,8 @@ export function ProfilePage() {
             )}
             <p className="text-pink-300/50 text-sm mt-0.5 font-serif italic">
               {stats?.total_games
-                ? `征战 ${stats.total_games} 场，英姿飒爽 (ง •̀_•́)ง ✧`
-                : '传说尚未开始… (｡•́︿•̀｡)'}
+                ? `征战 ${stats.total_games} 场，英姿飒爽。`
+                : '传说尚未开始…'}
             </p>
           </div>
         </motion.div>
@@ -261,15 +261,15 @@ export function ProfilePage() {
         {loading ? (
           <div className="flex flex-col items-center justify-center gap-3 py-16">
             <Spinner size={22} />
-            <p className="text-pink-300/50 font-serif text-sm">～ 翻阅战绩古卷中 ～ ♪</p>
+            <p className="text-pink-300/50 font-serif text-sm">翻阅战绩古卷中…</p>
           </div>
         ) : !stats || stats.total_games === 0 ? (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
             className="text-center py-16 rounded-2xl"
             style={{ background: 'linear-gradient(160deg, rgb(var(--accent-bg-end)/ 0.5), rgb(var(--accent-bg-mid)/ 0.8))', border: '1px dashed rgb(var(--accent-primary)/ 0.2)' }}>
-            <div className="text-5xl mb-4">🌸</div>
+            <Flower2 size={44} strokeWidth={1.5} className="text-gold/60 mx-auto mb-4" aria-hidden="true" />
             <p className="text-gold text-base font-serif mb-2">传说的篇章尚未书写…</p>
-            <p className="text-pink-300/40 text-sm mb-6 font-serif">踏入战场，用实力刻下你的名字！✧</p>
+            <p className="text-pink-300/40 text-sm mb-6 font-serif">踏入战场，用实力刻下你的名字。</p>
             <Button onClick={() => navigate('/')} icon={<Swords size={14} />}>前往战场大厅</Button>
           </motion.div>
         ) : (
@@ -329,11 +329,11 @@ export function ProfilePage() {
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}
               className="mt-6 text-center">
               {stats.top3_rate >= 0.7 ? (
-                <p className="text-gold/60 text-sm font-serif">传说级战士！胜率超高！(*´▽`*) ヽ(°〇°)ﾉ</p>
+                <p className="text-gold/60 text-sm font-serif">传说级战士——胜率超群。</p>
               ) : stats.top3_rate >= 0.4 ? (
-                <p className="text-gold/60 text-sm font-serif">实力不俗，继续加油！(ง •̀_•́)ง</p>
+                <p className="text-gold/60 text-sm font-serif">实力不俗，再接再厉。</p>
               ) : stats.total_games > 0 ? (
-                <p className="text-gold/60 text-sm font-serif">多打多练，下次一定行！(｡•́︿•̀｡) 加油～</p>
+                <p className="text-gold/60 text-sm font-serif">多加修炼，来日方长。</p>
               ) : null}
             </motion.div>
           </>

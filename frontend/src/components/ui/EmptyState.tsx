@@ -1,11 +1,12 @@
 import type { ReactNode } from 'react'
+import { Flower2 } from 'lucide-react'
 
 /**
- * 统一空状态：品牌 emoji 插画（emoji 允许出现的场景之一）+ 标题 + 行动按钮。
+ * 统一空状态：语义图标（lucide，功能处不使用 emoji）+ 标题 + 行动按钮。
  */
 export interface EmptyStateProps {
-  /** 装饰 emoji（庆祝/空状态/品牌瞬间允许使用） */
-  icon?: string
+  /** 语义图标（lucide 节点，默认 Flower2） */
+  icon?: ReactNode
   title: ReactNode
   description?: ReactNode
   /** 行动区（通常一个 Button） */
@@ -13,10 +14,10 @@ export interface EmptyStateProps {
   className?: string
 }
 
-export function EmptyState({ icon = '🌸', title, description, action, className = '' }: EmptyStateProps) {
+export function EmptyState({ icon = <Flower2 size={44} strokeWidth={1.5} />, title, description, action, className = '' }: EmptyStateProps) {
   return (
     <div className={`flex flex-col items-center justify-center text-center py-14 px-6 ${className}`}>
-      <div className="text-5xl mb-4 opacity-80 animate-float" aria-hidden="true">
+      <div className="text-gold/60 mb-4 opacity-80 animate-float" aria-hidden="true">
         {icon}
       </div>
       <h3 className="font-serif text-title text-gold mb-2">{title}</h3>

@@ -139,7 +139,7 @@ export function ScoreBoard({ players, currentUserId, hostId, remainingCount, tot
       {/* 底部装饰 */}
       <div className="px-4 py-3 border-t border-white/5">
         <div className="text-center">
-          <span className="text-pink-300/30 text-xs font-serif italic">🌸 命运之战 · 全力以赴 ✧</span>
+          <span className="text-pink-300/30 text-xs font-serif italic">命运之战 · 全力以赴</span>
         </div>
       </div>
     </div>

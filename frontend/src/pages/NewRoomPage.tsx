@@ -82,7 +82,7 @@ export function NewRoomPage() {
       const room = await api.rooms.create(selectedDeckId, intervalSec, selectedMode, maskEnabled, maskDifficulty, penaltyWrong, penaltySlow, shuffleEnabled ? shuffleRemaining : 0, randomStart, randomStartMax, duelConfig, penaltyLast, training, minPlayTime, multiAudioMode)
       setCreatedRoom(room)
     } catch (err) {
-      setError(err instanceof Error ? err.message : '战场开辟失败了… (；′⌒`) 再试一次吧！')
+      setError(err instanceof Error ? err.message : '战场开辟失败…请再试一次。')
     } finally {
       setCreating(false)
     }
@@ -148,7 +148,7 @@ export function NewRoomPage() {
               </p>
               {/* 进入房间主按钮 */}
               <Button size="lg" className="w-full font-serif" icon={<Play size={16} />} onClick={() => navigate(`/rooms/${createdRoom.id}`)}>
-                「冲进去！」ヽ(°〇°)ﾉ
+                「冲进去」
               </Button>
             </motion.div>
           ) : (
@@ -172,11 +172,11 @@ export function NewRoomPage() {
                   {loadingDecks ? (
                     <div className="text-muted text-sm py-4 flex items-center justify-center gap-2">
                       <Spinner size={14} />
-                      加载牌组中… (｡･ω･｡)
+                      加载牌组中…
                     </div>
                   ) : decks.length === 0 ? (
                     <div className="text-muted text-sm text-center py-4">
-                      还没有牌组哦 (｡•́︿•̀｡)
+                      尚无牌组——先去锻造一副吧。
                       <button
                         type="button"
                         onClick={() => navigate('/decks')}
@@ -698,7 +698,7 @@ export function NewRoomPage() {
                   icon={<Swords size={16} />}
                   className="w-full font-serif"
                 >
-                  「开辟战场！」(ง •̀_•́)ง
+                  「开辟战场」
                 </Button>
               </form>
             </motion.div>

@@ -70,7 +70,7 @@ export function DecksPage() {
         setPublicDecks(data)
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : '战阵典籍检索失败了… (；′⌒`)')
+      setError(e instanceof Error ? e.message : '战阵典籍检索失败…')
     } finally {
       setLoading(false)
     }
@@ -181,7 +181,7 @@ export function DecksPage() {
         </div>
 
         {/* 加载态（统一 PageSpinner） */}
-        {loading && <PageSpinner text="～ 正在检索战阵典籍 ～ ♪" />}
+        {loading && <PageSpinner text="正在检索战阵典籍…" />}
 
         {/* 错误态：错误文案 + 重试 */}
         {!loading && error && (
@@ -190,8 +190,8 @@ export function DecksPage() {
             style={{ background: 'linear-gradient(160deg, rgb(var(--accent-bg-end)/ 0.5), rgb(var(--accent-bg-mid)/ 0.8))', border: '1px dashed rgb(var(--accent-primary)/ 0.2)' }}>
             <AlertCircle size={28} className="mx-auto text-crimson mb-3" aria-hidden="true" />
             <p className="text-crimson text-sm font-serif mb-1">{error}</p>
-            <p className="text-muted text-xs font-serif mb-5">战阵典籍暂时翻不开页，稍后再试试吧 ♪</p>
-            <Button variant="outline" size="sm" icon={<RefreshCw size={14} />} onClick={() => loadDecks(tab)}>再试一次！(ง •̀_•́)ง</Button>
+            <p className="text-muted text-xs font-serif mb-5">战阵典籍暂翻不开页，稍后再试。</p>
+            <Button variant="outline" size="sm" icon={<RefreshCw size={14} />} onClick={() => loadDecks(tab)}>再试一次</Button>
           </motion.div>
         )}
 
@@ -203,7 +203,7 @@ export function DecksPage() {
             {tab === 'mine' ? (
               <EmptyState
                 title="此处空无一阵…"
-                description="战阵尚未铸成，去锻造你的第一副吧！✧"
+                description="战阵尚未铸成——去锻造你的第一副吧。"
                 action={<Button icon={<Plus size={16} />} onClick={() => setShowCreate(true)}>锻造第一副战阵</Button>}
               />
             ) : (

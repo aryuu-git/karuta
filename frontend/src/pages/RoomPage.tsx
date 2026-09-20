@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { SearchX, Swords } from 'lucide-react'
 import { Layout } from '../components/Layout'
 import { WaitingLobby } from '../components/WaitingLobby'
 import { ReadingPanel } from '../components/ReadingPanel'
@@ -345,7 +346,7 @@ export function RoomPage() {
           // grab_wrong 会处理
         } else {
           // 窗口已关闭等其他原因
-          toast.show('⚡ 晚了一步！(>_<) 下次要更快！', 'fail', 1200)
+          toast.show('晚了一步——下次要更快！', 'fail', 1200)
           playSound('grab_fail')
         }
         break
@@ -413,7 +414,7 @@ export function RoomPage() {
         setIsPaused(false)
         setGameStatus('reading')
         setRoomState(prev => prev ? { ...prev, room: { ...prev.room, status: 'reading' } } : null)
-        toast.show('▶ 战斗继续！(ง •̀_•́)ง', 'info', 1200)
+        toast.show('战斗继续。', 'info', 1200)
         break
       }
 
@@ -423,7 +424,7 @@ export function RoomPage() {
           if (existing) {
             return prev.map(p => p.user_id === event.user_id ? { ...p, online: true, role: event.role || p.role } : p)
           }
-          toast.show(`👋 ${event.username} 加入了战场！`, 'info')
+          toast.show(`${event.username} 加入了战场。`, 'info')
           return [...prev, { room_id: roomId, user_id: event.user_id, username: event.username, avatar_url: event.avatar_url, role: event.role || 'player', score: 0, online: true }]
         })
         break
@@ -449,7 +450,7 @@ export function RoomPage() {
         break
 
       case 'room_closed': {
-        toast.show('战场已解散，撤退中… (｡•́︿•̀｡)', 'info', 3000)
+        toast.show('战场已解散，撤退中…', 'info', 3000)
         setTimeout(() => navigate('/'), 2000)
         break
       }
@@ -489,12 +490,12 @@ export function RoomPage() {
       }
 
       case 'judge_offline': {
-        toast.show(`👑 裁判断线了！等待重连中… (最多 ${event.timeout}s)`, 'info', event.timeout * 1000)
+        toast.show(`裁判断线了，等待重连中…（最多 ${event.timeout}s）`, 'info', event.timeout * 1000)
         break
       }
 
       case 'judge_timeout': {
-        toast.show('👑 裁判长时间未归，对局自动结束 (｡•́︿•̀｡)', 'info', 3000)
+        toast.show('裁判长时间未归，对局自动结束。', 'info', 3000)
         break
       }
 
@@ -654,9 +655,9 @@ export function RoomPage() {
             { user_id: loserId, username: loserName, score: loserCards.length, rank: 2, grabbed_cards: loserCards },
           ])
           if (isWinner) {
-            toast.show('🏆 你赢了！对决胜利！！(ﾉ◕ヮ◕)ﾉ*:・゜✧', 'success', 5000)
+            toast.show('你赢了——对决胜利！', 'success', 5000)
           } else {
-            toast.show(`💫 ${event.winner} 获胜了… 下次再战！(>_<)`, 'info', 5000)
+            toast.show(`${event.winner} 获胜了…下次再战。`, 'info', 5000)
           }
         }
         const toCards = (cards?: Array<{ id: number; display_text: string; cover_url: string }>) => cards ?? []
@@ -739,7 +740,7 @@ export function RoomPage() {
   }
 
   const handleCloseRoom = async () => {
-    if (!confirm('确定要解散战场吗？所有战友都会被驱逐出去哦 (；′⌒`)')) return
+    if (!confirm('确定解散战场吗？所有战友都将被请离。')) return
     await api.rooms.close(roomId).catch(() => null)
     navigate('/')
   }
@@ -754,13 +755,13 @@ export function RoomPage() {
   }, [send])
 
   const handleLeaveRoom = () => {
-    if (confirm('真的要撤退吗？(｡•́︿•̀｡) 战友们会想念你的！')) navigate('/')
+    if (confirm('确定要撤退吗？')) navigate('/')
   }
 
   if (loading) return (
     <Layout>
       <div className="flex items-center justify-center py-32">
-        <span className="text-gold animate-pulse font-serif text-xl">战场加载中… (｡･ω･｡) 稍等一下</span>
+        <span className="text-gold animate-pulse font-serif text-xl">战场加载中…请稍候</span>
       </div>
     </Layout>
   )
@@ -768,8 +769,8 @@ export function RoomPage() {
   if (error || !roomState) return (
     <Layout>
       <div className="flex flex-col items-center justify-center py-32 text-crimson gap-4">
-        <div className="text-5xl">😣</div>
-        <p>{error ?? '找不到这个战场 (>_<)'}</p>
+        <SearchX size={44} strokeWidth={1.5} className="opacity-70" aria-hidden="true" />
+        <p>{error ?? '找不到这个战场'}</p>
         <Button variant="outline" onClick={() => navigate('/')}>回到大本营</Button>
       </div>
     </Layout>
@@ -865,8 +866,8 @@ export function RoomPage() {
         {justJoined && !isSpectator && (
           <div className="flex items-center justify-between px-4 py-2 text-xs"
             style={{ background: 'rgba(128,90,213,0.12)', borderBottom: '1px solid rgba(128,90,213,0.2)' }}>
-            <span style={{ color: 'rgba(167,139,250,0.9)' }}>
-              👋 你刚加入，正在进行中的这首结束后可以参与抢牌～ (｡•̀ᴗ-)
+            <span style={{ color: 'rgb(var(--accent-primary)/ 0.9)' }}>
+              你刚加入——正在进行中的这首结束后即可参与抢牌。
             </span>
             <button onClick={() => setJustJoined(false)}
               className="text-muted hover:text-white ml-2 shrink-0">✕</button>
@@ -899,12 +900,13 @@ export function RoomPage() {
                   await api.rooms.spectate(roomId, false)
                   setIsSpectator(false)
                   setPlayers(prev => prev.map(p => p.user_id === user?.id ? { ...p, role: 'player' } : p))
-                  toast.show('⚔️ 已加入战斗！下一首可以抢了！', 'success')
+                  toast.show('已加入战斗！下一首可以抢了。', 'success')
                 } catch { /* ignore */ }
               }}
               className="px-3 py-1 rounded text-xs font-medium transition-all hover:scale-105"
               style={{ background: 'rgb(var(--accent-primary)/ 0.2)', border: '1px solid rgb(var(--accent-primary)/ 0.4)', color: 'rgb(var(--color-gold))' }}>
-              ⚔️ 加入战斗！
+              <Swords size={12} className="inline-block mr-1 align-middle" aria-hidden="true" />
+              加入战斗！
             </button>
           </div>
         )}
@@ -948,7 +950,7 @@ export function RoomPage() {
         ) : isDuelMode && !duelState ? (
           // 对阵模式等待状态初始化
           <div className="flex flex-1 items-center justify-center">
-            <span className="text-gold/60 font-serif animate-pulse">等待对阵初始化… (｡･ω･｡)</span>
+            <span className="text-gold/60 font-serif animate-pulse">等待对阵初始化…</span>
           </div>
         ) : isJudgeMode && isHost ? (
           // 裁判视图：上方选牌区 + 下方只读棋布

@@ -77,7 +77,7 @@ export function DeckDetailPage() {
       setShareLevel(data.deck.share_level || 'private')
       setEditLevel(data.deck.edit_level || 'add_only')
     } catch (e) {
-      setError(e instanceof Error ? e.message : '牌组加载失败了… (；′⌒`)')
+      setError(e instanceof Error ? e.message : '牌组加载失败…')
     } finally {
       setLoading(false)
     }
@@ -97,7 +97,7 @@ export function DeckDetailPage() {
       if (updated) setDeck(updated)
       setEditingName(false)
     } catch (e) {
-      alert(e instanceof Error ? e.message : '保存失败 (；′⌒`)')
+      alert(e instanceof Error ? e.message : '保存失败')
     } finally {
       setSavingName(false)
     }
@@ -165,7 +165,7 @@ export function DeckDetailPage() {
       await api.decks.delete(deckId)
       navigate('/')
     } catch (e) {
-      setError(e instanceof Error ? e.message : '删除失败 (；′⌒`)')
+      setError(e instanceof Error ? e.message : '删除失败')
       setShowDeleteDeck(false)
     } finally {
       setDeletingDeck(false)
@@ -363,7 +363,7 @@ export function DeckDetailPage() {
         {error && (
           <div className="text-crimson text-center py-12">
             {error}
-            <button onClick={loadDeck} className="block mx-auto mt-2 text-sm underline hover:text-gold transition-colors">再试一次！(ง •̀_•́)ง</button>
+            <button onClick={loadDeck} className="block mx-auto mt-2 text-sm underline hover:text-gold transition-colors">再试一次</button>
           </div>
         )}
 
@@ -640,7 +640,7 @@ export function DeckDetailPage() {
               <h3 className="font-serif text-gold text-lg font-medium mb-1 flex items-center gap-1.5">
                 <Pencil size={16} aria-hidden="true" />修改牌组
               </h3>
-              <p className="text-muted text-xs mb-5">改个更霸气的名字吧！(ง •̀_•́)ง</p>
+              <p className="text-muted text-xs mb-5">改个更响亮的名字吧。</p>
               <div className="flex flex-col gap-4">
                 <div>
                   <Input label="牌组名称 *" type="text" value={editName}

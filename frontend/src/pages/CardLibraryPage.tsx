@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  AlertCircle, ChevronLeft, ChevronRight, Copy, Eye, Globe, Lock, Music,
+  AlertCircle, ChevronLeft, ChevronRight, Copy, Eye, Globe, Images, Lock, Music,
   Pencil, Plus, RotateCcw, Search, Trash2, UserRound, X,
 } from 'lucide-react'
 import { Layout } from '../components/Layout'
@@ -245,7 +245,7 @@ export function CardLibraryPage() {
         {/* Loading */}
         {loading && (
           <div className="text-pink-300/50 text-sm animate-pulse py-16 text-center font-serif">
-            ～ 正在翻阅歌牌典籍 ～ ♪
+            正在翻阅歌牌典籍…
           </div>
         )}
 
@@ -256,12 +256,12 @@ export function CardLibraryPage() {
             style={{ background: 'linear-gradient(160deg, rgb(var(--accent-bg-end)/ 0.5), rgb(var(--accent-bg-mid)/ 0.8))', border: '1px dashed rgb(var(--accent-primary)/ 0.2)' }}>
             {tab === 'mine' ? (
               <EmptyState
-                icon="🎴"
+                icon={<Images size={44} strokeWidth={1.5} />}
                 title="此处空无一物…"
-                description="命运之牌尚未觉醒，去召唤你的第一张吧！✧"
+                description="命运之牌尚未觉醒——去召唤你的第一张吧。"
                 action={<Button onClick={() => navigate('/cards/new')} icon={<Plus size={15} />}>召唤第一张歌牌</Button>} />
             ) : (
-              <EmptyState icon="🎴" title="未寻得匹配之牌…" description="换个咒语再试试？(◕‿◕✿)" />
+              <EmptyState icon={<Images size={44} strokeWidth={1.5} />} title="未寻得匹配之牌…" description="换个咒语再试试。" />
             )}
           </motion.div>
         )}
@@ -464,7 +464,7 @@ export function CardLibraryPage() {
                 style={{ background: 'rgba(192,57,43,0.12)', border: '1px solid rgba(192,57,43,0.3)' }}>
                 <Trash2 size={22} className="text-crimson" />
               </div>
-              <h3 className="font-sans font-semibold text-white mb-2">真的要删除这张牌吗？(；′⌒`)</h3>
+              <h3 className="font-sans font-semibold text-white mb-2">真的要删除这张牌吗？</h3>
               <p className="text-muted text-sm mb-6">删掉后所有引用这张牌的牌组也会受影响！</p>
               <div className="flex gap-3">
                 <Button variant="outline" className="flex-1" onClick={() => setDeleteId(null)}>再想想</Button>

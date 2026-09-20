@@ -169,7 +169,7 @@ export function EditAudioPanel({ cardId, audios, onAudiosChange, playingAudioId,
               onClick={e => e.stopPropagation()}>
               <div className="flex justify-center mb-3"><Trash2 className="h-8 w-8" /></div>
               <p className="text-white font-medium mb-1">要删除这条音频吗？</p>
-              <p className="text-muted text-sm mb-5">删掉后无法恢复哦 (；′⌒`)</p>
+              <p className="text-muted text-sm mb-5">删除后无法恢复。</p>
               <div className="flex gap-3">
                 <Button variant="outline" className="flex-1" onClick={() => setDeleteAudioId(null)}>取消</Button>
                 <button onClick={() => handleDeleteAudio(deleteAudioId)}

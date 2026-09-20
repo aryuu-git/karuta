@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { Crown } from 'lucide-react'
 import type { Card } from '../api/types'
 import { api } from '../api/client'
 
@@ -104,7 +105,9 @@ export function JudgePanel({
           ) : isJudgeWaiting ? (
             <motion.div key="waiting" initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 6 }}
               className="flex items-center gap-2">
-              <motion.span animate={{ rotate: [0, 10, -10, 0] }} transition={{ duration: 1.2, repeat: Infinity }} className="text-base">👑</motion.span>
+              <motion.span animate={{ rotate: [0, 10, -10, 0] }} transition={{ duration: 1.2, repeat: Infinity }} className="inline-flex">
+                <Crown size={16} className="text-gold" aria-label="裁判" />
+              </motion.span>
               <span className="text-sm font-medium" style={{ color: 'rgb(var(--color-gold))' }}>选择下一首要播放的歌！</span>
               <span className="ml-auto text-xs" style={{ color: 'rgb(var(--accent-primary)/ 0.5)' }}>剩余 {totalCount - playedItemCount}</span>
             </motion.div>

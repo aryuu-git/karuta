@@ -90,6 +90,23 @@
 - **幂等**：grab 消息带客户端单调 `cmd_id`，服务端按 `(user_id)` 记录 lastCmdID，重放（≤上次）直接忽略——防止网络重试双扣分。cmd_id=0 视为旧客户端直接处理。
 - **media_event**：客户端 buffer_fail（音频重试耗尽）上报，服务端提前切首防全场卡死。
 
+### D5-B · 删除 shimapan 蓝色主题
+- 选项 A：保留双主题仅隐藏切换器 → 死代码与双主题截图负担常驻
+- 选项 B：整体删除（变量块/Provider/Switcher/hook/index.html 反 FOUC 脚本/文档列）
+- **选择 B**。唯一主题 = 樱花粉，`gold-foil` 金粉恒定不变。视觉宪法（和纸/樱粉/金）不变，删的是与宪法无关的第三风格。
+- 后果：曾用 localStorage `karuta_theme` 的用户变量成为无害遗留；`/docs/design-system.md` 色彩表收敛为单列。
+
+### D5-C1 · 目标信息架构定稿
+- 认证：`/login` 单页三模式（登录/注册/访客，`?mode=` 深链持久化）。`/register`、`/guest` 保留为 `<Navigate>` 别名重定向（外链/肌肉记忆兼容，非删除）。已具名游客进入 AuthPage 时直接呈现"凭令入场"面板。
+- 入房：首页即大厅（凭令入场内联 + 开辟战场按钮）。选项 A：开辟战场做成大厅内抽屉 → NewRoomPage 配置项 20+，抽屉承载差；选项 B：保留 `/rooms/new` 独立页 → **选 B**。`/rooms/join` 与 JoinRoomPage 删除，路由 `<Navigate to="/" replace>` 收敛。
+- 导航：大厅（Castle）/ 牌库（Images）/ 牌组（Layers）/ 我的（CircleUserRound）四 tab。制卡入口已挂牌库页首（A3.2 遗产），牌组详情另有"召唤歌牌"选牌器——不重复加入口。
+- 对战页 `/rooms/:id` 游戏行为零改动：38 个 WS case、B1 时钟、cmd_id 幂等全部原样，仅文案与视觉壳。
+
+### D5-C2 · 文案声线规范
+- 声线：和风书卷 + 轻幻想，短句、克制、不卖萌——删除全部颜文字与 `✧/♪/～` 语气符号；错误文案保留温度但收敛为陈述句。
+- emoji 红线：品牌位（Layout 头 + AuthPage 头 + 结算题名）保留 🌸；功能处（按钮/toast/状态/空态/聊天）一律 lucide 图标。历史更新日志（Changelog 列表条目）视为"存档内容"不改写。
+- EmptyState 的 icon 类型 string → ReactNode，默认 Flower2，各页传语义图标（Castle/Images/Layers）。
+
 ## 冒烟清单（每 Phase 收口前过一遍）
 
 - [x] `cd frontend && npm run build`（含 tsc）全绿——每 Phase 均验证，主包稳定 179.83KB（gzip 58.79）
