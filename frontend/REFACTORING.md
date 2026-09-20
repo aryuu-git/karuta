@@ -133,4 +133,8 @@ D0 截图基线 webp/测试账号 aibase/dev 启动包装器 · D1 颜色 token 
 `home` `/` · `cards` `/cards` · `cards-new` `/cards/new` · `decks-list` `/decks` · `deck-detail` `/decks/42` · `rooms-new` `/rooms/new` · `join` `/rooms/join` · `profile` `/profile` · `room-waiting` `/rooms/413` · `login` `/login` · `register` `/register` · `guest` `/guest`
 （视口 1440×900，Chromium headless）
 
-（已并入上方总结报告的"遗留问题"小节）
+## Backlog（任务书原文三项，只记录不排期）
+
+- **内容治理**：资源冻结、举报/下架、上传来源审计、版权联系入口、软删除保留期（详见 docs/handoff.md P2.5）
+- **签名 URL**：COS 预签名/临时凭证 + 完成确认（下载侧已直连，上传侧仍服务端中转；详见 handoff P1.2）
+- **媒体派生版本**：源头生成 30-45 秒 / 96-128kbps 游戏音频与 WebP 封面（当前由浏览器端 ffmpeg.wasm 处理替代）
