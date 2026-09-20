@@ -383,12 +383,13 @@ func (h *RoomHub) HandleAudioEnded(userID int64, roundID int) {
 }
 
 // HandleGrab routes a grab message to the active game session.
-func (h *RoomHub) HandleGrab(userID, cardID int64) {
+// cmdID 为客户端命令 ID，透传给会话做幂等去重。
+func (h *RoomHub) HandleGrab(userID, cardID int64, cmdID int64) {
 	h.mu.RLock()
 	sess := h.session
 	h.mu.RUnlock()
 	if sess != nil {
-		sess.HandleGrab(userID, cardID)
+		sess.HandleGrab(userID, cardID, cmdID)
 	}
 }
 

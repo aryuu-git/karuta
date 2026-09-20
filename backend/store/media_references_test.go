@@ -24,10 +24,10 @@ func TestSharedMediaReferencesSurviveCardDelete(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.CardAudios.Create(first.ID, "audio/shared.mp3", "", 0); err != nil {
+	if _, err := s.CardAudios.Create(first.ID, "audio/shared.mp3", "", 0, 0); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.CardAudios.Create(second.ID, "audio/shared.mp3", "", 0); err != nil {
+	if _, err := s.CardAudios.Create(second.ID, "audio/shared.mp3", "", 0, 0); err != nil {
 		t.Fatal(err)
 	}
 

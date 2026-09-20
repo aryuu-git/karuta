@@ -226,6 +226,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_media_assets_sha_kind ON media_assets(sha2
 		{"users", "avatar_path", `ALTER TABLE users ADD COLUMN avatar_path TEXT DEFAULT ''`},
 		{"users", "is_guest", `ALTER TABLE users ADD COLUMN is_guest BOOLEAN DEFAULT FALSE`},
 		{"users", "guest_token_hash", `ALTER TABLE users ADD COLUMN guest_token_hash TEXT DEFAULT ''`},
+		{"card_audios", "duration_sec", `ALTER TABLE card_audios ADD COLUMN duration_sec REAL DEFAULT 0`},
 	}
 	for _, column := range columns {
 		if err := ensureColumn(db, column.table, column.name, column.ddl); err != nil {

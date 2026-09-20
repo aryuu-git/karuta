@@ -14,10 +14,11 @@ func NewCardAudioStore(db *sql.DB) *CardAudioStore {
 	return &CardAudioStore{db: db}
 }
 
-func (s *CardAudioStore) Create(cardID int64, audioPath, hintText string, sortOrder int) (*model.CardAudio, error) {
+// Create 插入一条音频记录（durationSec 为浏览器端测量的时长秒数，未知传 0）。
+func (s *CardAudioStore) Create(cardID int64, audioPath, hintText string, sortOrder int, durationSec float64) (*model.CardAudio, error) {
 	res, err := s.db.Exec(
-		`INSERT INTO card_audios (card_id, audio_path, hint_text, sort_order) VALUES (?, ?, ?, ?)`,
-		cardID, audioPath, hintText, sortOrder,
+		`INSERT INTO card_audios (card_id, audio_path, hint_text, sort_order, duration_sec) VALUES (?, ?, ?, ?, ?)`,
+		cardID, audioPath, hintText, sortOrder, durationSec,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("create card_audio: %w (card_id=%d, path=%s)", err, cardID, audioPath)
@@ -28,10 +29,10 @@ func (s *CardAudioStore) Create(cardID int64, audioPath, hintText string, sortOr
 
 func (s *CardAudioStore) GetByID(id int64) (*model.CardAudio, error) {
 	row := s.db.QueryRow(
-		`SELECT id, card_id, audio_path, hint_text, sort_order, created_at FROM card_audios WHERE id = ?`, id,
+		`SELECT id, card_id, audio_path, hint_text, sort_order, COALESCE(duration_sec, 0), created_at FROM card_audios WHERE id = ?`, id,
 	)
 	a := &model.CardAudio{}
-	if err := row.Scan(&a.ID, &a.CardID, &a.AudioPath, &a.HintText, &a.SortOrder, &a.CreatedAt); err != nil {
+	if err := row.Scan(&a.ID, &a.CardID, &a.AudioPath, &a.HintText, &a.SortOrder, &a.DurationSec, &a.CreatedAt); err != nil {
 		return nil, fmt.Errorf("get card_audio: %w", err)
 	}
 	return a, nil
@@ -39,7 +40,7 @@ func (s *CardAudioStore) GetByID(id int64) (*model.CardAudio, error) {
 
 func (s *CardAudioStore) ListByCardID(cardID int64) ([]*model.CardAudio, error) {
 	rows, err := s.db.Query(
-		`SELECT id, card_id, audio_path, hint_text, sort_order, created_at
+		`SELECT id, card_id, audio_path, hint_text, sort_order, COALESCE(duration_sec, 0), created_at
 		 FROM card_audios WHERE card_id = ? ORDER BY sort_order ASC, id ASC`, cardID,
 	)
 	if err != nil {
@@ -50,7 +51,7 @@ func (s *CardAudioStore) ListByCardID(cardID int64) ([]*model.CardAudio, error) 
 	var audios []*model.CardAudio
 	for rows.Next() {
 		a := &model.CardAudio{}
-		if err := rows.Scan(&a.ID, &a.CardID, &a.AudioPath, &a.HintText, &a.SortOrder, &a.CreatedAt); err != nil {
+		if err := rows.Scan(&a.ID, &a.CardID, &a.AudioPath, &a.HintText, &a.SortOrder, &a.DurationSec, &a.CreatedAt); err != nil {
 			return nil, fmt.Errorf("scan card_audio: %w", err)
 		}
 		audios = append(audios, a)

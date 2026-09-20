@@ -57,6 +57,9 @@ type CardAudio struct {
 	AudioPath string    `json:"audio_path"`
 	AudioURL  string    `json:"audio_url,omitempty"`
 	HintText  string    `json:"hint_text"`
+	// DurationSec 音频时长（秒），由上传链路浏览器端测量；0 表示未知
+	// （旧数据），服务端回合时钟回退到上限兜底。
+	DurationSec float64 `json:"duration_sec"`
 	SortOrder int       `json:"sort_order"`
 	CreatedAt time.Time `json:"created_at"`
 }

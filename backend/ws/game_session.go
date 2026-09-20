@@ -2,6 +2,7 @@ package ws
 
 import (
 	"encoding/json"
+	"log/slog"
 	"math/rand"
 	"sync"
 	"time"
@@ -19,6 +20,9 @@ type PlayItem struct {
 	AudioPath   string
 	HintText    string
 	CardAudioID int64
+	// DurationSec 音频时长（秒），来自上传链路测量；0 表示未知，
+	// 服务端回合时钟对该回合回退到上限兜底。
+	DurationSec float64
 }
 
 type judgePlayRequest struct {
@@ -43,7 +47,7 @@ type GameSession struct {
 	lastCardWinner int64
 
 	cardGrabbedCh chan struct{}
-	audioEndedCh  chan struct{}
+	audioEndedCh  chan struct{} // 已废弃（B1 服务端权威时钟）：保留通道兼容调用点，收到消息不再触发切首
 	skipCh        chan struct{}
 	mu            sync.Mutex
 	paused        bool
@@ -52,6 +56,11 @@ type GameSession struct {
 	stopCh        chan struct{}
 	store         *store.Store
 	playStartTime time.Time
+	// roundEndsAt 当前回合的服务端权威截止时刻（音频开始 + 时长 + 缓冲）。
+	// 客户端 audio_ended 不再触发切首；到期由本时刻驱动。
+	roundEndsAt time.Time
+	// lastCmdID 记录每个玩家最近一次抢牌命令 ID，实现幂等（防网络重试重复判分）。
+	lastCmdID map[int64]int64
 
 	// judge mode
 	judgeMode      bool
@@ -71,6 +80,7 @@ func expandToPlayItems(cards []*model.Card) []*PlayItem {
 					AudioPath:   audio.AudioPath,
 					HintText:    audio.HintText,
 					CardAudioID: audio.ID,
+					DurationSec: audio.DurationSec,
 				})
 			}
 		} else if card.AudioPath != "" {
@@ -134,6 +144,7 @@ func newGameSession(hub *RoomHub, room *model.Room, cards []*model.Card, s *stor
 		resumeCh:           make(chan struct{}, 8),
 		stopCh:             make(chan struct{}),
 		store:              s,
+		lastCmdID:          make(map[int64]int64),
 		judgeMode:          isJudge,
 		judgeUserID:        room.HostID,
 	}
@@ -210,6 +221,26 @@ func (gs *GameSession) runAutoMode() {
 
 		isLast := gs.currentIdx == len(gs.playItems)-1
 
+		// B1 服务端权威回合时钟：
+		// ends_at = 音频开始 + 实测时长 + 缓冲期（读牌间隔），到期自动切首。
+		// 时长未知（旧数据）时回退上限兜底（原 maxWait 逻辑）。
+		gs.playStartTime = time.Now()
+		settle := time.Duration(gs.room.IntervalSec) * time.Second
+		if item.DurationSec > 0 {
+			// 末首无下一首切首缓冲，对齐原 audio_ended 后 2 秒的行为。
+			tail := settle
+			if isLast {
+				tail = 2 * time.Second
+			}
+			gs.roundEndsAt = gs.playStartTime.Add(time.Duration(item.DurationSec*float64(time.Second)) + tail)
+		} else {
+			maxWait := settle * 10
+			if maxWait < 60*time.Second {
+				maxWait = 60 * time.Second
+			}
+			gs.roundEndsAt = gs.playStartTime.Add(maxWait)
+		}
+
 		cardStartMsg := map[string]interface{}{
 			"type":            "card_start",
 			"round_id":        item.Index + 1,
@@ -221,6 +252,9 @@ func (gs *GameSession) runAutoMode() {
 			"total":           len(gs.playItems),
 			"is_last":         isLast,
 			"next_audio_urls": gs.upcomingAudioURLs(gs.currentIdx+1, 2),
+			"start_at":        gs.playStartTime.UnixMilli(),
+			"ends_at":         gs.roundEndsAt.UnixMilli(),
+			"server_now":      time.Now().UnixMilli(),
 		}
 		if gs.room.RandomStart {
 			rng := rand.New(rand.NewSource(gs.room.MaskSeed ^ item.CardAudioID ^ int64(gs.currentIdx)))
@@ -231,7 +265,6 @@ func (gs *GameSession) runAutoMode() {
 			cardStartMsg["start_ratio"] = float64(rng.Intn(maxPct)) / 100.0
 		}
 		gs.hub.BroadcastJSON(cardStartMsg)
-		gs.playStartTime = time.Now()
 
 		if isLast {
 			if !gs.waitAudioOnly() {
@@ -667,19 +700,10 @@ func (gs *GameSession) buildPlayerList(players []*model.RoomPlayer) []map[string
 	return list
 }
 
+// NotifyAudioEnded 已废弃（B1 服务端权威回合时钟）：
+// 客户端 audio_ended 不再触发切首。保留函数兼容旧客户端消息，仅记日志。
 func (gs *GameSession) NotifyAudioEnded(userID int64, roundID int) {
-	gs.mu.Lock()
-	valid := userID == gs.room.HostID &&
-		gs.currentIdx >= 0 && gs.currentIdx < len(gs.playItems) &&
-		gs.playItems[gs.currentIdx].Index+1 == roundID
-	gs.mu.Unlock()
-	if !valid {
-		return
-	}
-	select {
-	case gs.audioEndedCh <- struct{}{}:
-	default:
-	}
+	slog.Info("legacy audio_ended ignored (server-authoritative clock)", "user_id", userID, "round_id", roundID)
 }
 
 func (gs *GameSession) waitMinPlay() {
@@ -692,27 +716,26 @@ func (gs *GameSession) waitMinPlay() {
 	}
 }
 
+// waitAudioOnly 等待最后一首结束：服务端权威时钟到期（ends_at）或抢牌后 2 秒。
+// 暂停期间时钟顺延补偿。
 func (gs *GameSession) waitAudioOnly() bool {
 	maxWait := time.Duration(gs.room.IntervalSec) * time.Second * 10
 	if maxWait < 60*time.Second {
 		maxWait = 60 * time.Second
 	}
-	maxTimer := time.NewTimer(maxWait)
-	defer maxTimer.Stop()
 
 	for {
+		deadline := gs.roundEndsAt
+		if deadline.IsZero() {
+			deadline = time.Now().Add(maxWait)
+		}
+		roundTimer := time.NewTimer(time.Until(deadline))
 		select {
 		case <-gs.stopCh:
+			roundTimer.Stop()
 			return false
 		case <-gs.cardGrabbedCh:
-			gs.waitMinPlay()
-			select {
-			case <-gs.stopCh:
-				return false
-			case <-time.After(2 * time.Second):
-			}
-			return true
-		case <-gs.audioEndedCh:
+			roundTimer.Stop()
 			gs.waitMinPlay()
 			select {
 			case <-gs.stopCh:
@@ -721,25 +744,38 @@ func (gs *GameSession) waitAudioOnly() bool {
 			}
 			return true
 		case <-gs.skipCh:
+			roundTimer.Stop()
 			return true
-		case <-maxTimer.C:
+		case <-roundTimer.C:
 			return true
 		case <-gs.pauseCh:
-			maxTimer.Stop()
+			if !roundTimer.Stop() {
+				select {
+				case <-roundTimer.C:
+				default:
+				}
+			}
+			pausedAt := time.Now()
 			for {
 				select {
 				case <-gs.stopCh:
 					return false
 				case <-gs.resumeCh:
-					maxTimer = time.NewTimer(maxWait)
-					goto continueAudioOnly
+					gs.mu.Lock()
+					gs.roundEndsAt = gs.roundEndsAt.Add(time.Since(pausedAt))
+					gs.mu.Unlock()
+					goto nextWait
 				}
 			}
-		continueAudioOnly:
 		}
+	nextWait:
 	}
 }
 
+// waitInterval 等待非末首回合结束。
+// 服务端权威时钟：roundEndsAt = 音频开始 + 实测时长 + 缓冲期；到期自动切首。
+// 抢牌后仍保留 settle 缓冲窗口（与原行为一致）；暂停期间时钟顺延补偿；
+// 客户端 audio_ended 不再触发结束（B1 规格）。
 func (gs *GameSession) waitInterval() bool {
 	settle := time.Duration(gs.room.IntervalSec) * time.Second
 	maxWait := settle * 10
@@ -747,82 +783,73 @@ func (gs *GameSession) waitInterval() bool {
 		maxWait = 60 * time.Second
 	}
 
-	maxTimer := time.NewTimer(maxWait)
-	defer maxTimer.Stop()
-
-	paused := false
 	for {
+		// 每轮重建回合截止计时器（暂停恢复后 deadline 已顺延）。
+		deadline := gs.roundEndsAt
+		if deadline.IsZero() {
+			deadline = time.Now().Add(maxWait)
+		}
+		roundTimer := time.NewTimer(time.Until(deadline))
+
 		select {
 		case <-gs.stopCh:
+			roundTimer.Stop()
 			return false
 		case <-gs.cardGrabbedCh:
+			roundTimer.Stop()
+			// 抢中：保留缓冲期供玩家看清结果再切首。
 			select {
 			case <-gs.stopCh:
 				return false
 			case <-time.After(settle):
 			}
 			return true
-		case <-gs.audioEndedCh:
-			goto afterAudio
 		case <-gs.skipCh:
-			goto afterAudio
-		case <-maxTimer.C:
-			goto afterAudio
+			roundTimer.Stop()
+			gs.waitMinPlay()
+			return true
+		case <-roundTimer.C:
+			// 服务端权威到期：时长 + 缓冲结束。
+			gs.waitMinPlay()
+			return true
 		case <-gs.pauseCh:
-			paused = true
-			maxTimer.Stop()
-			for paused {
+			if !roundTimer.Stop() {
 				select {
-				case <-gs.stopCh:
-					return false
-				case <-gs.resumeCh:
-					paused = false
-					maxTimer = time.NewTimer(maxWait)
+				case <-roundTimer.C:
+				default:
 				}
 			}
-		}
-	}
-
-afterAudio:
-	gs.waitMinPlay()
-	settleTimer := time.NewTimer(settle)
-	defer settleTimer.Stop()
-	for {
-		select {
-		case <-gs.stopCh:
-			return false
-		case <-gs.cardGrabbedCh:
-			select {
-			case <-gs.stopCh:
-				return false
-			case <-time.After(settle):
-			}
-			return true
-		case <-settleTimer.C:
-			return true
-		case <-gs.skipCh:
-			return true
-		case <-gs.pauseCh:
-			settleTimer.Stop()
+			pausedAt := time.Now()
 			for {
 				select {
 				case <-gs.stopCh:
 					return false
 				case <-gs.resumeCh:
-					settleTimer = time.NewTimer(settle)
-					goto continueSettle
+					gs.mu.Lock()
+					gs.roundEndsAt = gs.roundEndsAt.Add(time.Since(pausedAt))
+					gs.mu.Unlock()
+					goto nextInterval
 				}
 			}
-		continueSettle:
 		}
+	nextInterval:
 	}
 }
 
 // HandleGrab processes a grab attempt from a player.
-func (gs *GameSession) HandleGrab(userID, cardID int64) {
+// cmdID 为客户端生成的单调递增命令 ID：网络重试导致的重复投递
+// （同一玩家 cmdID 不大于上次）会被静默忽略，防止重复判分。
+// cmdID=0 视为不支持幂等的旧客户端，直接处理。
+func (gs *GameSession) HandleGrab(userID, cardID int64, cmdID int64) {
 	gs.mu.Lock()
 	defer gs.mu.Unlock()
 
+	if cmdID > 0 {
+		if last, ok := gs.lastCmdID[userID]; ok && cmdID <= last {
+			return
+		}
+		gs.lastCmdID[userID] = cmdID
+	}
 	if gs.judgeMode && userID == gs.judgeUserID {
 		gs.hub.SendJSONToUser(userID, map[string]interface{}{
 			"type": "grab_banned",

@@ -10,6 +10,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"karuta/backend/media"
 	"karuta/backend/middleware"
@@ -28,6 +29,23 @@ type CardHandler struct {
 
 func NewCardHandler(s *store.Store, stor storage.Storage, mediaSvc *media.Service) *CardHandler {
 	return &CardHandler{store: s, storage: stor, media: mediaSvc}
+}
+
+// parseDurationSec 从 multipart 表单读取 audio_duration（秒）。
+// 缺失或非法时返回 0，服务端回合时钟回退到上限兜底。
+func parseDurationSec(r *http.Request) float64 {
+	if r.MultipartForm == nil {
+		return 0
+	}
+	raw := r.MultipartForm.Value["audio_duration"]
+	if len(raw) == 0 {
+		return 0
+	}
+	sec, err := strconv.ParseFloat(strings.TrimSpace(raw[0]), 64)
+	if err != nil || sec < 0 || sec > 3600 {
+		return 0
+	}
+	return sec
 }
 
 // GET /api/cards/mine
@@ -255,9 +273,9 @@ func (h *CardHandler) CreateCard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Create audio record
-	log.Printf("[card] DB card created OK: card_id=%d, now creating audio record...", card.ID)
-	audio, err := h.store.CardAudios.Create(card.ID, audioPath, hintText, 0)
+	// Create audio record（audio_duration 由前端处理链测量，秒）
+	durationSec := parseDurationSec(r)
+	audio, err := h.store.CardAudios.Create(card.ID, audioPath, hintText, 0, durationSec)
 	if err != nil {
 		log.Printf("[card] CardAudios.Create failed: %v (card_id=%d, audio=%s, hint=%s)", err, card.ID, audioPath, hintText)
 		// Clean up: delete card and files
@@ -473,7 +491,7 @@ func (h *CardHandler) CloneCard(w http.ResponseWriter, r *http.Request) {
 	// Copy audios
 	audios, _ := h.store.CardAudios.ListByCardID(srcCard.ID)
 	for _, a := range audios {
-		_, _ = h.store.CardAudios.Create(newCard.ID, a.AudioPath, a.HintText, a.SortOrder)
+		_, _ = h.store.CardAudios.Create(newCard.ID, a.AudioPath, a.HintText, a.SortOrder, a.DurationSec)
 	}
 	newCard.AudioCount = len(audios)
 	writeJSON(w, http.StatusOK, newCard)
@@ -629,7 +647,7 @@ func (h *CardHandler) AddAudio(w http.ResponseWriter, r *http.Request) {
 	// Determine sort order
 	count, _ := h.store.CardAudios.CountByCardID(cardID)
 
-	audio, err := h.store.CardAudios.Create(cardID, audioPath, hintText, count)
+	audio, err := h.store.CardAudios.Create(cardID, audioPath, hintText, count, parseDurationSec(r))
 	if err != nil {
 		h.deleteAudioIfUnreferenced(r.Context(), audioKey)
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to create audio record")
