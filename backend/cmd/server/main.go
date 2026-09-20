@@ -5,11 +5,13 @@ import (
 	"encoding/json"
 	"errors"
 	"log"
+	"log/slog"
 	"net"
 	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"syscall"
 	"time"
@@ -18,6 +20,7 @@ import (
 	"karuta/backend/handler"
 	"karuta/backend/media"
 	"karuta/backend/middleware"
+	"karuta/backend/obs"
 	"karuta/backend/security"
 	"karuta/backend/storage"
 	"karuta/backend/store"
@@ -35,10 +38,12 @@ var (
 
 func main() {
 	cfg := config.Load()
+	obs.Setup()
 	if err := cfg.Validate(); err != nil {
 		log.Fatalf("invalid configuration: %v", err)
 	}
 
+	startedAt := time.Now()
 	appCtx, stopSignals := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stopSignals()
 
@@ -109,8 +114,7 @@ func main() {
 	proxyRateLimit := middleware.RateLimit(120, time.Minute)
 
 	// Global middleware
-	r.Use(chiMiddleware.RealIP)
-	r.Use(chiMiddleware.Logger)
+	r.Use(obs.RequestLogger)
 	r.Use(chiMiddleware.Recoverer)
 	r.Use(corsMiddleware)
 
@@ -138,6 +142,34 @@ func main() {
 	r.Get("/version", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]string{"version": version, "commit": commit, "build_time": buildTime})
+	})
+
+	// /metrics 最小可观测端点：房间状态分布、WS 在线数、媒体资产量、
+	// 进程指标。数据无敏感信息，与 healthz 同级免鉴权。
+	r.Get("/metrics", func(w http.ResponseWriter, _ *http.Request) {
+		roomsByStatus, err := s.Rooms.CountByStatus()
+		if err != nil {
+			slog.Error("metrics rooms stats failed", "err", err)
+			roomsByStatus = map[string]int64{}
+		}
+		hubCount, wsConnections := hubManager.Stats()
+		mediaStats, err := s.MediaAssets.Stats()
+		if err != nil {
+			slog.Error("metrics media stats failed", "err", err)
+		}
+		var mem runtime.MemStats
+		runtime.ReadMemStats(&mem)
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"rooms": roomsByStatus,
+			"ws":    map[string]int{"connections": wsConnections, "rooms_with_hub": hubCount},
+			"media": map[string]int64{"assets": mediaStats.Assets, "bytes": mediaStats.Bytes},
+			"process": map[string]interface{}{
+				"uptime_s":   int64(time.Since(startedAt).Seconds()),
+				"goroutines": runtime.NumGoroutine(),
+				"heap_mb":    mem.HeapAlloc / 1024 / 1024,
+			},
+		})
 	})
 
 	// Auth routes (no JWT required)

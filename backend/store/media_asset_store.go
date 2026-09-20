@@ -45,6 +45,23 @@ func (s *MediaAssetStore) DeleteByObjectKey(objectKey string) error {
 	return err
 }
 
+// MediaStats 汇总媒体资产量与总字节数（供 /metrics 端点）。
+type MediaStats struct {
+	Assets int64
+	Bytes  int64
+}
+
+// Stats 返回当前登记的媒体资产总数与总字节数。
+func (s *MediaAssetStore) Stats() (MediaStats, error) {
+	var st MediaStats
+	err := s.db.QueryRow(`SELECT COUNT(*), COALESCE(SUM(size_bytes), 0) FROM media_assets WHERE status = 'ready'`).
+		Scan(&st.Assets, &st.Bytes)
+	if err != nil {
+		return st, err
+	}
+	return st, nil
+}
+
 func nullableID(id int64) interface{} {
 	if id == 0 {
 		return nil

@@ -15,6 +15,25 @@ func NewRoomStore(db *sql.DB) *RoomStore {
 	return &RoomStore{db: db}
 }
 
+// CountByStatus 返回各状态房间数（供 /metrics 端点）。
+func (s *RoomStore) CountByStatus() (map[string]int64, error) {
+	rows, err := s.db.Query(`SELECT status, COUNT(*) FROM rooms GROUP BY status`)
+	if err != nil {
+		return nil, fmt.Errorf("count rooms by status: %w", err)
+	}
+	defer rows.Close()
+	out := make(map[string]int64)
+	for rows.Next() {
+		var status string
+		var n int64
+		if err := rows.Scan(&status, &n); err != nil {
+			return nil, fmt.Errorf("scan room status count: %w", err)
+		}
+		out[status] = n
+	}
+	return out, rows.Err()
+}
+
 func (s *RoomStore) CreateRoom(code string, deckID, hostID int64, intervalSec int, mode string, maskEnabled bool, maskDifficulty string, penaltyWrong, penaltySlow bool, shuffleRemaining int, randomStart bool, randomStartMax int) (*model.Room, error) {
 	if mode == "" {
 		mode = "auto"

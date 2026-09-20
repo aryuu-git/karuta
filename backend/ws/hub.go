@@ -49,6 +49,18 @@ func (m *HubManager) Remove(roomID int64) {
 	delete(m.hubs, roomID)
 }
 
+// Stats 返回当前活跃 hub 数与全部 hub 的连接总数（供 /metrics 端点）。
+// 各 hub 的连接数在读取其内部互斥锁时获取，瞬态误差可接受。
+func (m *HubManager) Stats() (hubs int, connections int) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	hubs = len(m.hubs)
+	for _, h := range m.hubs {
+		connections += h.ConnectionCount()
+	}
+	return hubs, connections
+}
+
 // StopAll closes every active room hub. It is used during graceful process
 // shutdown so clients receive a clean connection close instead of waiting for
 // the operating system to terminate sockets.
@@ -80,6 +92,13 @@ type RoomHub struct {
 	// game control channels exposed to HTTP handlers
 	pauseCh  chan struct{}
 	resumeCh chan struct{}
+}
+
+// ConnectionCount 返回当前注册的客户端连接数（供 /metrics 端点）。
+func (h *RoomHub) ConnectionCount() int {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	return len(h.clients)
 }
 
 func newRoomHub(roomID int64, manager *HubManager) *RoomHub {

@@ -2,7 +2,7 @@ package ws
 
 import (
 	"encoding/json"
-	"log"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -80,14 +80,14 @@ func (c *Client) readPump() {
 		_, raw, err := c.conn.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				log.Printf("ws read error userID=%d: %v", c.userID, err)
+				slog.Error("ws read error", "user_id", c.userID, "err", err)
 			}
 			break
 		}
 
 		var msg wsMessage
 		if err := json.Unmarshal(raw, &msg); err != nil {
-			log.Printf("ws unmarshal error userID=%d: %v", c.userID, err)
+			slog.Warn("ws unmarshal error", "user_id", c.userID, "err", err)
 			continue
 		}
 
@@ -140,7 +140,7 @@ func (c *Client) readPump() {
 		case "ping":
 			// client-side ping, just ignore
 		default:
-			log.Printf("ws unknown message type=%s userID=%d", msg.Type, c.userID)
+			slog.Warn("ws unknown message", "type", msg.Type, "user_id", c.userID)
 		}
 	}
 }
@@ -163,7 +163,7 @@ func (c *Client) writePump() {
 				return
 			}
 			if err := c.conn.WriteMessage(websocket.TextMessage, msg); err != nil {
-				log.Printf("ws write error userID=%d: %v", c.userID, err)
+				slog.Error("ws write error", "user_id", c.userID, "err", err)
 				return
 			}
 
@@ -180,7 +180,7 @@ func (c *Client) writePump() {
 func UpgradeHandler(hub *RoomHub, w http.ResponseWriter, r *http.Request, userID int64, username, avatarURL, role string) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Printf("ws upgrade error: %v", err)
+		slog.Error("ws upgrade error", "err", err)
 		return
 	}
 	NewClient(hub, conn, userID, username, avatarURL, role)
