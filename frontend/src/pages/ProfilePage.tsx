@@ -1,16 +1,23 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
+// 图标统一走 lucide-react（映射约定见 A3.1–A3.4）
+import {
+  Swords, Medal, Trophy, Star, Sparkles, Award, Globe, Ticket,
+  Plus, Check, X, Pencil, Camera, Zap, Shield, type LucideIcon,
+} from 'lucide-react'
 import { Layout } from '../components/Layout'
-import { Button, Input } from '../components/ui'
+import { Button, Input, Spinner } from '../components/ui'
 import { useAuth } from '../hooks/useAuth'
 import { api } from '../api/client'
 import type { UserStats } from '../api/types'
 
+/** 管理员用户列表：加载/空/数据三态，支持设管理、禁用与邀请码开关。 */
 function AdminUserList() {
   const [users, setUsers] = useState<Array<{ id: number; username: string; invited_by: number; disabled: boolean; is_admin: boolean; is_guest: boolean; created_at: string }>>([])
   const [allUsers, setAllUsers] = useState<Map<number, string>>(new Map())
   const [inviteRequired, setInviteRequired] = useState(false)
+  const [loadingUsers, setLoadingUsers] = useState(true)
 
   useEffect(() => {
     api.auth.adminListUsers().then(list => {
@@ -18,7 +25,7 @@ function AdminUserList() {
       const m = new Map<number, string>()
       list.forEach(u => m.set(u.id, u.username))
       setAllUsers(m)
-    }).catch(() => {})
+    }).catch(() => {}).finally(() => setLoadingUsers(false))
     api.auth.adminInviteStatus().then(r => setInviteRequired(r.invite_required)).catch(() => {})
   }, [])
 
@@ -42,13 +49,21 @@ function AdminUserList() {
         </button>
       </div>
 
-      {/* 用户列表 */}
+      {/* 用户列表：加载/空/数据三态 */}
+      {loadingUsers ? (
+        <div className="flex items-center justify-center gap-2 py-5 text-muted text-xs">
+          <Spinner size={13} />
+          加载用户列表中…
+        </div>
+      ) : users.length === 0 ? (
+        <div className="py-5 text-center text-muted/50 text-xs">暂无注册用户</div>
+      ) : (
       <div className="max-h-60 overflow-y-auto space-y-1.5">
         {users.map(u => (
           <div key={u.id} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 text-xs">
             <span className={`font-medium ${u.disabled ? 'text-muted line-through' : 'text-white/80'}`}>
               {u.username}
-              {u.is_admin && <span className="text-orange-400 ml-1">⚡</span>}
+              {u.is_admin && <Zap size={11} className="inline-block align-middle ml-1 text-orange-400" />}
             </span>
             <span className="text-muted/50 flex-1 text-right truncate">
               {u.invited_by ? `← ${allUsers.get(u.invited_by) || '?'}` : ''}
@@ -72,12 +87,14 @@ function AdminUserList() {
           </div>
         ))}
       </div>
+      )}
     </div>
   )
 }
 
-function StatCard({ icon, label, value, sub, color = 'rgb(var(--color-gold))', delay = 0 }: {
-  icon: string
+/** 统计卡：lucide 图标 + 大数值 + 说明文案（color 同时着色图标与数值）。 */
+function StatCard({ icon: Icon, label, value, sub, color = 'rgb(var(--color-gold))', delay = 0 }: {
+  icon: LucideIcon
   label: string
   value: string | number
   sub?: string
@@ -92,7 +109,7 @@ function StatCard({ icon, label, value, sub, color = 'rgb(var(--color-gold))', d
       className="rounded-xl p-5 flex flex-col gap-2 hover:shadow-lg hover:shadow-pink-500/5 transition-all"
       style={{ background: 'linear-gradient(160deg, rgb(var(--accent-bg-end)/ 0.4), rgb(var(--accent-bg-mid)/ 0.6))', border: '1px solid rgb(var(--accent-primary)/ 0.08)' }}
     >
-      <div className="text-2xl">{icon}</div>
+      <Icon size={22} strokeWidth={1.75} style={{ color }} className="shrink-0" />
       <div>
         <div className="text-2xl font-bold tabular-nums font-serif" style={{ color }}>
           {value}
@@ -104,6 +121,7 @@ function StatCard({ icon, label, value, sub, color = 'rgb(var(--color-gold))', d
   )
 }
 
+/** 前三名占比环形图：SVG 描边动画展示前三比例。 */
 function Top3Ring({ rate, games, top3 }: { rate: number; games: number; top3: number }) {
   const pct = Math.round(rate * 100)
   const circumference = 2 * Math.PI * 38
@@ -148,6 +166,7 @@ function Top3Ring({ rate, games, top3 }: { rate: number; games: number; top3: nu
   )
 }
 
+/** 个人主页：头像/改名头部 + 统计三态 + 称号 + 邀请码 + 管理员面板。 */
 export function ProfilePage() {
   const { user } = useAuth()
   const navigate = useNavigate()
@@ -158,9 +177,10 @@ export function ProfilePage() {
   const [newName, setNewName] = useState('')
   const [nameError, setNameError] = useState('')
   const [invites, setInvites] = useState<Array<{ id: number; code: string; used_by?: number; created_at: string }>>([])
+  const [invitesLoading, setInvitesLoading] = useState(true)
 
   useEffect(() => {
-    api.auth.listInvites().then(setInvites).catch(() => {})
+    api.auth.listInvites().then(setInvites).catch(() => {}).finally(() => setInvitesLoading(false))
   }, [])
 
   useEffect(() => {
@@ -192,7 +212,8 @@ export function ProfilePage() {
             ) : (
               user?.username?.charAt(0).toUpperCase()
             )}
-            <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+              <Camera size={14} className="text-white" />
               <span className="text-white text-xs">换头像</span>
             </div>
           </div>
@@ -219,14 +240,14 @@ export function ProfilePage() {
               }} className="flex items-center gap-2">
                 <div className="w-40"><Input type="text" value={newName} onChange={e => { setNewName(e.target.value); setNameError('') }}
                   className="text-lg font-bold font-serif" autoFocus /></div>
-                <button type="submit" className="text-green-400 text-sm">✓</button>
-                <button type="button" onClick={() => setEditingName(false)} className="text-muted text-sm">✕</button>
+                <button type="submit" className="text-green-400 text-sm inline-flex items-center" aria-label="确认改名"><Check size={14} /></button>
+                <button type="button" onClick={() => setEditingName(false)} className="text-muted text-sm inline-flex items-center" aria-label="取消改名"><X size={14} /></button>
                 {nameError && <span className="text-crimson text-xs">{nameError}</span>}
               </form>
             ) : (
               <h1 className="font-serif text-2xl font-bold text-gold tracking-wide cursor-pointer group" onClick={() => { setEditingName(true); setNewName(user?.username || '') }}>
                 {user?.username}
-                <span className="text-muted/0 group-hover:text-muted/50 text-xs ml-2 transition-colors">✏️</span>
+                <span className="text-muted/0 group-hover:text-muted/50 text-xs ml-2 transition-colors inline-flex items-center align-middle"><Pencil size={12} /></span>
               </h1>
             )}
             <p className="text-pink-300/50 text-sm mt-0.5 font-serif italic">
@@ -238,8 +259,9 @@ export function ProfilePage() {
         </motion.div>
 
         {loading ? (
-          <div className="text-center py-16 text-pink-300/50 animate-pulse font-serif">
-            ～ 翻阅战绩古卷中 ～ ♪
+          <div className="flex flex-col items-center justify-center gap-3 py-16">
+            <Spinner size={22} />
+            <p className="text-pink-300/50 font-serif text-sm">～ 翻阅战绩古卷中 ～ ♪</p>
           </div>
         ) : !stats || stats.total_games === 0 ? (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
@@ -248,7 +270,7 @@ export function ProfilePage() {
             <div className="text-5xl mb-4">🌸</div>
             <p className="text-gold text-base font-serif mb-2">传说的篇章尚未书写…</p>
             <p className="text-pink-300/40 text-sm mb-6 font-serif">踏入战场，用实力刻下你的名字！✧</p>
-            <Button onClick={() => navigate('/')}>⚔️ 前往战场大厅</Button>
+            <Button onClick={() => navigate('/')} icon={<Swords size={14} />}>前往战场大厅</Button>
           </motion.div>
         ) : (
           <>
@@ -264,8 +286,8 @@ export function ProfilePage() {
 
               {/* 关键数据 */}
               <div className="flex flex-col gap-3">
-                <StatCard icon="⚔️" label="参与场数" value={stats.total_games} sub="场完整对局" delay={0.1} />
-                <StatCard icon="🥇" label="第一名次数" value={stats.first_games}
+                <StatCard icon={Swords} label="参与场数" value={stats.total_games} sub="场完整对局" delay={0.1} />
+                <StatCard icon={Medal} label="第一名次数" value={stats.first_games}
                   sub={stats.total_games > 0 ? `${Math.round(stats.first_games / stats.total_games * 100)}% 的对局` : ''}
                   color="#FFD700" delay={0.15} />
               </div>
@@ -273,11 +295,11 @@ export function ProfilePage() {
 
             {/* 次要数据 */}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              <StatCard icon="🏆" label="前三名次数" value={stats.top3_games} delay={0.2}
+              <StatCard icon={Trophy} label="前三名次数" value={stats.top3_games} delay={0.2}
                 sub={`共 ${stats.total_games} 场`} />
-              <StatCard icon="💯" label="历史总得分" value={stats.total_score} delay={0.25}
+              <StatCard icon={Star} label="历史总得分" value={stats.total_score} delay={0.25}
                 sub="所有场次合计" color="rgb(var(--color-gold-light))" />
-              <StatCard icon="✨" label="单场最高分" value={stats.best_score} delay={0.3}
+              <StatCard icon={Sparkles} label="单场最高分" value={stats.best_score} delay={0.3}
                 sub="个人纪录" color="#4ade80" />
             </div>
 
@@ -287,12 +309,12 @@ export function ProfilePage() {
                 transition={{ delay: 0.4 }}
                 className="rounded-xl p-4 mt-1"
                 style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                <p className="text-muted text-xs mb-3 tracking-widest">🎖️ 获得称号</p>
+                <p className="text-muted text-xs mb-3 tracking-widest flex items-center gap-1.5"><Award size={12} />获得称号</p>
                 <div className="flex flex-wrap gap-2">
                   {stats.world_first_count > 0 && (
                     <div className="flex items-center gap-2 px-3 py-2 rounded-lg"
                       style={{ background: 'rgb(var(--accent-primary)/ 0.1)', border: '1px solid rgb(var(--accent-primary)/ 0.25)' }}>
-                      <span className="text-base">🌐</span>
+                      <Globe size={15} className="shrink-0" style={{ color: 'rgb(var(--color-gold))' }} />
                       <div>
                         <p className="text-xs font-medium" style={{ color: 'rgb(var(--color-gold))' }}>世一网</p>
                         <p className="text-muted text-xs">已获得 {stats.world_first_count} 次</p>
@@ -321,17 +343,22 @@ export function ProfilePage() {
           className="mt-6 rounded-2xl p-5"
           style={{ background: 'linear-gradient(180deg, rgb(var(--accent-bg-end)/ 0.5) 0%, rgb(var(--accent-bg-mid)/ 0.8) 100%)', border: '1px solid rgb(var(--accent-primary)/ 0.12)' }}>
           <div className="flex items-center justify-between mb-3">
-            <h2 className="font-serif text-sm font-bold text-gold">🎫 我的邀请码</h2>
+            <h2 className="font-serif text-sm font-bold text-gold flex items-center gap-1.5"><Ticket size={13} />我的邀请码</h2>
             <button onClick={async () => {
               const inv = await api.auth.generateInvite()
               setInvites(prev => [{ ...inv, created_at: new Date().toISOString() }, ...prev])
             }}
-              className="text-xs px-3 py-1.5 rounded-lg transition-all hover:scale-105"
+              className="text-xs px-3 py-1.5 rounded-lg transition-all hover:scale-105 flex items-center gap-1"
               style={{ background: 'rgb(var(--accent-primary)/ 0.15)', border: '1px solid rgb(var(--accent-primary)/ 0.3)', color: 'rgb(var(--color-gold))' }}>
-              + 生成邀请码
+              <Plus size={12} /> 生成邀请码
             </button>
           </div>
-          {invites.length === 0 ? (
+          {invitesLoading ? (
+            <div className="flex items-center gap-2 text-muted text-xs py-1">
+              <Spinner size={13} />
+              加载邀请码中…
+            </div>
+          ) : invites.length === 0 ? (
             <p className="text-muted text-xs">还没有邀请码，点击上方按钮生成</p>
           ) : (
             <div className="space-y-2 max-h-40 overflow-y-auto">
@@ -353,7 +380,7 @@ export function ProfilePage() {
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}
             className="mt-6 rounded-2xl p-5"
             style={{ background: 'linear-gradient(180deg, rgba(255,100,50,0.05) 0%, rgb(var(--accent-bg-mid)/ 0.8) 100%)', border: '1px solid rgba(255,100,50,0.2)' }}>
-            <h2 className="font-serif text-sm font-bold text-orange-300 mb-1">⚡ 管理员面板</h2>
+            <h2 className="font-serif text-sm font-bold text-orange-300 mb-1 flex items-center gap-1.5"><Shield size={13} />管理员面板</h2>
 			<p className="text-muted text-[10px] mb-3">关闭邀请码时允许公开注册；开启后仅接受未使用的邀请码。</p>
             <AdminUserList />
           </motion.div>

@@ -1,0 +1,468 @@
+"use strict";
+import { Fragment, jsx, jsxs } from "react/jsx-runtime";
+import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
+import {
+  Swords,
+  Medal,
+  Trophy,
+  Star,
+  Sparkles,
+  Award,
+  Globe,
+  Ticket,
+  Plus,
+  Check,
+  X,
+  Pencil,
+  Camera,
+  Zap,
+  Shield
+} from "lucide-react";
+import { Layout } from "../components/Layout";
+import { Button, Input, Spinner } from "../components/ui";
+import { useAuth } from "../hooks/useAuth";
+import { api } from "../api/client";
+function AdminUserList() {
+  const [users, setUsers] = useState([]);
+  const [allUsers, setAllUsers] = useState(/* @__PURE__ */ new Map());
+  const [inviteRequired, setInviteRequired] = useState(false);
+  const [loadingUsers, setLoadingUsers] = useState(true);
+  useEffect(() => {
+    api.auth.adminListUsers().then((list) => {
+      setUsers(list);
+      const m = /* @__PURE__ */ new Map();
+      list.forEach((u) => m.set(u.id, u.username));
+      setAllUsers(m);
+    }).catch(() => {
+    }).finally(() => setLoadingUsers(false));
+    api.auth.adminInviteStatus().then((r) => setInviteRequired(r.invite_required)).catch(() => {
+    });
+  }, []);
+  return /* @__PURE__ */ jsxs("div", { children: [
+    /* @__PURE__ */ jsxs("div", { className: "flex items-center gap-3 mb-3 px-3 py-2 rounded-lg bg-white/5", children: [
+      /* @__PURE__ */ jsxs("span", { className: "text-xs text-white/70", children: [
+        "\u5DF2\u6CE8\u518C\u7528\u6237\uFF1A",
+        /* @__PURE__ */ jsx("span", { className: "text-gold font-bold", children: users.length }),
+        " \u4EBA"
+      ] }),
+      /* @__PURE__ */ jsxs("span", { className: "text-xs text-muted/50", children: [
+        "\uFF08\u6E38\u5BA2 ",
+        users.filter((u) => u.is_guest).length,
+        " / \u6B63\u5F0F ",
+        users.filter((u) => !u.is_guest).length,
+        "\uFF09"
+      ] })
+    ] }),
+    /* @__PURE__ */ jsxs("div", { className: "flex items-center justify-between mb-3 px-3 py-2 rounded-lg bg-white/5", children: [
+      /* @__PURE__ */ jsx("span", { className: "text-xs text-white/70", children: "\u9080\u8BF7\u7801\u6CE8\u518C" }),
+      /* @__PURE__ */ jsx(
+        "button",
+        {
+          onClick: async () => {
+            const res = await api.auth.adminToggleInvite(!inviteRequired);
+            setInviteRequired(res.invite_required);
+          },
+          className: `px-3 py-1 rounded text-[10px] font-medium transition-all ${inviteRequired ? "bg-green-500/15 text-green-400" : "bg-white/10 text-muted"}`,
+          children: inviteRequired ? "\u5DF2\u5F00\u542F\uFF08\u9700\u9080\u8BF7\u7801\uFF09" : "\u672A\u5F00\u542F\uFF08\u5F00\u653E\u6CE8\u518C\uFF09"
+        }
+      )
+    ] }),
+    loadingUsers ? /* @__PURE__ */ jsxs("div", { className: "flex items-center justify-center gap-2 py-5 text-muted text-xs", children: [
+      /* @__PURE__ */ jsx(Spinner, { size: 13 }),
+      "\u52A0\u8F7D\u7528\u6237\u5217\u8868\u4E2D\u2026"
+    ] }) : users.length === 0 ? /* @__PURE__ */ jsx("div", { className: "py-5 text-center text-muted/50 text-xs", children: "\u6682\u65E0\u6CE8\u518C\u7528\u6237" }) : /* @__PURE__ */ jsx("div", { className: "max-h-60 overflow-y-auto space-y-1.5", children: users.map((u) => /* @__PURE__ */ jsxs("div", { className: "flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 text-xs", children: [
+      /* @__PURE__ */ jsxs("span", { className: `font-medium ${u.disabled ? "text-muted line-through" : "text-white/80"}`, children: [
+        u.username,
+        u.is_admin && /* @__PURE__ */ jsx(Zap, { size: 11, className: "inline-block align-middle ml-1 text-orange-400" })
+      ] }),
+      /* @__PURE__ */ jsx("span", { className: "text-muted/50 flex-1 text-right truncate", children: u.invited_by ? `\u2190 ${allUsers.get(u.invited_by) || "?"}` : "" }),
+      /* @__PURE__ */ jsx(
+        "button",
+        {
+          onClick: async () => {
+            await api.auth.adminSetAdmin(u.id, !u.is_admin);
+            setUsers((prev) => prev.map((x) => x.id === u.id ? { ...x, is_admin: !x.is_admin } : x));
+          },
+          className: `px-1.5 py-0.5 rounded text-[9px] transition-all ${u.is_admin ? "bg-orange-400/15 text-orange-400" : "bg-white/5 text-muted/40"}`,
+          children: u.is_admin ? "\u7BA1\u7406\u5458" : "\u8BBE\u7BA1\u7406"
+        }
+      ),
+      /* @__PURE__ */ jsx(
+        "button",
+        {
+          onClick: async () => {
+            await api.auth.adminToggleUser(u.id, !u.disabled);
+            setUsers((prev) => prev.map((x) => x.id === u.id ? { ...x, disabled: !x.disabled } : x));
+          },
+          className: `px-1.5 py-0.5 rounded text-[9px] transition-all ${u.disabled ? "bg-green-500/15 text-green-400" : "bg-crimson/15 text-crimson/70"}`,
+          children: u.disabled ? "\u542F\u7528" : "\u7981\u7528"
+        }
+      )
+    ] }, u.id)) })
+  ] });
+}
+function StatCard({ icon: Icon, label, value, sub, color = "rgb(var(--color-gold))", delay = 0 }) {
+  return /* @__PURE__ */ jsxs(
+    motion.div,
+    {
+      initial: { opacity: 0, y: 16 },
+      animate: { opacity: 1, y: 0 },
+      transition: { delay, duration: 0.4 },
+      className: "rounded-xl p-5 flex flex-col gap-2 hover:shadow-lg hover:shadow-pink-500/5 transition-all",
+      style: { background: "linear-gradient(160deg, rgb(var(--accent-bg-end)/ 0.4), rgb(var(--accent-bg-mid)/ 0.6))", border: "1px solid rgb(var(--accent-primary)/ 0.08)" },
+      children: [
+        /* @__PURE__ */ jsx(Icon, { size: 22, strokeWidth: 1.75, style: { color }, className: "shrink-0" }),
+        /* @__PURE__ */ jsxs("div", { children: [
+          /* @__PURE__ */ jsx("div", { className: "text-2xl font-bold tabular-nums font-serif", style: { color }, children: value }),
+          sub && /* @__PURE__ */ jsx("div", { className: "text-muted text-xs mt-0.5", children: sub })
+        ] }),
+        /* @__PURE__ */ jsx("div", { className: "text-white/40 text-xs", children: label })
+      ]
+    }
+  );
+}
+function Top3Ring({ rate, games, top3 }) {
+  const pct = Math.round(rate * 100);
+  const circumference = 2 * Math.PI * 38;
+  const strokeDash = circumference * rate;
+  return /* @__PURE__ */ jsxs(
+    motion.div,
+    {
+      initial: { opacity: 0, scale: 0.8 },
+      animate: { opacity: 1, scale: 1 },
+      transition: { delay: 0.1, duration: 0.5, ease: "backOut" },
+      className: "flex flex-col items-center gap-3",
+      children: [
+        /* @__PURE__ */ jsxs("div", { className: "relative w-32 h-32", children: [
+          /* @__PURE__ */ jsxs("svg", { viewBox: "0 0 96 96", className: "w-full h-full -rotate-90", children: [
+            /* @__PURE__ */ jsx("circle", { cx: "48", cy: "48", r: "38", fill: "none", stroke: "rgba(255,255,255,0.05)", strokeWidth: "8" }),
+            /* @__PURE__ */ jsx(
+              motion.circle,
+              {
+                cx: "48",
+                cy: "48",
+                r: "38",
+                fill: "none",
+                stroke: "url(#profileGrad)",
+                strokeWidth: "8",
+                strokeLinecap: "round",
+                strokeDasharray: circumference,
+                initial: { strokeDashoffset: circumference },
+                animate: { strokeDashoffset: circumference - strokeDash },
+                transition: { delay: 0.4, duration: 1, ease: "easeOut" }
+              }
+            ),
+            /* @__PURE__ */ jsx("defs", { children: /* @__PURE__ */ jsxs("linearGradient", { id: "profileGrad", x1: "0%", y1: "0%", x2: "100%", y2: "0%", children: [
+              /* @__PURE__ */ jsx("stop", { offset: "0%", stopColor: "#FFD700" }),
+              /* @__PURE__ */ jsx("stop", { offset: "50%", stopColor: "rgb(var(--color-gold))" }),
+              /* @__PURE__ */ jsx("stop", { offset: "100%", stopColor: "rgb(var(--color-gold-light))" })
+            ] }) })
+          ] }),
+          /* @__PURE__ */ jsx("div", { className: "absolute inset-0 flex flex-col items-center justify-center", children: /* @__PURE__ */ jsxs("span", { className: "text-3xl font-bold font-serif", style: { color: "rgb(var(--color-gold))" }, children: [
+            pct,
+            "%"
+          ] }) })
+        ] }),
+        /* @__PURE__ */ jsxs("div", { className: "text-center", children: [
+          /* @__PURE__ */ jsx("p", { className: "text-white/70 text-sm font-medium", children: "\u524D\u4E09\u540D\u6BD4\u4F8B" }),
+          /* @__PURE__ */ jsxs("p", { className: "text-muted text-xs mt-0.5", children: [
+            top3,
+            " \u6B21 / ",
+            games,
+            " \u573A"
+          ] })
+        ] })
+      ]
+    }
+  );
+}
+export function ProfilePage() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const avatarInputRef = useRef(null);
+  const [editingName, setEditingName] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [nameError, setNameError] = useState("");
+  const [invites, setInvites] = useState([]);
+  const [invitesLoading, setInvitesLoading] = useState(true);
+  useEffect(() => {
+    api.auth.listInvites().then(setInvites).catch(() => {
+    }).finally(() => setInvitesLoading(false));
+  }, []);
+  useEffect(() => {
+    api.auth.myStats().then(setStats).catch(() => null).finally(() => setLoading(false));
+  }, []);
+  return /* @__PURE__ */ jsx(Layout, { children: /* @__PURE__ */ jsxs("div", { className: "max-w-2xl mx-auto px-4 sm:px-6 py-8", children: [
+    /* @__PURE__ */ jsxs(
+      motion.div,
+      {
+        initial: { opacity: 0, y: -12 },
+        animate: { opacity: 1, y: 0 },
+        className: "flex items-center gap-5 mb-8 p-6 rounded-2xl relative overflow-hidden",
+        style: { background: "linear-gradient(135deg, rgb(var(--accent-bg)/ 0.4) 0%, rgb(var(--accent-bg-mid)/ 0.8) 50%, rgb(var(--accent-bg-end)/ 0.4) 100%)", border: "1px solid rgb(var(--accent-primary)/ 0.15)" },
+        children: [
+          /* @__PURE__ */ jsx(
+            "div",
+            {
+              className: "absolute top-0 right-0 w-32 h-32 opacity-10 pointer-events-none",
+              style: { background: "radial-gradient(circle, rgb(var(--glow-color)/ 0.8), transparent 70%)" }
+            }
+          ),
+          /* @__PURE__ */ jsxs(
+            "div",
+            {
+              className: "w-16 h-16 rounded-full flex items-center justify-center shrink-0 text-2xl font-bold font-serif relative cursor-pointer group overflow-hidden",
+              style: { background: "linear-gradient(135deg, rgb(var(--accent-primary)/ 0.3), rgb(var(--accent-bg-end)/ 0.8))", border: "2px solid rgb(var(--accent-primary)/ 0.4)", color: "rgb(var(--color-gold))", boxShadow: "0 0 20px rgb(var(--accent-primary)/ 0.2)" },
+              onClick: () => avatarInputRef.current?.click(),
+              children: [
+                user?.avatar_url ? /* @__PURE__ */ jsx("img", { src: user.avatar_url, alt: "", className: "w-full h-full object-cover" }) : user?.username?.charAt(0).toUpperCase(),
+                /* @__PURE__ */ jsxs("div", { className: "absolute inset-0 bg-black/50 flex flex-col items-center justify-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity", children: [
+                  /* @__PURE__ */ jsx(Camera, { size: 14, className: "text-white" }),
+                  /* @__PURE__ */ jsx("span", { className: "text-white text-xs", children: "\u6362\u5934\u50CF" })
+                ] })
+              ]
+            }
+          ),
+          /* @__PURE__ */ jsx("input", { ref: avatarInputRef, type: "file", accept: "image/*", className: "hidden", onChange: async (e) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            const fd = new FormData();
+            fd.append("avatar", file);
+            try {
+              await api.auth.uploadAvatar(fd);
+              window.location.reload();
+            } catch {
+            }
+          } }),
+          /* @__PURE__ */ jsxs("div", { className: "relative", children: [
+            editingName ? /* @__PURE__ */ jsxs("form", { onSubmit: async (e) => {
+              e.preventDefault();
+              if (!newName.trim() || newName.trim() === user?.username) {
+                setEditingName(false);
+                return;
+              }
+              try {
+                await api.auth.updateMe(newName.trim());
+                setEditingName(false);
+                window.location.reload();
+              } catch (err) {
+                setNameError(err.message);
+              }
+            }, className: "flex items-center gap-2", children: [
+              /* @__PURE__ */ jsx("div", { className: "w-40", children: /* @__PURE__ */ jsx(
+                Input,
+                {
+                  type: "text",
+                  value: newName,
+                  onChange: (e) => {
+                    setNewName(e.target.value);
+                    setNameError("");
+                  },
+                  className: "text-lg font-bold font-serif",
+                  autoFocus: true
+                }
+              ) }),
+              /* @__PURE__ */ jsx("button", { type: "submit", className: "text-green-400 text-sm inline-flex items-center", "aria-label": "\u786E\u8BA4\u6539\u540D", children: /* @__PURE__ */ jsx(Check, { size: 14 }) }),
+              /* @__PURE__ */ jsx("button", { type: "button", onClick: () => setEditingName(false), className: "text-muted text-sm inline-flex items-center", "aria-label": "\u53D6\u6D88\u6539\u540D", children: /* @__PURE__ */ jsx(X, { size: 14 }) }),
+              nameError && /* @__PURE__ */ jsx("span", { className: "text-crimson text-xs", children: nameError })
+            ] }) : /* @__PURE__ */ jsxs("h1", { className: "font-serif text-2xl font-bold text-gold tracking-wide cursor-pointer group", onClick: () => {
+              setEditingName(true);
+              setNewName(user?.username || "");
+            }, children: [
+              user?.username,
+              /* @__PURE__ */ jsx("span", { className: "text-muted/0 group-hover:text-muted/50 text-xs ml-2 transition-colors inline-flex items-center align-middle", children: /* @__PURE__ */ jsx(Pencil, { size: 12 }) })
+            ] }),
+            /* @__PURE__ */ jsx("p", { className: "text-pink-300/50 text-sm mt-0.5 font-serif italic", children: stats?.total_games ? `\u5F81\u6218 ${stats.total_games} \u573A\uFF0C\u82F1\u59FF\u98D2\u723D (\u0E07 \u2022\u0300_\u2022\u0301)\u0E07 \u2727` : "\u4F20\u8BF4\u5C1A\u672A\u5F00\u59CB\u2026 (\uFF61\u2022\u0301\uFE3F\u2022\u0300\uFF61)" })
+          ] })
+        ]
+      }
+    ),
+    loading ? /* @__PURE__ */ jsxs("div", { className: "flex flex-col items-center justify-center gap-3 py-16", children: [
+      /* @__PURE__ */ jsx(Spinner, { size: 22 }),
+      /* @__PURE__ */ jsx("p", { className: "text-pink-300/50 font-serif text-sm", children: "\uFF5E \u7FFB\u9605\u6218\u7EE9\u53E4\u5377\u4E2D \uFF5E \u266A" })
+    ] }) : !stats || stats.total_games === 0 ? /* @__PURE__ */ jsxs(
+      motion.div,
+      {
+        initial: { opacity: 0 },
+        animate: { opacity: 1 },
+        className: "text-center py-16 rounded-2xl",
+        style: { background: "linear-gradient(160deg, rgb(var(--accent-bg-end)/ 0.5), rgb(var(--accent-bg-mid)/ 0.8))", border: "1px dashed rgb(var(--accent-primary)/ 0.2)" },
+        children: [
+          /* @__PURE__ */ jsx("div", { className: "text-5xl mb-4", children: "\u{1F338}" }),
+          /* @__PURE__ */ jsx("p", { className: "text-gold text-base font-serif mb-2", children: "\u4F20\u8BF4\u7684\u7BC7\u7AE0\u5C1A\u672A\u4E66\u5199\u2026" }),
+          /* @__PURE__ */ jsx("p", { className: "text-pink-300/40 text-sm mb-6 font-serif", children: "\u8E0F\u5165\u6218\u573A\uFF0C\u7528\u5B9E\u529B\u523B\u4E0B\u4F60\u7684\u540D\u5B57\uFF01\u2727" }),
+          /* @__PURE__ */ jsx(Button, { onClick: () => navigate("/"), icon: /* @__PURE__ */ jsx(Swords, { size: 14 }), children: "\u524D\u5F80\u6218\u573A\u5927\u5385" })
+        ]
+      }
+    ) : /* @__PURE__ */ jsxs(Fragment, { children: [
+      /* @__PURE__ */ jsxs("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6", children: [
+        /* @__PURE__ */ jsx(
+          motion.div,
+          {
+            initial: { opacity: 0, x: -16 },
+            animate: { opacity: 1, x: 0 },
+            transition: { delay: 0.05 },
+            className: "rounded-2xl p-6 flex items-center justify-center",
+            style: { background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" },
+            children: /* @__PURE__ */ jsx(Top3Ring, { rate: stats.top3_rate, games: stats.total_games, top3: stats.top3_games })
+          }
+        ),
+        /* @__PURE__ */ jsxs("div", { className: "flex flex-col gap-3", children: [
+          /* @__PURE__ */ jsx(StatCard, { icon: Swords, label: "\u53C2\u4E0E\u573A\u6570", value: stats.total_games, sub: "\u573A\u5B8C\u6574\u5BF9\u5C40", delay: 0.1 }),
+          /* @__PURE__ */ jsx(
+            StatCard,
+            {
+              icon: Medal,
+              label: "\u7B2C\u4E00\u540D\u6B21\u6570",
+              value: stats.first_games,
+              sub: stats.total_games > 0 ? `${Math.round(stats.first_games / stats.total_games * 100)}% \u7684\u5BF9\u5C40` : "",
+              color: "#FFD700",
+              delay: 0.15
+            }
+          )
+        ] })
+      ] }),
+      /* @__PURE__ */ jsxs("div", { className: "grid grid-cols-2 sm:grid-cols-3 gap-3", children: [
+        /* @__PURE__ */ jsx(
+          StatCard,
+          {
+            icon: Trophy,
+            label: "\u524D\u4E09\u540D\u6B21\u6570",
+            value: stats.top3_games,
+            delay: 0.2,
+            sub: `\u5171 ${stats.total_games} \u573A`
+          }
+        ),
+        /* @__PURE__ */ jsx(
+          StatCard,
+          {
+            icon: Star,
+            label: "\u5386\u53F2\u603B\u5F97\u5206",
+            value: stats.total_score,
+            delay: 0.25,
+            sub: "\u6240\u6709\u573A\u6B21\u5408\u8BA1",
+            color: "rgb(var(--color-gold-light))"
+          }
+        ),
+        /* @__PURE__ */ jsx(
+          StatCard,
+          {
+            icon: Sparkles,
+            label: "\u5355\u573A\u6700\u9AD8\u5206",
+            value: stats.best_score,
+            delay: 0.3,
+            sub: "\u4E2A\u4EBA\u7EAA\u5F55",
+            color: "#4ade80"
+          }
+        )
+      ] }),
+      stats.world_first_count > 0 && /* @__PURE__ */ jsxs(
+        motion.div,
+        {
+          initial: { opacity: 0, y: 12 },
+          animate: { opacity: 1, y: 0 },
+          transition: { delay: 0.4 },
+          className: "rounded-xl p-4 mt-1",
+          style: { background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" },
+          children: [
+            /* @__PURE__ */ jsxs("p", { className: "text-muted text-xs mb-3 tracking-widest flex items-center gap-1.5", children: [
+              /* @__PURE__ */ jsx(Award, { size: 12 }),
+              "\u83B7\u5F97\u79F0\u53F7"
+            ] }),
+            /* @__PURE__ */ jsx("div", { className: "flex flex-wrap gap-2", children: stats.world_first_count > 0 && /* @__PURE__ */ jsxs(
+              "div",
+              {
+                className: "flex items-center gap-2 px-3 py-2 rounded-lg",
+                style: { background: "rgb(var(--accent-primary)/ 0.1)", border: "1px solid rgb(var(--accent-primary)/ 0.25)" },
+                children: [
+                  /* @__PURE__ */ jsx(Globe, { size: 15, className: "shrink-0", style: { color: "rgb(var(--color-gold))" } }),
+                  /* @__PURE__ */ jsxs("div", { children: [
+                    /* @__PURE__ */ jsx("p", { className: "text-xs font-medium", style: { color: "rgb(var(--color-gold))" }, children: "\u4E16\u4E00\u7F51" }),
+                    /* @__PURE__ */ jsxs("p", { className: "text-muted text-xs", children: [
+                      "\u5DF2\u83B7\u5F97 ",
+                      stats.world_first_count,
+                      " \u6B21"
+                    ] })
+                  ] })
+                ]
+              }
+            ) })
+          ]
+        }
+      ),
+      /* @__PURE__ */ jsx(
+        motion.div,
+        {
+          initial: { opacity: 0 },
+          animate: { opacity: 1 },
+          transition: { delay: 0.5 },
+          className: "mt-6 text-center",
+          children: stats.top3_rate >= 0.7 ? /* @__PURE__ */ jsx("p", { className: "text-gold/60 text-sm font-serif", children: "\u4F20\u8BF4\u7EA7\u6218\u58EB\uFF01\u80DC\u7387\u8D85\u9AD8\uFF01(*\xB4\u25BD`*) \u30FD(\xB0\u3007\xB0)\uFF89" }) : stats.top3_rate >= 0.4 ? /* @__PURE__ */ jsx("p", { className: "text-gold/60 text-sm font-serif", children: "\u5B9E\u529B\u4E0D\u4FD7\uFF0C\u7EE7\u7EED\u52A0\u6CB9\uFF01(\u0E07 \u2022\u0300_\u2022\u0301)\u0E07" }) : stats.total_games > 0 ? /* @__PURE__ */ jsx("p", { className: "text-gold/60 text-sm font-serif", children: "\u591A\u6253\u591A\u7EC3\uFF0C\u4E0B\u6B21\u4E00\u5B9A\u884C\uFF01(\uFF61\u2022\u0301\uFE3F\u2022\u0300\uFF61) \u52A0\u6CB9\uFF5E" }) : null
+        }
+      )
+    ] }),
+    /* @__PURE__ */ jsxs(
+      motion.div,
+      {
+        initial: { opacity: 0, y: 20 },
+        animate: { opacity: 1, y: 0 },
+        transition: { delay: 0.5 },
+        className: "mt-6 rounded-2xl p-5",
+        style: { background: "linear-gradient(180deg, rgb(var(--accent-bg-end)/ 0.5) 0%, rgb(var(--accent-bg-mid)/ 0.8) 100%)", border: "1px solid rgb(var(--accent-primary)/ 0.12)" },
+        children: [
+          /* @__PURE__ */ jsxs("div", { className: "flex items-center justify-between mb-3", children: [
+            /* @__PURE__ */ jsxs("h2", { className: "font-serif text-sm font-bold text-gold flex items-center gap-1.5", children: [
+              /* @__PURE__ */ jsx(Ticket, { size: 13 }),
+              "\u6211\u7684\u9080\u8BF7\u7801"
+            ] }),
+            /* @__PURE__ */ jsxs(
+              "button",
+              {
+                onClick: async () => {
+                  const inv = await api.auth.generateInvite();
+                  setInvites((prev) => [{ ...inv, created_at: (/* @__PURE__ */ new Date()).toISOString() }, ...prev]);
+                },
+                className: "text-xs px-3 py-1.5 rounded-lg transition-all hover:scale-105 flex items-center gap-1",
+                style: { background: "rgb(var(--accent-primary)/ 0.15)", border: "1px solid rgb(var(--accent-primary)/ 0.3)", color: "rgb(var(--color-gold))" },
+                children: [
+                  /* @__PURE__ */ jsx(Plus, { size: 12 }),
+                  " \u751F\u6210\u9080\u8BF7\u7801"
+                ]
+              }
+            )
+          ] }),
+          invitesLoading ? /* @__PURE__ */ jsxs("div", { className: "flex items-center gap-2 text-muted text-xs py-1", children: [
+            /* @__PURE__ */ jsx(Spinner, { size: 13 }),
+            "\u52A0\u8F7D\u9080\u8BF7\u7801\u4E2D\u2026"
+          ] }) : invites.length === 0 ? /* @__PURE__ */ jsx("p", { className: "text-muted text-xs", children: "\u8FD8\u6CA1\u6709\u9080\u8BF7\u7801\uFF0C\u70B9\u51FB\u4E0A\u65B9\u6309\u94AE\u751F\u6210" }) : /* @__PURE__ */ jsx("div", { className: "space-y-2 max-h-40 overflow-y-auto", children: invites.map((inv) => /* @__PURE__ */ jsxs("div", { className: "flex items-center justify-between px-3 py-2 rounded-lg bg-white/5", children: [
+            /* @__PURE__ */ jsx("code", { className: "text-gold font-mono text-sm tracking-wider", children: inv.code }),
+            /* @__PURE__ */ jsx("span", { className: `text-[10px] ${inv.used_by ? "text-muted/50" : "text-green-400/70"}`, children: inv.used_by ? "\u5DF2\u4F7F\u7528" : "\u672A\u4F7F\u7528" })
+          ] }, inv.id)) }),
+          /* @__PURE__ */ jsx("p", { className: "text-muted/40 text-[10px] mt-2", children: "\u5206\u4EAB\u9080\u8BF7\u7801\u7ED9\u670B\u53CB\uFF0C\u4ED6\u4EEC\u6CE8\u518C\u65F6\u586B\u5199\u5373\u53EF" })
+        ]
+      }
+    ),
+    user?.is_admin && /* @__PURE__ */ jsxs(
+      motion.div,
+      {
+        initial: { opacity: 0, y: 20 },
+        animate: { opacity: 1, y: 0 },
+        transition: { delay: 0.6 },
+        className: "mt-6 rounded-2xl p-5",
+        style: { background: "linear-gradient(180deg, rgba(255,100,50,0.05) 0%, rgb(var(--accent-bg-mid)/ 0.8) 100%)", border: "1px solid rgba(255,100,50,0.2)" },
+        children: [
+          /* @__PURE__ */ jsxs("h2", { className: "font-serif text-sm font-bold text-orange-300 mb-1 flex items-center gap-1.5", children: [
+            /* @__PURE__ */ jsx(Shield, { size: 13 }),
+            "\u7BA1\u7406\u5458\u9762\u677F"
+          ] }),
+          /* @__PURE__ */ jsx("p", { className: "text-muted text-[10px] mb-3", children: "\u5173\u95ED\u9080\u8BF7\u7801\u65F6\u5141\u8BB8\u516C\u5F00\u6CE8\u518C\uFF1B\u5F00\u542F\u540E\u4EC5\u63A5\u53D7\u672A\u4F7F\u7528\u7684\u9080\u8BF7\u7801\u3002" }),
+          /* @__PURE__ */ jsx(AdminUserList, {})
+        ]
+      }
+    )
+  ] }) });
+}

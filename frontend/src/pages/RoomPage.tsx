@@ -138,6 +138,9 @@ export function RoomPage() {
 	const prefetchingAudioRef = useRef(new Set<string>())
   const currentRoundIdRef = useRef(0)
 
+  // B1：服务端权威回合时钟
+  const serverOffsetRef = useRef(0)          // 服务端时间 - 本地时间（毫秒）
+  const roundEndsAtRef = useRef(0)           // 当前回合截止（服务端 UnixMilli）
   // Duel mode state
   const [duelState, setDuelState] = useState<DuelState | null>(null)
   const [duelCurrentCardId, setDuelCurrentCardId] = useState<number | null>(null)
@@ -416,6 +419,12 @@ export function RoomPage() {
       case 'card_start': {
 		currentRoundIdRef.current = event.round_id ?? event.index ?? 0
 		void prefetchAudioUrls(event.next_audio_urls ?? [])
+        // B1：记录服务端权威回合截止时刻与时钟偏移（服务端时间 - 本地时间）。
+        // 当前 UI 倒计时仍由本地音频事件驱动，此偏移供后续精确倒计时使用。
+        if (typeof event.server_now === 'number' && typeof event.ends_at === 'number') {
+          serverOffsetRef.current = event.server_now - Date.now()
+          roundEndsAtRef.current = event.ends_at
+        }
         // 清除间隔倒计时，重置 remaining
         if (intervalTimerRef.current) { clearInterval(intervalTimerRef.current); intervalTimerRef.current = null }
         setIntervalCountdown(null)
@@ -867,6 +876,8 @@ export function RoomPage() {
     }
   }, [connected, user])
 
+  // B1：抢牌命令幂等 ID（单调递增），防网络重试导致重复判分
+  const grabCmdRef = useRef(0)
   const handleGrab = useCallback((cardId: number) => {
     if (isSpectator) {
       toast.show('👁 旁观者不能抢牌哦！(´-ω-`)', 'info', 1000)
@@ -876,7 +887,7 @@ export function RoomPage() {
       toast.show('🎵 等待下一张牌吧… (´。• ω •。`)', 'info', 1000)
       return
     }
-    send({ type: 'grab', card_id: cardId })
+    send({ type: 'grab', card_id: cardId, cmd_id: ++grabCmdRef.current })
   }, [send, currentReading, toast.show, isSpectator])
 
   const handleDuelGrab = useCallback((cardId: number) => {
@@ -888,7 +899,7 @@ export function RoomPage() {
       toast.show('🎵 等待下一轮吧… (´。• ω •。`)', 'info', 1000)
       return
     }
-    send({ type: 'grab', card_id: cardId })
+    send({ type: 'grab', card_id: cardId, cmd_id: ++grabCmdRef.current })
   }, [send, duelCurrentCardId, toast.show, isSpectator])
 
   const handleDuelGive = useCallback((cardId: number) => {
@@ -928,18 +939,18 @@ export function RoomPage() {
     navigate('/')
   }
 
+  // B1：客户端不再上报 audio_ended（服务端权威回合时钟负责切首）。
+  // 本地 ended 事件仅用于 ReadingPanel 内部状态，无需通知服务端。
+  const handleAudioEnded = useCallback(() => {}, [])
+
+  // B1：缓冲失败上报——服务端收到后可提前切首，避免全场卡死等待。
+  const handleBufferError = useCallback(() => {
+    send({ type: 'media_event', round_id: currentRoundIdRef.current, text: 'buffer_fail' })
+  }, [send])
+
   const handleLeaveRoom = () => {
     if (confirm('真的要撤退吗？(｡•́︿•̀｡) 战友们会想念你的！')) navigate('/')
   }
-
-  const handleAudioEnded = useCallback(() => {
-    // 重试最多3次，间隔500ms，确保消息送达
-    const trySend = (attempts: number) => {
-      send({ type: 'audio_ended', round_id: currentRoundIdRef.current })
-      if (attempts > 1) setTimeout(() => trySend(attempts - 1), 500)
-    }
-    trySend(3)
-  }, [send])
 
   if (loading) return (
     <Layout>
@@ -1040,8 +1051,10 @@ export function RoomPage() {
           countdown={countdown}
           intervalCountdown={intervalCountdown}
           onAudioEnded={handleAudioEnded}
+          onBufferError={handleBufferError}
           isLastCard={isLastCard}
         />
+
 
         {/* 刚加入进行中游戏的提示 */}
         {justJoined && !isSpectator && (

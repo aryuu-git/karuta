@@ -1,11 +1,18 @@
 import { useState, useEffect, type FormEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
+// 图标统一走 lucide-react（映射约定见 A3.1–A3.4）
+import {
+  Swords, ArrowLeft, Check, Layers, Timer, Bot, Crown, Gamepad2, Minus, Plus,
+  RefreshCw, FlipHorizontal2, Wrench, Users, EyeOff, Target, Snail, Zap, Shuffle,
+  Tornado, Music, Hourglass, Dices, Play, AlertCircle,
+} from 'lucide-react'
 import { Layout } from '../components/Layout'
-import { Button } from '../components/ui'
+import { Button, Spinner } from '../components/ui'
 import { api } from '../api/client'
 import type { Deck, Room } from '../api/types'
 
+/** 新建战场页：牌组/规则配置 → 创建成功后展示邀请码（表单含加载/空/错误态）。 */
 export function NewRoomPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -56,6 +63,7 @@ export function NewRoomPage() {
       .finally(() => setLoadingDecks(false))
   }, [])
 
+  // 提交建房：按模式组装参数调用创建接口，成功后切换到邀请码展示态
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     if (!selectedDeckId) return
@@ -80,6 +88,7 @@ export function NewRoomPage() {
     }
   }
 
+  // 复制邀请码到剪贴板，2 秒后自动复位“已复制”提示
   const copyCode = async () => {
     if (!createdRoom) return
     await navigator.clipboard.writeText(createdRoom.code).catch(() => null)
@@ -96,11 +105,12 @@ export function NewRoomPage() {
           <div className="absolute top-0 right-0 w-24 h-24 opacity-10 pointer-events-none"
             style={{ background: 'radial-gradient(circle, rgb(var(--glow-color)/ 0.8), transparent 70%)' }} />
           <div className="flex items-center gap-4 relative">
-            <button onClick={() => navigate(-1)} className="text-pink-300/50 hover:text-gold transition-all duration-200 text-sm hover:scale-110">
-              ← 撤退
+            <button onClick={() => navigate(-1)} className="text-pink-300/50 hover:text-gold transition-all duration-200 text-sm hover:scale-110 flex items-center gap-1">
+              <ArrowLeft size={14} />
+              撤退
             </button>
             <div>
-              <h1 className="font-serif text-xl text-gold font-bold tracking-wide">⚔️ 开辟战场！</h1>
+              <h1 className="font-serif text-xl text-gold font-bold tracking-wide flex items-center gap-2"><Swords size={18} />开辟战场！</h1>
               <p className="text-pink-300/60 text-xs mt-0.5 font-serif italic">调配阵容、设置规则，向命运宣战 ✧</p>
             </div>
           </div>
@@ -128,15 +138,16 @@ export function NewRoomPage() {
               <motion.p
                 initial={{ opacity: 0 }}
                 animate={{ opacity: copied ? 1 : 0 }}
-                className="text-green-400 text-xs mb-1"
+                className="text-green-400 text-xs mb-1 flex items-center justify-center gap-1"
               >
-                复制成功 ✓ 快去分享！
+                <Check size={12} />
+                复制成功 快去分享！
               </motion.p>
               <p className="text-muted text-xs mb-8">
                 点击复制 · 发给好友 · 一起来战！
               </p>
               {/* 进入房间主按钮 */}
-              <Button size="lg" className="w-full font-serif" onClick={() => navigate(`/rooms/${createdRoom.id}`)}>
+              <Button size="lg" className="w-full font-serif" icon={<Play size={16} />} onClick={() => navigate(`/rooms/${createdRoom.id}`)}>
                 「冲进去！」ヽ(°〇°)ﾉ
               </Button>
             </motion.div>
@@ -154,11 +165,13 @@ export function NewRoomPage() {
               >
                 {/* Deck selection */}
                 <div>
-                  <label className="text-gold/70 text-xs block mb-3 tracking-widest font-serif">
-                    🃏 选择作战牌组 *
+                  <label className="text-gold/70 text-xs mb-3 tracking-widest font-serif flex items-center gap-1.5">
+                    <Layers size={12} />
+                    选择作战牌组 *
                   </label>
                   {loadingDecks ? (
-                    <div className="text-muted text-sm animate-pulse py-4 text-center">
+                    <div className="text-muted text-sm py-4 flex items-center justify-center gap-2">
+                      <Spinner size={14} />
                       加载牌组中… (｡･ω･｡)
                     </div>
                   ) : decks.length === 0 ? (
@@ -193,14 +206,14 @@ export function NewRoomPage() {
                               border: '1px solid rgb(var(--accent-primary)/ 0.2)',
                             }}
                           >
-                            歌
+                            <Music size={16} />
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="font-sans font-medium truncate">{deck.name}</div>
                             <div className="text-xs text-muted">{deck.card_count} 张</div>
                           </div>
                           {selectedDeckId === deck.id && (
-                            <span className="text-gold text-sm shrink-0">✓</span>
+                            <Check size={14} className="text-gold shrink-0" />
                           )}
                         </button>
                       ))}
@@ -211,7 +224,8 @@ export function NewRoomPage() {
                 {/* Interval slider */}
                 <div>
                   <label className="text-gold/70 text-xs block mb-3 tracking-widest font-serif">
-                    ⏱️ 每张牌间隔时间:{' '}
+                    <Timer size={12} className="inline-block align-middle mr-1.5" />
+                    每张牌间隔时间:{' '}
                     <span className="text-gold font-medium">{intervalSec} 秒</span>
                     {intervalSec <= 5 && <span className="text-crimson ml-1 text-xs">（地狱难度 (ﾟДﾟ；)）</span>}
                     {intervalSec >= 20 && <span className="text-green-400 ml-1 text-xs">（休闲模式 (*´▽`*)）</span>}
@@ -236,8 +250,9 @@ export function NewRoomPage() {
 
                 {/* Mode selection */}
                 <div>
-                  <label className="text-gold/70 text-xs block mb-3 tracking-widest font-serif">
-                    🎭 游戏模式
+                  <label className="text-gold/70 text-xs mb-3 tracking-widest font-serif flex items-center gap-1.5">
+                    <Gamepad2 size={12} />
+                    游戏模式
                   </label>
                   <div className="grid grid-cols-3 gap-2">
                     <button
@@ -250,7 +265,7 @@ export function NewRoomPage() {
                           : 'border-border hover:border-gold/40 text-white/70 hover:text-white',
                       ].join(' ')}
                     >
-                      <span className="text-xl">🤖</span>
+                      <Bot size={20} />
                       <span className="text-xs font-medium">自动模式</span>
                       <span className="text-xs text-muted text-center leading-relaxed">系统自动播放</span>
                     </button>
@@ -264,7 +279,7 @@ export function NewRoomPage() {
                           : 'border-border hover:border-gold/40 text-white/70 hover:text-white',
                       ].join(' ')}
                     >
-                      <span className="text-xl">👑</span>
+                      <Crown size={20} />
                       <span className="text-xs font-medium">裁判模式</span>
                       <span className="text-xs text-muted text-center leading-relaxed">房主手动选牌</span>
                     </button>
@@ -278,7 +293,7 @@ export function NewRoomPage() {
                           : 'border-border hover:border-gold/40 text-white/70 hover:text-white',
                       ].join(' ')}
                     >
-                      <span className="text-xl">⚔️</span>
+                      <Swords size={20} />
                       <span className="text-xs font-medium">对阵模式 <span className="text-[9px] px-1 py-0.5 rounded bg-crimson/20 text-crimson/80 ml-0.5">内测</span></span>
                       <span className="text-xs text-muted text-center leading-relaxed">1v1 花牌决斗</span>
                     </button>
@@ -289,7 +304,7 @@ export function NewRoomPage() {
                 {selectedMode === 'duel' && (
                   <div className="rounded-xl p-4"
                     style={{ background: 'linear-gradient(135deg, rgb(var(--accent-bg)/ 0.15), rgb(var(--accent-bg-mid)/ 0.4))', border: '1px solid rgb(var(--accent-primary)/ 0.12)' }}>
-                    <h3 className="text-gold/80 text-xs font-serif mb-3">⚔️ 对阵配置</h3>
+                    <h3 className="text-gold/80 text-xs font-serif mb-3 flex items-center gap-1.5"><Swords size={12} />对阵配置</h3>
                     <div className="space-y-3">
                       {/* 总牌数 */}
                       <div className="flex items-center justify-between">
@@ -299,11 +314,11 @@ export function NewRoomPage() {
                         </div>
                         <div className="flex items-center rounded-lg overflow-hidden" style={{ border: '1px solid rgb(var(--accent-primary)/ 0.2)' }}>
                           <button type="button" onClick={() => setDuelTotalCards(Math.max(10, duelTotalCards - 10))}
-                            className="px-2.5 py-1 text-gold/70 hover:text-gold hover:bg-gold/10 transition-colors text-sm font-bold">-</button>
+                            className="px-2.5 py-1 text-gold/70 hover:text-gold hover:bg-gold/10 transition-colors text-sm font-bold inline-flex items-center"><Minus size={12} /></button>
                           <span className="w-10 text-center text-sm text-white/90 font-medium py-1"
                             style={{ background: 'rgb(var(--accent-primary)/ 0.05)' }}>{duelTotalCards}</span>
                           <button type="button" onClick={() => setDuelTotalCards(Math.min(100, duelTotalCards + 10))}
-                            className="px-2.5 py-1 text-gold/70 hover:text-gold hover:bg-gold/10 transition-colors text-sm font-bold">+</button>
+                            className="px-2.5 py-1 text-gold/70 hover:text-gold hover:bg-gold/10 transition-colors text-sm font-bold inline-flex items-center"><Plus size={12} /></button>
                         </div>
                       </div>
                       {/* 每轮时间 */}
@@ -314,11 +329,11 @@ export function NewRoomPage() {
                         </div>
                         <div className="flex items-center rounded-lg overflow-hidden" style={{ border: '1px solid rgb(var(--accent-primary)/ 0.2)' }}>
                           <button type="button" onClick={() => setDuelRoundTime(Math.max(30, duelRoundTime - 10))}
-                            className="px-2.5 py-1 text-gold/70 hover:text-gold hover:bg-gold/10 transition-colors text-sm font-bold">-</button>
+                            className="px-2.5 py-1 text-gold/70 hover:text-gold hover:bg-gold/10 transition-colors text-sm font-bold inline-flex items-center"><Minus size={12} /></button>
                           <span className="w-10 text-center text-sm text-white/90 font-medium py-1"
                             style={{ background: 'rgb(var(--accent-primary)/ 0.05)' }}>{duelRoundTime}s</span>
                           <button type="button" onClick={() => setDuelRoundTime(Math.min(120, duelRoundTime + 10))}
-                            className="px-2.5 py-1 text-gold/70 hover:text-gold hover:bg-gold/10 transition-colors text-sm font-bold">+</button>
+                            className="px-2.5 py-1 text-gold/70 hover:text-gold hover:bg-gold/10 transition-colors text-sm font-bold inline-flex items-center"><Plus size={12} /></button>
                         </div>
                       </div>
                       {/* 拍牌次数 */}
@@ -329,11 +344,11 @@ export function NewRoomPage() {
                         </div>
                         <div className="flex items-center rounded-lg overflow-hidden" style={{ border: '1px solid rgb(var(--accent-primary)/ 0.2)' }}>
                           <button type="button" onClick={() => setDuelGrabChances(Math.max(1, duelGrabChances - 1))}
-                            className="px-2.5 py-1 text-gold/70 hover:text-gold hover:bg-gold/10 transition-colors text-sm font-bold">-</button>
+                            className="px-2.5 py-1 text-gold/70 hover:text-gold hover:bg-gold/10 transition-colors text-sm font-bold inline-flex items-center"><Minus size={12} /></button>
                           <span className="w-10 text-center text-sm text-white/90 font-medium py-1"
                             style={{ background: 'rgb(var(--accent-primary)/ 0.05)' }}>{duelGrabChances}</span>
                           <button type="button" onClick={() => setDuelGrabChances(Math.min(5, duelGrabChances + 1))}
-                            className="px-2.5 py-1 text-gold/70 hover:text-gold hover:bg-gold/10 transition-colors text-sm font-bold">+</button>
+                            className="px-2.5 py-1 text-gold/70 hover:text-gold hover:bg-gold/10 transition-colors text-sm font-bold inline-flex items-center"><Plus size={12} /></button>
                         </div>
                       </div>
                       {/* 最大轮次 */}
@@ -344,11 +359,11 @@ export function NewRoomPage() {
                         </div>
                         <div className="flex items-center rounded-lg overflow-hidden" style={{ border: '1px solid rgb(var(--accent-primary)/ 0.2)' }}>
                           <button type="button" onClick={() => setDuelMaxRounds(Math.max(0, duelMaxRounds - 5))}
-                            className="px-2.5 py-1 text-gold/70 hover:text-gold hover:bg-gold/10 transition-colors text-sm font-bold">-</button>
+                            className="px-2.5 py-1 text-gold/70 hover:text-gold hover:bg-gold/10 transition-colors text-sm font-bold inline-flex items-center"><Minus size={12} /></button>
                           <span className="w-10 text-center text-sm text-white/90 font-medium py-1"
                             style={{ background: 'rgb(var(--accent-primary)/ 0.05)' }}>{duelMaxRounds || '∞'}</span>
                           <button type="button" onClick={() => setDuelMaxRounds(duelMaxRounds + 5)}
-                            className="px-2.5 py-1 text-gold/70 hover:text-gold hover:bg-gold/10 transition-colors text-sm font-bold">+</button>
+                            className="px-2.5 py-1 text-gold/70 hover:text-gold hover:bg-gold/10 transition-colors text-sm font-bold inline-flex items-center"><Plus size={12} /></button>
                         </div>
                       </div>
                       {/* 排阵时间 */}
@@ -359,11 +374,11 @@ export function NewRoomPage() {
                         </div>
                         <div className="flex items-center rounded-lg overflow-hidden" style={{ border: '1px solid rgb(var(--accent-primary)/ 0.2)' }}>
                           <button type="button" onClick={() => setDuelArrangeTime(Math.max(10, duelArrangeTime - 10))}
-                            className="px-2.5 py-1 text-gold/70 hover:text-gold hover:bg-gold/10 transition-colors text-sm font-bold">-</button>
+                            className="px-2.5 py-1 text-gold/70 hover:text-gold hover:bg-gold/10 transition-colors text-sm font-bold inline-flex items-center"><Minus size={12} /></button>
                           <span className="w-12 text-center text-sm text-white/90 font-medium py-1"
                             style={{ background: 'rgb(var(--accent-primary)/ 0.05)' }}>{duelArrangeTime}s</span>
                           <button type="button" onClick={() => setDuelArrangeTime(Math.min(300, duelArrangeTime + 10))}
-                            className="px-2.5 py-1 text-gold/70 hover:text-gold hover:bg-gold/10 transition-colors text-sm font-bold">+</button>
+                            className="px-2.5 py-1 text-gold/70 hover:text-gold hover:bg-gold/10 transition-colors text-sm font-bold inline-flex items-center"><Plus size={12} /></button>
                         </div>
                       </div>
                       {/* 开关项 */}
@@ -380,8 +395,9 @@ export function NewRoomPage() {
                             }`} />
                           </div>
                           <div>
-                            <p className={`text-xs font-medium ${duelFlip ? 'text-white/80' : 'text-white/40'}`}>
-                              🙃 对方区牌面倒置
+                            <p className={`text-xs font-medium flex items-center gap-1.5 ${duelFlip ? 'text-white/80' : 'text-white/40'}`}>
+                              <FlipHorizontal2 size={11} />
+                              对方区牌面倒置
                             </p>
                             <p className="text-[10px] text-muted/50">增加辨认难度！</p>
                           </div>
@@ -398,8 +414,9 @@ export function NewRoomPage() {
                             }`} />
                           </div>
                           <div>
-                            <p className={`text-xs font-medium ${duelRequeue ? 'text-white/80' : 'text-white/40'}`}>
-                              🔄 歌曲重入队
+                            <p className={`text-xs font-medium flex items-center gap-1.5 ${duelRequeue ? 'text-white/80' : 'text-white/40'}`}>
+                              <RefreshCw size={11} />
+                              歌曲重入队
                             </p>
                             <p className="text-[10px] text-muted/50">超时未抢的歌会再次出现</p>
                           </div>
@@ -419,8 +436,9 @@ export function NewRoomPage() {
                       <div className={`absolute top-0.5 w-4 h-4 rounded-full transition-all duration-200 ${training ? 'left-[18px] bg-orange-400' : 'left-0.5 bg-white/40'}`} />
                     </div>
                     <div>
-                      <p className={`text-sm font-medium ${training ? 'text-orange-300/90' : 'text-white/50'}`}>
-                        {training ? '🔧 房主测试模式' : '👥 多人模式'}
+                      <p className={`text-sm font-medium flex items-center gap-1.5 ${training ? 'text-orange-300/90' : 'text-white/50'}`}>
+                        {training ? <Wrench size={12} /> : <Users size={12} />}
+                        {training ? '房主测试模式' : '多人模式'}
                       </p>
                       <p className="text-[10px] text-muted/50">
                         {training ? '等待中可加入，开打后只能旁观' : '其他玩家可通过邀请码或大厅加入'}
@@ -431,8 +449,9 @@ export function NewRoomPage() {
 
                 {/* Mask (blur) option */}
                 <div>
-                  <label className="text-gold/70 text-xs block mb-3 tracking-widest font-serif">
-                    🎭 模糊牌面
+                  <label className="text-gold/70 text-xs mb-3 tracking-widest font-serif flex items-center gap-1.5">
+                    <EyeOff size={12} />
+                    模糊牌面
                   </label>
                   <div
                     onClick={() => setMaskEnabled(!maskEnabled)}
@@ -482,11 +501,11 @@ export function NewRoomPage() {
                 {/* 扣分设置 */}
                 <div className="rounded-xl p-4"
                   style={{ background: 'linear-gradient(135deg, rgb(var(--accent-bg)/ 0.15), rgb(var(--accent-bg-mid)/ 0.4))', border: '1px solid rgb(var(--accent-primary)/ 0.12)' }}>
-                  <h3 className="text-gold/80 text-xs font-serif mb-3">⚡ 惩罚规则</h3>
+                  <h3 className="text-gold/80 text-xs font-serif mb-3 flex items-center gap-1.5"><Zap size={12} />惩罚规则</h3>
                   <div className="space-y-3">
                     {[
-                      { label: '🎯 抢错扣分', desc: '点了不是当前播放的牌', checked: penaltyWrong, onChange: setPenaltyWrong },
-                      { label: '💨 抢慢扣分', desc: '牌已被别人先抢走', checked: penaltySlow, onChange: setPenaltySlow },
+                      { label: '抢错扣分', icon: Target, desc: '点了不是当前播放的牌', checked: penaltyWrong, onChange: setPenaltyWrong },
+                      { label: '抢慢扣分', icon: Snail, desc: '牌已被别人先抢走', checked: penaltySlow, onChange: setPenaltySlow },
                     ].map(item => (
                       <div key={item.label}
                         onClick={() => item.onChange(!item.checked)}
@@ -503,7 +522,8 @@ export function NewRoomPage() {
                           }`} />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className={`text-xs font-medium ${item.checked ? 'text-white/80' : 'text-white/40'}`}>
+                          <p className={`text-xs font-medium flex items-center gap-1.5 ${item.checked ? 'text-white/80' : 'text-white/40'}`}>
+                            <item.icon size={11} />
                             {item.label}
                           </p>
                           <p className="text-[10px] text-muted/50">{item.desc}</p>
@@ -524,11 +544,11 @@ export function NewRoomPage() {
                       </div>
                       <div className="flex items-center rounded-lg overflow-hidden" style={{ border: '1px solid rgb(var(--accent-primary)/ 0.2)' }}>
                         <button type="button" onClick={() => setPenaltyLast(Math.max(0, penaltyLast - 5))}
-                          className="px-2.5 py-1 text-gold/70 hover:text-gold hover:bg-gold/10 transition-colors text-sm font-bold">-</button>
+                          className="px-2.5 py-1 text-gold/70 hover:text-gold hover:bg-gold/10 transition-colors text-sm font-bold inline-flex items-center"><Minus size={12} /></button>
                         <span className="w-12 text-center text-sm text-white/90 font-medium py-1"
                           style={{ background: 'rgb(var(--accent-primary)/ 0.05)' }}>{penaltyLast || '全程'}</span>
                         <button type="button" onClick={() => setPenaltyLast(penaltyLast + 5)}
-                          className="px-2.5 py-1 text-gold/70 hover:text-gold hover:bg-gold/10 transition-colors text-sm font-bold">+</button>
+                          className="px-2.5 py-1 text-gold/70 hover:text-gold hover:bg-gold/10 transition-colors text-sm font-bold inline-flex items-center"><Plus size={12} /></button>
                       </div>
                     </div>
                   )}
@@ -537,7 +557,7 @@ export function NewRoomPage() {
                 {/* 牌面打乱（对阵模式不需要） */}
                 {selectedMode !== 'duel' && <div className="rounded-xl p-4"
                   style={{ background: 'linear-gradient(135deg, rgb(var(--accent-bg)/ 0.15), rgb(var(--accent-bg-mid)/ 0.4))', border: '1px solid rgb(var(--accent-primary)/ 0.12)' }}>
-                  <h3 className="text-gold/80 text-xs font-serif mb-3">🔀 牌面打乱</h3>
+                  <h3 className="text-gold/80 text-xs font-serif mb-3 flex items-center gap-1.5"><Shuffle size={12} />牌面打乱</h3>
                   <div onClick={() => setShuffleEnabled(!shuffleEnabled)}
                     className={`flex items-center gap-3 p-2.5 rounded-lg cursor-pointer transition-all ${
                       shuffleEnabled ? 'bg-gold/10 border border-gold/25' : 'bg-white/5 border border-white/5'
@@ -550,8 +570,9 @@ export function NewRoomPage() {
                       }`} />
                     </div>
                     <div>
-                      <p className={`text-xs font-medium ${shuffleEnabled ? 'text-white/80' : 'text-white/40'}`}>
-                        🌀 每轮抢完后打乱牌面
+                      <p className={`text-xs font-medium flex items-center gap-1.5 ${shuffleEnabled ? 'text-white/80' : 'text-white/40'}`}>
+                        <Tornado size={11} />
+                        每轮抢完后打乱牌面
                       </p>
                       <p className="text-[10px] text-muted/50">增加混乱度，考验记忆力！</p>
                     </div>
@@ -561,13 +582,13 @@ export function NewRoomPage() {
                       <span className="text-muted text-xs">剩余</span>
                       <div className="flex items-center rounded-lg overflow-hidden" style={{ border: '1px solid rgb(var(--accent-primary)/ 0.2)' }}>
                         <button type="button" onClick={() => setShuffleRemaining(Math.max(1, shuffleRemaining - 1))}
-                          className="px-2.5 py-1 text-gold/70 hover:text-gold hover:bg-gold/10 transition-colors text-sm font-bold">−</button>
+                          className="px-2.5 py-1 text-gold/70 hover:text-gold hover:bg-gold/10 transition-colors text-sm font-bold inline-flex items-center"><Minus size={12} /></button>
                         <input type="text" value={shuffleRemaining}
                           onChange={e => { const v = parseInt(e.target.value); if (!isNaN(v)) setShuffleRemaining(Math.min(99, Math.max(1, v))) }}
                           className="w-8 text-center text-sm text-white/90 font-medium bg-transparent outline-none py-1"
                           style={{ background: 'rgb(var(--accent-primary)/ 0.05)' }} />
                         <button type="button" onClick={() => setShuffleRemaining(Math.min(99, shuffleRemaining + 1))}
-                          className="px-2.5 py-1 text-gold/70 hover:text-gold hover:bg-gold/10 transition-colors text-sm font-bold">+</button>
+                          className="px-2.5 py-1 text-gold/70 hover:text-gold hover:bg-gold/10 transition-colors text-sm font-bold inline-flex items-center"><Plus size={12} /></button>
                       </div>
                       <span className="text-muted text-xs">张时开始打乱</span>
                     </div>
@@ -577,7 +598,7 @@ export function NewRoomPage() {
                 {/* 多音频牌模式（duel 模式强制 once，不展示选择） */}
                 {selectedMode !== 'duel' && <div className="rounded-xl p-4"
                   style={{ background: 'linear-gradient(135deg, rgb(var(--accent-bg)/ 0.15), rgb(var(--accent-bg-mid)/ 0.4))', border: '1px solid rgb(var(--accent-primary)/ 0.12)' }}>
-                  <h3 className="text-gold/80 text-xs font-serif mb-3">🎵 多音频牌</h3>
+                  <h3 className="text-gold/80 text-xs font-serif mb-3 flex items-center gap-1.5"><Music size={12} />多音频牌</h3>
                   <div className="flex gap-2">
                     <button type="button" onClick={() => setMultiAudioMode('all')}
                       className="flex-1 p-2.5 rounded-lg text-center transition-all"
@@ -604,16 +625,16 @@ export function NewRoomPage() {
                 {selectedMode !== 'duel' && (
                   <div className="rounded-xl p-4"
                     style={{ background: 'linear-gradient(135deg, rgb(var(--accent-bg)/ 0.15), rgb(var(--accent-bg-mid)/ 0.4))', border: '1px solid rgb(var(--accent-primary)/ 0.12)' }}>
-                    <h3 className="text-gold/80 text-xs font-serif mb-3">⏱️ 最短播放时间</h3>
+                    <h3 className="text-gold/80 text-xs font-serif mb-3 flex items-center gap-1.5"><Hourglass size={12} />最短播放时间</h3>
                     <div className="flex items-center justify-between">
                       <p className="text-xs text-white/60">短歌也要播够这么久才能进入下一首</p>
                       <div className="flex items-center rounded-lg overflow-hidden" style={{ border: '1px solid rgb(var(--accent-primary)/ 0.2)' }}>
                         <button type="button" onClick={() => setMinPlayTime(minPlayTime <= 10 ? 0 : minPlayTime - 5)}
-                          className="px-2.5 py-1 text-gold/70 hover:text-gold hover:bg-gold/10 transition-colors text-sm font-bold">-</button>
+                          className="px-2.5 py-1 text-gold/70 hover:text-gold hover:bg-gold/10 transition-colors text-sm font-bold inline-flex items-center"><Minus size={12} /></button>
                         <span className="w-12 text-center text-sm text-white/90 font-medium py-1"
                           style={{ background: 'rgb(var(--accent-primary)/ 0.05)' }}>{minPlayTime || '关闭'}</span>
                         <button type="button" onClick={() => setMinPlayTime(minPlayTime === 0 ? 10 : Math.min(60, minPlayTime + 5))}
-                          className="px-2.5 py-1 text-gold/70 hover:text-gold hover:bg-gold/10 transition-colors text-sm font-bold">+</button>
+                          className="px-2.5 py-1 text-gold/70 hover:text-gold hover:bg-gold/10 transition-colors text-sm font-bold inline-flex items-center"><Plus size={12} /></button>
                       </div>
                     </div>
                     {minPlayTime > 0 && <p className="text-muted/40 text-[10px] mt-2">即使歌曲不到 {minPlayTime}s，也会等到 {minPlayTime}s 再进入间隔</p>}
@@ -623,7 +644,7 @@ export function NewRoomPage() {
                 {/* 随机片段播放 */}
                 <div className="rounded-xl p-4"
                   style={{ background: 'linear-gradient(135deg, rgb(var(--accent-bg)/ 0.15), rgb(var(--accent-bg-mid)/ 0.4))', border: '1px solid rgb(var(--accent-primary)/ 0.12)' }}>
-                  <h3 className="text-gold/80 text-xs font-serif mb-3">🎲 随机片段</h3>
+                  <h3 className="text-gold/80 text-xs font-serif mb-3 flex items-center gap-1.5"><Dices size={12} />随机片段</h3>
                   <div onClick={() => setRandomStart(!randomStart)}
                     className={`flex items-center gap-3 p-2.5 rounded-lg cursor-pointer transition-all ${
                       randomStart ? 'bg-gold/10 border border-gold/25' : 'bg-white/5 border border-white/5'
@@ -636,8 +657,9 @@ export function NewRoomPage() {
                       }`} />
                     </div>
                     <div>
-                      <p className={`text-xs font-medium ${randomStart ? 'text-white/80' : 'text-white/40'}`}>
-                        🎵 每首歌从随机位置开始播放
+                      <p className={`text-xs font-medium flex items-center gap-1.5 ${randomStart ? 'text-white/80' : 'text-white/40'}`}>
+                        <Play size={11} />
+                        每首歌从随机位置开始播放
                       </p>
                       <p className="text-[10px] text-muted/50">不从头播，增加听歌难度！</p>
                     </div>
@@ -647,22 +669,23 @@ export function NewRoomPage() {
                       <span className="text-muted text-xs">最大起始位置</span>
                       <div className="flex items-center rounded-lg overflow-hidden" style={{ border: '1px solid rgb(var(--accent-primary)/ 0.2)' }}>
                         <button type="button" onClick={() => setRandomStartMax(Math.max(10, randomStartMax - 10))}
-                          className="px-2.5 py-1 text-gold/70 hover:text-gold hover:bg-gold/10 transition-colors text-sm font-bold">−</button>
+                          className="px-2.5 py-1 text-gold/70 hover:text-gold hover:bg-gold/10 transition-colors text-sm font-bold inline-flex items-center"><Minus size={12} /></button>
                         <input type="text" value={randomStartMax}
                           onChange={e => { const v = parseInt(e.target.value); if (!isNaN(v)) setRandomStartMax(Math.min(80, Math.max(10, v))) }}
                           className="w-8 text-center text-sm text-white/90 font-medium bg-transparent outline-none py-1"
                           style={{ background: 'rgb(var(--accent-primary)/ 0.05)' }} />
                         <span className="text-white/50 text-xs pr-1">%</span>
                         <button type="button" onClick={() => setRandomStartMax(Math.min(80, randomStartMax + 10))}
-                          className="px-2.5 py-1 text-gold/70 hover:text-gold hover:bg-gold/10 transition-colors text-sm font-bold">+</button>
+                          className="px-2.5 py-1 text-gold/70 hover:text-gold hover:bg-gold/10 transition-colors text-sm font-bold inline-flex items-center"><Plus size={12} /></button>
                       </div>
                     </div>
                   )}
                 </div>
 
                 {error && (
-                  <p className="text-crimson text-sm text-center bg-crimson/10 border border-crimson/30 rounded-lg px-3 py-2.5">
-                    😣 {error}
+                  <p className="text-crimson text-sm bg-crimson/10 border border-crimson/30 rounded-lg px-3 py-2.5 flex items-center justify-center gap-1.5">
+                    <AlertCircle size={14} className="shrink-0" />
+                    {error}
                   </p>
                 )}
 
@@ -672,6 +695,7 @@ export function NewRoomPage() {
                   size="lg"
                   loading={creating}
                   disabled={!selectedDeckId}
+                  icon={<Swords size={16} />}
                   className="w-full font-serif"
                 >
                   「开辟战场！」(ง •̀_•́)ง

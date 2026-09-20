@@ -1,16 +1,20 @@
 import { useState, type FormEvent, type KeyboardEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
+// 图标统一走 lucide-react（映射约定见 A3.1–A3.4）
+import { ArrowLeft, KeyRound, Play, Swords, AlertCircle } from 'lucide-react'
 import { Layout } from '../components/Layout'
 import { api } from '../api/client'
 import { Button, Input } from '../components/ui'
 
+/** 凭邀请码入房页：邀请码输入校验 → 加入房间，附跳转建房入口。 */
 export function JoinRoomPage() {
   const navigate = useNavigate()
   const [code, setCode] = useState('')
   const [joining, setJoining] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // 提交加入：邀请码规整后调用接口，成功跳房间详情，失败展示错误提示
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     const trimmed = code.trim().toUpperCase()
@@ -30,6 +34,7 @@ export function JoinRoomPage() {
     }
   }
 
+  // 输入过滤：仅放行字母数字与编辑类按键（邀请码字符集约束）
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     // 只允许输入字母数字（邀请码用）
     const allowed = /^[a-zA-Z0-9]$/
@@ -42,10 +47,11 @@ export function JoinRoomPage() {
     <Layout>
       <div className="max-w-sm mx-auto px-4 sm:px-6 py-16">
         <div className="flex items-center gap-4 mb-10">
-          <button onClick={() => navigate(-1)} className="text-muted hover:text-gold transition-all duration-200 text-sm hover:scale-110">
-            ← 撤退
+          <button onClick={() => navigate(-1)} className="text-muted hover:text-gold transition-all duration-200 text-sm hover:scale-110 flex items-center gap-1">
+            <ArrowLeft size={14} />
+            撤退
           </button>
-          <h1 className="font-serif text-xl text-gold">🔑 凭码入场！</h1>
+          <h1 className="font-serif text-xl text-gold flex items-center gap-2"><KeyRound size={18} />凭码入场！</h1>
         </div>
 
         <motion.div
@@ -83,9 +89,10 @@ export function JoinRoomPage() {
               <motion.p
                 initial={{ opacity: 0, y: -4 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="text-crimson text-sm text-center bg-crimson/10 border border-crimson/30 rounded-lg px-3 py-2.5"
+                className="text-crimson text-sm bg-crimson/10 border border-crimson/30 rounded-lg px-3 py-2.5 flex items-center justify-center gap-1.5"
               >
-                😣 {error}
+                <AlertCircle size={14} className="shrink-0" />
+                {error}
               </motion.p>
             )}
 
@@ -94,6 +101,7 @@ export function JoinRoomPage() {
               loading={joining}
               disabled={!code.trim()}
               size="lg"
+              icon={<Play size={16} />}
               className="w-full"
             >
               「冲进去！」ヽ(°〇°)ﾉ
@@ -107,7 +115,7 @@ export function JoinRoomPage() {
             onClick={() => navigate('/rooms/new')}
             className="text-gold hover:text-gold-light transition-colors underline underline-offset-2"
           >
-            这里开辟 ⚔️
+            这里开辟 <Swords size={11} className="inline-block align-middle ml-0.5" />
           </button>
         </p>
       </div>

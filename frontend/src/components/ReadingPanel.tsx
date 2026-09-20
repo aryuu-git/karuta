@@ -11,11 +11,13 @@ interface ReadingPanelProps {
   countdown: number | null
   intervalCountdown: number | null
   onAudioEnded?: () => void
+  /** B1：音频重试耗尽（缓冲失败）时上报服务端，服务端可提前切首防卡死 */
+  onBufferError?: () => void
   isLastCard?: boolean
 }
 
 // intervalSec 保留 prop 供外部传入，ReadingPanel 内部仅用 audio timeupdate 驱动进度条
-export function ReadingPanel({ hintText, audioUrl, startRatio, intervalSec: _intervalSec, isActive, isPaused, countdown, intervalCountdown, onAudioEnded, isLastCard }: ReadingPanelProps) {
+export function ReadingPanel({ hintText, audioUrl, startRatio, intervalSec: _intervalSec, isActive, isPaused, countdown, intervalCountdown, onAudioEnded, onBufferError, isLastCard }: ReadingPanelProps) {
   const audioRef = useRef<HTMLAudioElement>(null)
   const cleanupRef = useRef<(() => void) | null>(null)
   const [audioError, setAudioError] = useState(false)
@@ -56,6 +58,7 @@ export function ReadingPanel({ hintText, audioUrl, startRatio, intervalSec: _int
             retryTimer = setTimeout(tryPlay, 1000)
           } else if (!cancelled) {
             setAudioError(true)
+            onBufferError?.()
           }
         })
       }
