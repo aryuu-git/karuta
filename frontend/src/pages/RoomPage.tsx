@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
 import { Layout } from '../components/Layout'
 import { WaitingLobby } from '../components/WaitingLobby'
 import { ReadingPanel } from '../components/ReadingPanel'
@@ -17,11 +16,18 @@ import { Button, useToast } from '../components/ui'
 import { useRoomSocket } from '../hooks/useRoomSocket'
 import { useAuth } from '../hooks/useAuth'
 import { api } from '../api/client'
-import type { RoomState, Card, RoomPlayer, WSEvent, DuelState } from '../api/types'
+import type { RoomState, Card, RoomPlayer, WSEvent } from '../api/types'
+import { useSound } from '../features/room/useSound'
+import { useAudioPreload } from '../features/room/useAudioPreload'
+import { useChat } from '../features/room/useChat'
+import { useDuelState } from '../features/room/useDuelState'
+import { RoomControlBar } from '../features/room/RoomControlBar'
+import { MobileScoreBar } from '../features/room/MobileScoreBar'
+import { DuelStatusBar } from '../features/room/DuelStatusBar'
+import { ShuffleOverlay } from '../features/room/ShuffleOverlay'
+import type { GameResult } from '../features/room/types'
 
 interface CurrentReading { cardId: number; cardAudioId: number; audioUrl: string; hintText: string; startRatio?: number }
-interface GrabbedCard { id: number; display_text: string; cover_url: string; hint_text: string }
-interface GameResult { user_id: number; username: string; score: number; rank: number; penalty_count?: number; grabbed_cards?: GrabbedCard[] }
 
 // 前端打乱牌的显示顺序，只打乱一次，之后保持固定
 function shuffleCards(cards: Card[], orderRef: React.MutableRefObject<number[]>): Card[] {
@@ -40,72 +46,25 @@ function shuffleCards(cards: Card[], orderRef: React.MutableRefObject<number[]>)
   return arr
 }
 
-// 音效工具（用 Web Audio API 生成简单音效，不依赖外部文件）
-function useSound() {
-  const ctxRef = useRef<AudioContext | null>(null)
-  const getCtx = () => {
-    if (!ctxRef.current) ctxRef.current = new AudioContext()
-    return ctxRef.current
-  }
-  const play = useCallback((type: 'grab_ok' | 'grab_fail' | 'card_start' | 'game_over') => {
-    try {
-      const ctx = getCtx()
-      const osc = ctx.createOscillator()
-      const gain = ctx.createGain()
-      osc.connect(gain); gain.connect(ctx.destination)
-      const now = ctx.currentTime
-      switch (type) {
-        case 'grab_ok':
-          // 上升双音——成功感
-          osc.type = 'sine'
-          osc.frequency.setValueAtTime(440, now)
-          osc.frequency.linearRampToValueAtTime(660, now + 0.12)
-          gain.gain.setValueAtTime(0.3, now)
-          gain.gain.linearRampToValueAtTime(0, now + 0.25)
-          osc.start(now); osc.stop(now + 0.25)
-          break
-        case 'grab_fail':
-          // 下降短音——惩罚感
-          osc.type = 'sawtooth'
-          osc.frequency.setValueAtTime(300, now)
-          osc.frequency.linearRampToValueAtTime(150, now + 0.18)
-          gain.gain.setValueAtTime(0.25, now)
-          gain.gain.linearRampToValueAtTime(0, now + 0.2)
-          osc.start(now); osc.stop(now + 0.2)
-          break
-        case 'card_start':
-          // 轻柔提示音
-          osc.type = 'sine'
-          osc.frequency.setValueAtTime(523, now)
-          gain.gain.setValueAtTime(0.15, now)
-          gain.gain.linearRampToValueAtTime(0, now + 0.15)
-          osc.start(now); osc.stop(now + 0.15)
-          break
-        case 'game_over':
-          // 三连升调
-          const freqs = [523, 659, 784]
-          freqs.forEach((f, i) => {
-            const o2 = ctx.createOscillator()
-            const g2 = ctx.createGain()
-            o2.connect(g2); g2.connect(ctx.destination)
-            o2.type = 'sine'
-            o2.frequency.value = f
-            g2.gain.setValueAtTime(0.2, now + i * 0.15)
-            g2.gain.linearRampToValueAtTime(0, now + i * 0.15 + 0.25)
-            o2.start(now + i * 0.15); o2.stop(now + i * 0.15 + 0.25)
-          })
-          break
-      }
-    } catch { /* AudioContext 不支持时静默失败 */ }
-  }, [])
-  return play
-}
-
+/**
+ * 对战房间页（组装层）。
+ * 职责边界：
+ * - WS 事件路由：handleEvent 主 switch 保留在此处——事件处理与下方 15+ 房间级状态
+ *   （currentReading/gameStatus/players/打乱标记等）强耦合，整体下放需要向 hook
+ *   注入大量页面级依赖，得不偿失；仅自包含的聊天/丢蛋/编排处理收敛进对应 hook。
+ * - 房间级状态与布局组装留在页面；音效/预取/聊天/对阵状态由 features/room 的
+ *   hook 提供，展示性 JSX 抽到 features/room 展示组件。
+ * - B1 接线：grabCmdRef（幂等 cmd_id）、serverOffsetRef/roundEndsAtRef（服务端
+ *   回合时钟）、handleBufferError、handleAudioEnded（no-op）全部保留。
+ */
 export function RoomPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { user } = useAuth()
   const playSound = useSound()
+
+  // 反馈 toast：抢牌结果（全局 ToastProvider）
+  const toast = useToast()
 
   const roomId = parseInt(id ?? '0', 10)
 
@@ -132,48 +91,34 @@ export function RoomPage() {
   const intervalTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const [isJudgeWaiting, setIsJudgeWaiting] = useState(false)
   const [isSpectator, setIsSpectator] = useState(false)
-  const [preloadProgress, setPreloadProgress] = useState<{ loaded: number; total: number } | null>(null)
-  const preloadStartedRef = useRef(false)
-	const prefetchedAudioRef = useRef(new Map<string, HTMLAudioElement>())
-	const prefetchingAudioRef = useRef(new Set<string>())
   const currentRoundIdRef = useRef(0)
 
   // B1：服务端权威回合时钟
   const serverOffsetRef = useRef(0)          // 服务端时间 - 本地时间（毫秒）
   const roundEndsAtRef = useRef(0)           // 当前回合截止（服务端 UnixMilli）
-  // Duel mode state
-  const [duelState, setDuelState] = useState<DuelState | null>(null)
-  const [duelCurrentCardId, setDuelCurrentCardId] = useState<number | null>(null)
-  const [duelGiveCards, setDuelGiveCards] = useState<Array<{ id: number; display_text: string; cover_url: string }> | null>(null)
-  const [duelRound, setDuelRound] = useState(0)
-  const [duelRoundTimer, setDuelRoundTimer] = useState<number | null>(null)
-  const [duelEndData, setDuelEndData] = useState<{
-    winner: string; winnerId: number; isTie: boolean; rounds: number
-    p1: { id: number; username: string; grabbed: Array<{ id: number; display_text: string; cover_url: string }>; remaining: Array<{ id: number; display_text: string; cover_url: string }> }
-    p2: { id: number; username: string; grabbed: Array<{ id: number; display_text: string; cover_url: string }>; remaining: Array<{ id: number; display_text: string; cover_url: string }> }
-  } | null>(null)
-  const duelTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  // Duel seat state
-  const [duelSeats, setDuelSeats] = useState<{ seat1: { user_id: number; username: string } | null; seat2: { user_id: number; username: string } | null }>({ seat1: null, seat2: null })
+  // 音频预取：等待大厅全量封面 + 前三首音频，对局中由 next_audio_urls 滚动预取
+  const { preloadProgress, prefetchAudioUrls } = useAudioPreload(cards, gameStatus)
 
-  // Duel arranging state
-  const [duelArranging, setDuelArranging] = useState(false)
-  const [arrangeTimeout, setArrangeTimeout] = useState<number | null>(null)
-  const [arrangeP1Ready, setArrangeP1Ready] = useState(false)
-  const [arrangeP2Ready, setArrangeP2Ready] = useState(false)
-  const arrangeTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  // 聊天消息与丢蛋动画
+  const { chatMessages, eggEvent, onChatMessage, onEggThrow } = useChat()
 
-  // 聊天室
-  interface ChatMsg { id: number; user_id: number; username: string; role: string; text: string; isEgg?: boolean; fromName?: string; targetName?: string }
-  const [chatMessages, setChatMessages] = useState<ChatMsg[]>([])
-  const chatIdRef = useRef(0)
-
-  // 丢蛋动画
-  const [eggEvent, setEggEvent] = useState<{ id: number; fromName: string; targetName: string; isMe: boolean } | null>(null)
-
-  // 反馈 toast：抢牌结果（全局 ToastProvider）
-  const toast = useToast()
+  // 对阵模式全部状态（席位/编排/回合倒计时等）
+  const {
+    duelState, setDuelState,
+    duelCurrentCardId, setDuelCurrentCardId,
+    duelGiveCards, setDuelGiveCards,
+    duelRound, setDuelRound,
+    duelRoundTimer, setDuelRoundTimer,
+    duelEndData, setDuelEndData,
+    duelTimerRef,
+    duelSeats, setDuelSeats,
+    duelArranging,
+    arrangeTimeout,
+    arrangeP1Ready,
+    arrangeP2Ready,
+    onSeatUpdate, onArrangeStart, onArrangeState, onArrangeDone,
+  } = useDuelState()
 
   // 间隔倒计时：currentReading 变为 null 且游戏进行中时启动；暂停时冻结
   const intervalRemainingRef = useRef(0)
@@ -273,98 +218,6 @@ export function RoomPage() {
     prevBoardCountRef.current = boardCount
   }, [cardRemaining, shuffleThreshold, cards.length, toast.show])
 
-	const prefetchAudioUrls = useCallback(async (urls: string[]) => {
-		for (const url of urls) {
-			if (!url || prefetchedAudioRef.current.has(url) || prefetchingAudioRef.current.has(url)) continue
-			prefetchingAudioRef.current.add(url)
-			try {
-				await new Promise<void>((resolve) => {
-					const audio = new Audio()
-					let settled = false
-					const finish = () => {
-						if (settled) return
-						settled = true
-						prefetchedAudioRef.current.set(url, audio)
-						while (prefetchedAudioRef.current.size > 3) {
-							const oldest = prefetchedAudioRef.current.keys().next().value as string | undefined
-							if (!oldest) break
-							const oldAudio = prefetchedAudioRef.current.get(oldest)
-							oldAudio?.pause()
-							prefetchedAudioRef.current.delete(oldest)
-						}
-						resolve()
-					}
-					audio.addEventListener('canplaythrough', finish, { once: true })
-					audio.addEventListener('error', finish, { once: true })
-					audio.preload = 'auto'
-					audio.src = url
-					audio.load()
-					setTimeout(finish, 15000)
-				})
-			} finally {
-				prefetchingAudioRef.current.delete(url)
-			}
-		}
-	}, [])
-
-  // 等待大厅阶段加载全部轻量封面，但音频只预取前三首；之后滚动预取下一批。
-  useEffect(() => {
-    if (!cards.length || gameStatus !== 'waiting' || preloadStartedRef.current) return
-    preloadStartedRef.current = true
-
-    const items: { type: 'image' | 'audio'; url: string }[] = []
-	let audioSlots = 3
-	cards.forEach(card => {
-      if (card.cover_url) items.push({ type: 'image', url: card.cover_url })
-		if (audioSlots > 0 && card.audios?.length) {
-			for (const audio of card.audios) {
-				if (audioSlots <= 0) break
-				if (audio.audio_url) {
-					items.push({ type: 'audio', url: audio.audio_url })
-					audioSlots--
-				}
-			}
-		} else if (audioSlots > 0 && card.audio_url) {
-			items.push({ type: 'audio', url: card.audio_url })
-			audioSlots--
-      }
-    })
-    if (!items.length) return
-
-    setPreloadProgress({ loaded: 0, total: items.length })
-
-    // 浏览器预加载（确保解码完成）
-    let cancelled = false
-    ;(async () => {
-      let loaded = 0
-      const tick = () => {
-        loaded++
-        if (!cancelled) setPreloadProgress({ loaded, total: items.length })
-      }
-
-      for (const item of items) {
-        if (cancelled) break
-        try {
-          if (item.type === 'image') {
-            await new Promise<void>((resolve) => {
-              const img = new Image()
-              img.onload = () => { tick(); resolve() }
-              img.onerror = () => { tick(); resolve() }
-              img.src = item.url
-            })
-			} else {
-				await prefetchAudioUrls([item.url])
-				tick()
-          }
-        } catch {
-          tick()
-        }
-      }
-    })()
-
-    return () => { cancelled = true }
-  }, [cards, gameStatus, prefetchAudioUrls])
-
   const handleEvent = useCallback((event: WSEvent) => {
     switch (event.type) {
       case 'room_state': {
@@ -417,8 +270,8 @@ export function RoomPage() {
       }
 
       case 'card_start': {
-		currentRoundIdRef.current = event.round_id ?? event.index ?? 0
-		void prefetchAudioUrls(event.next_audio_urls ?? [])
+        currentRoundIdRef.current = event.round_id ?? event.index ?? 0
+        void prefetchAudioUrls(event.next_audio_urls ?? [])
         // B1：记录服务端权威回合截止时刻与时钟偏移（服务端时间 - 本地时间）。
         // 当前 UI 倒计时仍由本地音频事件驱动，此偏移供后续精确倒计时使用。
         if (typeof event.server_now === 'number' && typeof event.ends_at === 'number') {
@@ -586,33 +439,14 @@ export function RoomPage() {
         break
       }
 
-      case 'chat_message': {
-        setChatMessages(prev => [...prev, {
-          id: ++chatIdRef.current,
-          user_id: event.user_id,
-          username: event.username,
-          role: event.role,
-          text: event.text,
-        }])
+      // 聊天与丢蛋：状态收敛在 useChat
+      case 'chat_message':
+        onChatMessage(event)
         break
-      }
 
-      case 'egg_throw': {
-        const isMe = user?.id === event.target_id
-        setChatMessages(prev => [...prev, {
-          id: ++chatIdRef.current,
-          user_id: 0,
-          username: '',
-          role: '',
-          text: '',
-          isEgg: true,
-          fromName: event.from_name,
-          targetName: event.target_name,
-        }])
-        setEggEvent({ id: Date.now(), fromName: event.from_name, targetName: event.target_name, isMe })
-        setTimeout(() => setEggEvent(null), 2500)
+      case 'egg_throw':
+        onEggThrow(event, user?.id === event.target_id)
         break
-      }
 
       case 'room_closed': {
         toast.show('战场已解散，撤退中… (｡•́︿•̀｡)', 'info', 3000)
@@ -626,57 +460,27 @@ export function RoomPage() {
         break
       }
 
-      case 'seat_update': {
-        setDuelSeats({ seat1: event.seat1, seat2: event.seat2 })
+      case 'seat_update':
+        onSeatUpdate(event)
         break
-      }
 
       case 'seat_kicked': {
         toast.show('😯 你被房主从席位上移除了', 'info', 2000)
         break
       }
 
-      case 'duel_arrange_start': {
-        setDuelArranging(true)
-        setArrangeTimeout(event.timeout)
-        setArrangeP1Ready(false)
-        setArrangeP2Ready(false)
-        if (arrangeTimerRef.current) clearInterval(arrangeTimerRef.current)
-        arrangeTimerRef.current = setInterval(() => {
-          setArrangeTimeout(prev => {
-            if (prev === null || prev <= 1) {
-              if (arrangeTimerRef.current) { clearInterval(arrangeTimerRef.current); arrangeTimerRef.current = null }
-              return null
-            }
-            return prev - 1
-          })
-        }, 1000)
+      // 编排阶段：状态与计时收敛在 useDuelState
+      case 'duel_arrange_start':
+        onArrangeStart(event)
         break
-      }
 
-      case 'duel_arrange_state': {
-        if (!duelArranging) setDuelArranging(true)
-        setDuelState(prev => prev ? {
-          ...prev,
-          player1: { ...prev.player1, cards: event.player1_cards },
-          player2: { ...prev.player2, cards: event.player2_cards },
-        } : null)
-        setArrangeP1Ready(event.p1_ready)
-        setArrangeP2Ready(event.p2_ready)
+      case 'duel_arrange_state':
+        onArrangeState(event)
         break
-      }
 
-      case 'duel_arrange_done': {
-        setDuelArranging(false)
-        if (arrangeTimerRef.current) { clearInterval(arrangeTimerRef.current); arrangeTimerRef.current = null }
-        setArrangeTimeout(null)
-        setDuelState(prev => prev ? {
-          ...prev,
-          player1: { ...prev.player1, cards: event.player1_cards },
-          player2: { ...prev.player2, cards: event.player2_cards },
-        } : null)
+      case 'duel_arrange_done':
+        onArrangeDone(event)
         break
-      }
 
       case 'judge_waiting': {
         setIsJudgeWaiting(true)
@@ -865,7 +669,8 @@ export function RoomPage() {
         break
       }
     }
-  }, [user, roomId, playSound, toast.show, navigate, roomState, duelState, shufflePending, duelArranging, prefetchAudioUrls])
+    // duelArranging 的闭包新鲜度由 onArrangeState（依赖 duelArranging）等价保证
+  }, [user, roomId, playSound, toast.show, navigate, roomState, duelState, shufflePending, prefetchAudioUrls, onChatMessage, onEggThrow, onSeatUpdate, onArrangeStart, onArrangeState, onArrangeDone])
 
   const { send, connected } = useRoomSocket(roomId, handleEvent)
 
@@ -1104,98 +909,21 @@ export function RoomPage() {
           </div>
         )}
 
-        {/* 控制栏 */}
-        <div className="flex items-center gap-3 px-4 py-2"
-          style={{ background: 'rgb(var(--accent-bg-mid)/ 0.6)', borderBottom: '1px solid rgb(var(--accent-primary)/ 0.08)' }}>
-          {/* 连接状态 */}
-          <div className="flex items-center gap-1.5">
-            <motion.div animate={{ opacity: connected ? 1 : [1, 0.3, 1] }}
-              transition={{ duration: 1, repeat: connected ? 0 : Infinity }}
-              className={`w-1.5 h-1.5 rounded-full ${connected ? 'bg-green-400' : 'bg-crimson'}`} />
-            <span className="text-white/30 text-xs">{connected ? '已连接' : '重连中…'}</span>
-          </div>
-
-          {/* 房间码 */}
-          <div className="flex items-center gap-1.5 px-2 py-0.5 rounded"
-            style={{ background: 'rgb(var(--accent-primary)/ 0.05)', border: '1px solid rgb(var(--accent-primary)/ 0.1)' }}>
-            <span className="text-white/30 text-xs">房间</span>
-            <span className="text-gold/80 font-serif text-xs font-bold tracking-widest">{roomState.room.code}</span>
-          </div>
-
-          <div className="flex-1" />
-
-          {/* 房主控制 */}
-          {isHost && (
-            <motion.button onClick={handlePauseResume} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
-              style={{ background: isPaused ? 'rgb(var(--accent-primary)/ 0.15)' : 'rgba(255,255,255,0.05)', border: `1px solid ${isPaused ? 'rgb(var(--accent-primary)/ 0.4)' : 'rgba(255,255,255,0.08)'}`, color: isPaused ? 'rgb(var(--color-gold))' : 'rgba(255,255,255,0.5)' }}>
-              {isPaused ? '▶ 继续战斗！' : '⏸ 暂停'}
-            </motion.button>
-          )}
-          {isHost && (
-            <motion.button
-              onClick={() => api.rooms.nextCard(roomId).catch(() => null)}
-              whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-              className="px-3 py-1.5 rounded-lg text-xs transition-all"
-              style={{ background: 'rgba(255,165,0,0.1)', border: '1px solid rgba(255,165,0,0.25)', color: 'rgba(255,165,0,0.8)' }}
-              title="跳过当前牌，直接下一首">
-              ⏭ 跳过
-            </motion.button>
-          )}
-          {isHost ? (
-            <motion.button onClick={handleCloseRoom} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-              className="px-3 py-1.5 rounded-lg text-xs transition-all"
-              style={{ background: 'rgba(192,57,43,0.1)', border: '1px solid rgba(192,57,43,0.2)', color: 'rgba(192,57,43,0.7)' }}>
-              解散战场
-            </motion.button>
-          ) : (
-            <motion.button onClick={handleLeaveRoom} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-              className="px-3 py-1.5 rounded-lg text-xs transition-all"
-              style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.35)' }}>
-              溜了 (｀・ω・´)
-            </motion.button>
-          )}
-          {/* aryuu 专属：强制结束对局 */}
-          {user?.is_admin && (
-            <motion.button
-              onClick={async () => {
-                if (!confirm('强制结束本场对局？')) return
-                await api.rooms.forceEnd(roomId).catch(() => null)
-              }}
-              whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-              className="px-3 py-1.5 rounded-lg text-xs transition-all ml-1"
-              style={{ background: 'rgba(255,165,0,0.12)', border: '1px solid rgba(255,165,0,0.35)', color: 'rgba(255,165,0,0.9)' }}>
-              ⚡ 强制结束
-            </motion.button>
-          )}
-          {/* 跳到结算画面（调试用） */}
-          {(isHost || user?.is_admin) && gameStatus === 'reading' && (
-            <motion.button
-              onClick={() => {
-                if (!confirm('跳过剩余对局，直接进入结算画面？')) return
-                // 生成模拟的结算数据
-                const mockResults: GameResult[] = players
-                  .filter(p => p.role === 'player')
-                  .map((p, idx) => ({
-                    user_id: p.user_id,
-                    username: p.username,
-                    score: p.score,
-                    rank: idx + 1,
-                    penalty_count: 0,
-                    grabbed_cards: [],
-                  }))
-                  .sort((a, b) => b.score - a.score)
-                  .map((r, idx) => ({ ...r, rank: idx + 1 }))
-                setGameResults(mockResults)
-                setGameStatus('end')
-              }}
-              whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-              className="px-3 py-1.5 rounded-lg text-xs transition-all ml-1"
-              style={{ background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.35)', color: 'rgba(139,92,246,0.9)' }}>
-              🏁 跳到结算
-            </motion.button>
-          )}
-        </div>
+        {/* 控制栏（连接状态/房间码/房主控制/管理员操作/调试跳结算） */}
+        <RoomControlBar
+          connected={connected}
+          roomId={roomId}
+          roomCode={roomState.room.code}
+          isHost={isHost}
+          isPaused={isPaused}
+          isReading={gameStatus === 'reading'}
+          user={user}
+          players={players}
+          onPauseResume={handlePauseResume}
+          onCloseRoom={handleCloseRoom}
+          onLeaveRoom={handleLeaveRoom}
+          onDebugEnd={(results) => { setGameResults(results); setGameStatus('end') }}
+        />
 
         {/* 主体 */}
         {isDuelMode && duelState ? (
@@ -1289,56 +1017,24 @@ export function RoomPage() {
           </div>
         )}
 
-        {/* 移动端底部计分条 */}
+        {/* 移动端底部计分条（duel 模式不显示） */}
         {!isDuelMode && (
-          <div className="md:hidden"
-            style={{ background: 'rgb(var(--accent-bg-mid)/ 0.9)', borderTop: '1px solid rgb(var(--accent-primary)/ 0.08)' }}>
-            <div className="flex overflow-x-auto gap-1 px-3 py-2">
-              {[...players]
-                .filter(p => !(isJudgeMode && p.user_id === roomState.room.host_id))
-                .sort((a, b) => b.score - a.score).map((p, i) => {
-                const medals = ['🥇','🥈','🥉']
-                const isMe = p.user_id === user?.id
-                return (
-                  <div key={p.user_id}
-                    className="flex items-center gap-1 shrink-0 px-2 py-1 rounded-lg"
-                    style={{ background: isMe ? 'rgb(var(--accent-primary)/ 0.08)' : 'rgba(255,255,255,0.03)', border: `1px solid ${isMe ? 'rgb(var(--accent-primary)/ 0.2)' : 'rgba(255,255,255,0.04)'}` }}>
-                    <span className="text-xs">{medals[i] ?? `${i+1}.`}</span>
-                    <span className={`text-xs ${isMe ? 'text-gold font-medium' : 'text-white/60'} ${!p.online ? 'opacity-40' : ''}`}>
-                      {p.username}
-                    </span>
-                    <motion.span key={`${p.user_id}-${p.score}`}
-                      initial={{ scale: 1.5 }} animate={{ scale: 1 }} transition={{ duration: 0.3 }}
-                      className="text-xs font-bold tabular-nums"
-                      style={{ color: isMe ? 'rgb(var(--color-gold))' : 'rgba(255,255,255,0.4)' }}>
-                      {p.score}
-                    </motion.span>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
+          <MobileScoreBar
+            players={players}
+            currentUserId={user?.id ?? 0}
+            hostId={roomState.room.host_id}
+            isJudgeMode={isJudgeMode}
+          />
         )}
 
         {/* Duel 轮次/倒计时信息 */}
         {isDuelMode && duelState && (
-          <div className="flex items-center justify-center gap-4 px-4 py-1.5"
-            style={{ background: 'rgb(var(--accent-bg-mid)/ 0.8)', borderTop: '1px solid rgb(var(--accent-primary)/ 0.08)' }}>
-            <span className="text-muted text-xs">第 {duelRound} 轮</span>
-            {duelRoundTimer !== null && (
-              <motion.span
-                key={duelRoundTimer}
-                initial={{ scale: 1.3 }}
-                animate={{ scale: 1 }}
-                className={`text-sm font-bold tabular-nums ${duelRoundTimer <= 5 ? 'text-crimson' : 'text-gold/80'}`}
-              >
-                {duelRoundTimer}s
-              </motion.span>
-            )}
-            <span className="text-muted text-xs">
-              {duelState.player1.id === (user?.id ?? 0) ? duelState.p1_count : duelState.p2_count} 张 vs {duelState.player1.id === (user?.id ?? 0) ? duelState.p2_count : duelState.p1_count} 张
-            </span>
-          </div>
+          <DuelStatusBar
+            duelState={duelState}
+            duelRound={duelRound}
+            duelRoundTimer={duelRoundTimer}
+            currentUserId={user?.id ?? 0}
+          />
         )}
 
         {/* Duel 给牌弹窗 */}
@@ -1360,27 +1056,7 @@ export function RoomPage() {
         <EggAnimation event={eggEvent} />
 
         {/* 打乱弹窗 */}
-        {shuffleBlocking && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none"
-            style={{ background: 'rgba(0,0,0,0.5)' }}
-          >
-            <motion.div
-              initial={{ scale: 0.5, rotate: -10 }}
-              animate={{ scale: 1, rotate: 0 }}
-              transition={{ type: 'spring', damping: 12 }}
-              className="text-center"
-            >
-              <span className="text-5xl sm:text-7xl font-bold font-serif text-gold"
-                style={{ textShadow: '0 0 40px rgb(var(--accent-primary)/ 0.6)' }}>
-                🌀 打乱！
-              </span>
-            </motion.div>
-          </motion.div>
-        )}
+        {shuffleBlocking && <ShuffleOverlay />}
 
       </div>
     </Layout>

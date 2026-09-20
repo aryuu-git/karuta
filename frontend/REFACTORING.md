@@ -14,7 +14,7 @@
 | A3.2 牌库三件套 | ✅ 完成 | 72 处 emoji → lucide 图标 · 三态补全（错误态+重试为新增）· EmptyState/PageSpinner/Badge 组件化 · 行为零改动 | `a32-*` |
 | A3.3 CardCreate | ✅ 完成 | 861→435 行（-49.5%）· 拆出 `features/card-create/` 11 文件 725 行 · 35 处 emoji → lucide · 双模式行为逐字保留 | `a33-*` |
 | A3.4 NewRoom+JoinRoom+Profile | ✅ 完成 | 70 处图标化 · 三态补全（Spinner/EmptyState）· StatCard 类型化 LucideIcon | `a34-*` |
-| A3.5 RoomPage 拆分 + B1 回合时钟 | ✅ 完成 | B1 前端接线（cmd_id 幂等/audio_ended 停发/buffer_fail 上报/服务端时钟偏移）· B1 后端：`card_audios.duration_sec` + `ends_at` 广播 + 权威切首 + 抢牌幂等 · 测试绿 | 后端 run #9 绿 |
+| A3.5 RoomPage 拆分 + B1 回合时钟 | 🔄 B1 完成·拆分进行中 | B1 前端接线（cmd_id 幂等/audio_ended 停发/buffer_fail 上报/服务端时钟偏移）· B1 后端：`card_audios.duration_sec` + `ends_at` 广播 + 权威切首 + 抢牌幂等 · 测试绿 | 后端 run #9 绿 |
 | A4 类型与清扫 | 🔄 进行中 | | |
 | B2 媒体资产生命周期 | ⬜ 待办 | | |
 | 收尾总结 | ⬜ 待办 | | |
