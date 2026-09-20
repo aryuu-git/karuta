@@ -14,10 +14,10 @@
 | A3.2 牌库三件套 | ✅ 完成 | 72 处 emoji → lucide 图标 · 三态补全（错误态+重试为新增）· EmptyState/PageSpinner/Badge 组件化 · 行为零改动 | `a32-*` |
 | A3.3 CardCreate | ✅ 完成 | 861→435 行（-49.5%）· 拆出 `features/card-create/` 11 文件 725 行 · 35 处 emoji → lucide · 双模式行为逐字保留 | `a33-*` |
 | A3.4 NewRoom+JoinRoom+Profile | ✅ 完成 | 70 处图标化 · 三态补全（Spinner/EmptyState）· StatCard 类型化 LucideIcon | `a34-*` |
-| A3.5 RoomPage 拆分 + B1 回合时钟 | 🔄 B1 完成·拆分进行中 | B1 前端接线（cmd_id 幂等/audio_ended 停发/buffer_fail 上报/服务端时钟偏移）· B1 后端：`card_audios.duration_sec` + `ends_at` 广播 + 权威切首 + 抢牌幂等 · 测试绿 | 后端 run #9 绿 |
-| A4 类型与清扫 | 🔄 进行中 | | |
-| B2 媒体资产生命周期 | ⬜ 待办 | | |
-| 收尾总结 | ⬜ 待办 | | |
+| A3.5 RoomPage 拆分 + B1 回合时钟 | ✅ 完成 | RoomPage 1388→1064 行（-23%）· `features/room/` 9 文件（useSound/useAudioPreload/useChat/useDuelState + 4 展示组件）· B1 前端接线（cmd_id/audio_ended 停发/buffer_fail/时钟偏移）· B1 后端（`duration_sec` + `ends_at` 权威切首 + 抢牌幂等 + 暂停补偿）· 测试绿 | `a35-*` · 后端 run #9 绿 |
+| A4 类型与清扫 | ✅ 完成 | `any` 21→0（根因修类型）· WS 类型集中 `api/ws-events.ts`（types.ts re-export 零破坏）· Noto Serif JP 本地打包（124 分片 /fonts 同源）· console.warn 保留为 ffmpeg 降级诊断出口（注释说明） | 字体加载断言通过 |
+| B2 媒体资产生命周期 | ✅ 完成 | 状态机（pending_delete/deleted）· `karuta-admin media gc`（-dry-run 默认、真实引用查孤儿、COS 物理删）· 用户配额（总容量/单日次数 → 413 QUOTA_EXCEEDED）· 测试绿 | gc dry-run 实测 |
+| 收尾总结 | ✅ 完成 | 总结报告（下方）· CI 全绿 · 冒烟全过 | — |
 
 状态图例：⬜ 待办 · 🔄 进行中 · ✅ 完成 · 🚫 blocked（附原因）· ↩️ 已回滚
 
@@ -92,18 +92,45 @@
 
 ## 冒烟清单（每 Phase 收口前过一遍）
 
-- [ ] `cd frontend && npm run build`（含 tsc）全绿
-- [ ] 登录 → 首页战场大厅可见房间列表
-- [ ] 牌库/牌组页可打开，牌面图正常加载
-- [ ] 创建房间 → 房间等待页 → WS 连接成功（在线列表出现）
-- [ ] 主题切换（sakura / shimapan）无样式错乱
-- [ ] 碰后端时：`cd backend && go test ./...` 全绿
+- [x] `cd frontend && npm run build`（含 tsc）全绿——每 Phase 均验证，主包稳定 179.83KB（gzip 58.79）
+- [x] 登录 → 首页战场大厅可见房间列表（DOM 断言 + 截图）
+- [x] 牌库/牌组页可打开，牌面图正常加载（DOM 断言 + 截图）
+- [x] 创建房间 → 房间等待页 → WS 连接成功（房间 413 实测，在线列表出现）
+- [x] 主题切换（sakura / shimapan）无样式错乱（计算样式断言：body/按钮/muted 双主题自动切换）
+- [x] 碰后端时：`cd backend && go test ./...` 全绿（10 包，含 obs/ws/media 新测试）
+
+## 总结报告（2026-09-21 · 无人值守自治改造收官）
+
+### 成果总览（16 commits，ecdcb9b → 0546a08+）
+
+| 维度 | 前 | 后 |
+| --- | --- | --- |
+| 巨石文件 | RoomPage 1420 行 / CardCreate 882 行 | RoomPage 1064 / CardCreate 435，拆出 features/ 20 文件 |
+| 设计系统 | 无（颜色硬编码 + shimapan 靠 72 行 `!important`） | `docs/design-system.md` + RGB 三元组 token 全落地，双主题纯 CSS 变量驱动 |
+| 基础组件 | 无 | `components/ui/` 十件（五状态完备），替换全部 66 调用点 |
+| 图标体系 | 功能按钮 emoji 泛滥 | lucide-react（唯一新依赖），~180 处功能性 emoji 换 SVG |
+| 类型 | 21 处 any、WS 类型分散 | any=0、`api/ws-events.ts` 集中 |
+| 字体 | Google Fonts CDN（国内不可达） | 本地 124 分片同源分发 |
+| B1 回合时钟 | 房主客户端 audio_ended 可伪造结束 | 服务端权威（上传链测时长 → ends_at → 到期自动切首），抢牌 cmd_id 幂等，暂停时钟补偿 |
+| B2 媒体生命周期 | 引用归零直接物理删 | 状态机 + `media gc --dry-run` + 用户配额（413 QUOTA_EXCEEDED） |
+| B3 可观测性 | chi 文本日志 | slog JSON 统一字段 + `/metrics`（房间/WS/媒体/进程） |
+| CI | — | 每次 push 均绿（run #3-#10 全 success） |
+
+### 决策日志摘要（详见上方逐条）
+
+D0 截图基线 webp/测试账号 aibase/dev 启动包装器 · D1 颜色 token 三元组化/pink 重映射/gold-foil 恒定/vite JIT 缓存陷阱 · D2 Toast 禁 framer 保主包 178KB/替换切分 · D3 图标映射约定/死链清理/B3 最小切面 · D4-B1 时钟设计（时长来源/兼容/暂停补偿/幂等）
+
+### 遗留问题（不阻塞，建议 Owner 排期）
+
+1. **RoomPage 主 switch 仍 ~470 行**：duel/judge 事件 case 跨域引用页面状态，下放需 prop 爆炸权衡——已记录于看板，后续可事件总线或 reducer 化。
+2. **handler/card.go 过程日志未 slog 化**：B3 只统一了基础设施与 WS 链路，卡牌上传的密集 log.Printf 保留（不影响结构化框架，可渐进迁移）。
+3. **配额默认关闭**（QUOTA_USER_BYTES/QUOTA_DAILY_UPLOADS=0）：生产开启前建议先在测试环境压测 413 交互路径。
+4. **`card_audios.duration_sec` 旧数据为 0**：新上传才有时长；老牌组回退 maxWait 兜底。可写一次性脚本用 ffmpeg 批量回填。
+5. **截图基线未入库**（gitignore）：跨机视觉对比需重新生成。
 
 ## 截图基线索引（A0，2026-09-21）
 
 `home` `/` · `cards` `/cards` · `cards-new` `/cards/new` · `decks-list` `/decks` · `deck-detail` `/decks/42` · `rooms-new` `/rooms/new` · `join` `/rooms/join` · `profile` `/profile` · `room-waiting` `/rooms/413` · `login` `/login` · `register` `/register` · `guest` `/guest`
 （视口 1440×900，Chromium headless）
 
-## 遗留问题
-
-（暂无）
+（已并入上方总结报告的"遗留问题"小节）
