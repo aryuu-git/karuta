@@ -129,53 +129,6 @@
 }
 
 @layer components {
-  /* 主按钮：樱粉渐变 + 金粉光晕（A2 将被 <Button variant="gold"> 取代） */
-  .btn-gold {
-    @apply relative overflow-hidden px-6 py-2.5 rounded font-sans font-medium
-           text-ink transition-all duration-300
-           hover:shadow-gold-lg hover:scale-105 active:scale-95;
-    background-image: linear-gradient(135deg, rgb(var(--color-gold)) 0%, rgb(var(--color-gold-light)) 50%, rgb(var(--color-gold-dark)) 100%);
-  }
-
-  .btn-gold::after {
-    content: '';
-    @apply absolute inset-0 bg-white/0 transition-all duration-300;
-  }
-
-  .btn-gold:hover::after {
-    @apply bg-white/10;
-  }
-
-  .btn-gold:disabled {
-    @apply opacity-50 pointer-events-none;
-  }
-
-  /* 描边按钮 */
-  .btn-outline {
-    @apply px-6 py-2.5 rounded font-sans font-medium border border-gold/50
-           text-gold bg-transparent transition-all duration-300
-           hover:border-gold hover:bg-gold/10 hover:shadow-gold;
-  }
-
-  .btn-outline:disabled {
-    @apply opacity-50 pointer-events-none;
-  }
-
-  /* 输入框 */
-  .input-dark {
-    @apply w-full px-4 py-3 rounded bg-ink-deep border border-border
-           text-white placeholder-muted outline-none transition-all duration-200
-           focus:border-gold;
-    box-shadow: 0 0 0 0 rgb(var(--color-gold) / 0.3);
-  }
-
-  .input-dark:focus {
-    box-shadow: 0 0 0 1px rgb(var(--gold-foil) / 0.3);
-  }
-
-  .card-surface {
-    @apply bg-surface border border-border rounded-lg;
-  }
 
   /* 和纸质感：细密十字纹理，随主题基色变化 */
   .washi-bg {
