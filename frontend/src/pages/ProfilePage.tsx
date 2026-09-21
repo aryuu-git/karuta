@@ -235,7 +235,7 @@ function AchievementsSection() {
           if (items.length === 0) return null
           return (
             <div key={cat.key}>
-              <p className="text-[10px] text-muted/60 tracking-widest mb-1.5">{cat.label}</p>
+              <p className="text-[10px] text-muted/80 tracking-widest mb-1.5">{cat.label}</p>
               <div className="grid grid-cols-2 gap-2">
                 {items.map(a => {
                   const unlocked = a.unlocked_at !== null
@@ -256,7 +256,7 @@ function AchievementsSection() {
                           {lockedHidden ? '？？？' : a.title}
                         </p>
                         {unlocked ? (
-                          <p className="text-[10px] text-muted/50">
+                          <p className="text-[10px] text-muted/70">
                             {a.unlocked_at ? new Date(a.unlocked_at).toLocaleDateString() : ''}
                           </p>
                         ) : a.target > 1 && !a.hidden ? (
@@ -264,7 +264,7 @@ function AchievementsSection() {
                             <div className="h-1 rounded-full bg-white/10 mt-1 overflow-hidden">
                               <div className="h-full rounded-full" style={{ width: `${pct}%`, background: 'rgb(var(--color-gold)/ 0.6)' }} />
                             </div>
-                            <p className="text-[10px] text-muted/50 mt-0.5 tabular-nums">{a.progress}/{a.target}</p>
+                            <p className="text-[10px] text-muted/70 mt-0.5 tabular-nums">{a.progress}/{a.target}</p>
                           </>
                         ) : null}
                       </div>
@@ -299,7 +299,7 @@ function RecentGamesSection() {
             <span className="flex-1 truncate text-body-text/80">{g.deck_name || '—'}</span>
             <span className={`shrink-0 font-bold ${g.rank === 1 ? 'text-gold' : 'text-muted'}`}>第 {g.rank} 名</span>
             <span className="shrink-0 text-muted tabular-nums">{g.score} 分</span>
-            <span className="shrink-0 text-muted/50 text-[10px]">
+            <span className="shrink-0 text-muted/70 text-[10px]">
               {g.ended_at ? new Date(g.ended_at).toLocaleDateString() : ''}
             </span>
           </div>

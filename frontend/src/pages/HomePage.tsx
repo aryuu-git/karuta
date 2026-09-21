@@ -283,7 +283,7 @@ export function HomePage() {
           <div className="flex gap-0.5 bg-white/5 rounded-lg p-0.5">
             {(Object.keys(RANK_LABEL) as Array<'score' | 'wins'>).map(k => (
               <button key={k} onClick={() => setRankKind(k)}
-                className={`text-xs px-3 py-1 rounded-md transition-all ${rankKind === k ? 'bg-gold/20 text-gold' : 'text-muted hover:text-white/70'}`}>
+                className={`text-xs px-3 py-1 rounded transition-all ${rankKind === k ? 'bg-gold/20 text-gold' : 'text-muted hover:text-white/70'}`}>
                 {RANK_LABEL[k]}
               </button>
             ))}

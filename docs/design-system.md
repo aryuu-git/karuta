@@ -59,6 +59,7 @@ Tailwind 内置 `pink-300` / `pink-500` 在 config 层**重映射**到语义变�
 | body | `text-body` | 16/24 | sans | 默认正文 |
 | caption | `text-caption` | 14/20 | sans | 辅助说明 |
 | tiny | `text-tiny` | 12/16 | sans | 角标/时间戳 |
+| micro | `text-[10px]` | 10/14 | sans | 徽标/进度计数等 meta 信息（密度例外层）；深底最低 `text-muted/70`，禁止再低 |
 
 中文渲染：`html` 开启 `text-wrap: balance`（标题）；正文 `font-synthesis-weight: none` 防止伪粗体糊字；字间距标题 `tracking-wide`。
 
