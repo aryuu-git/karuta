@@ -2,12 +2,12 @@ import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 // 图标统一走 lucide-react（映射约定见 A3.1–A3.4）
-import { KeyRound, Zap, Wrench, Crown, RefreshCw, Castle, Trophy, Code2 } from 'lucide-react'
+import { KeyRound, Zap, Wrench, Crown, RefreshCw, Castle, Trophy, Code2, Medal, Sparkles, Swords } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Button, Input, Badge, EmptyState, PageContainer, ConfirmDialog, Skeleton, useToast, type BadgeTone } from '../components/ui'
 import { useAuth } from '../hooks/useAuth'
 import { api, HttpError } from '../api/client'
-import { useRoomList, useMyDecks, useRankings, queryKeys } from '../api/queries'
+import { useRoomList, useMyDecks, useRankings, useMyStats, queryKeys } from '../api/queries'
 import { paths } from '../routes/paths'
 import { PresetPicker } from '../features/play/PresetPicker'
 import { createRoomFromConfig, writeLastConfig, readLastConfig } from '../features/play/roomCreate'
@@ -38,6 +38,7 @@ export function HomePage() {
   const rooms = roomsQuery.data ?? []
   // 牌组仅作为快速开局的必选项数据源，不再单独成区
   const decks = useMyDecks().data ?? []
+  const myStatsQ = useMyStats()
 
   const [joinCode, setJoinCode] = useState('')
   const [joining, setJoining] = useState(false)
@@ -181,7 +182,26 @@ export function HomePage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 shrink-0 lg:h-[420px]">
+        {/* 我的战绩速览 */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 shrink-0">
+          {[
+            { icon: Swords, label: '参与场数', value: myStatsQ.data?.total_games ?? '—' },
+            { icon: Medal, label: '第一名', value: myStatsQ.data?.first_games ?? '—' },
+            { icon: Trophy, label: '前三名', value: myStatsQ.data?.top3_games ?? '—' },
+            { icon: Sparkles, label: '最高分', value: myStatsQ.data?.best_score ?? '—' },
+          ].map(t => (
+            <div key={t.label} className="rounded-2xl p-4 flex items-center gap-3"
+              style={{ background: 'linear-gradient(180deg, rgb(var(--color-ink)) 0%, rgb(var(--color-ink-deep)) 100%)', border: '1px solid rgb(var(--accent-primary)/ 0.12)' }}>
+              <t.icon size={18} className="text-gold/80 shrink-0" />
+              <div className="min-w-0">
+                <div className="text-xl font-bold tabular-nums font-serif text-white/90">{t.value}</div>
+                <div className="text-tiny text-muted/70">{t.label}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 shrink-0 lg:h-[400px]">
         {/* 活跃战场列表 */}
         <div className="rounded-2xl overflow-hidden border flex flex-col min-h-0"
           style={{ background: 'linear-gradient(180deg, rgb(var(--color-ink)) 0%, rgb(var(--color-ink-deep)) 100%)', borderColor: 'rgb(var(--accent-primary)/ 0.12)' }}>

@@ -171,7 +171,7 @@ function Top3Ring({ rate, games, top3 }: { rate: number; games: number; top3: nu
       transition={{ delay: 0.1, duration: 0.5, ease: 'backOut' }}
       className="flex flex-col items-center gap-3"
     >
-      <div className="relative w-32 h-32">
+      <div className="relative w-20 h-20">
         <svg viewBox="0 0 96 96" className="w-full h-full -rotate-90">
           <circle cx="48" cy="48" r="38" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="8" />
           <motion.circle
@@ -192,7 +192,7 @@ function Top3Ring({ rate, games, top3 }: { rate: number; games: number; top3: nu
           </defs>
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-3xl font-bold font-serif" style={{ color: 'rgb(var(--color-gold))' }}>{pct}%</span>
+          <span className="text-xl font-bold font-serif" style={{ color: 'rgb(var(--color-gold))' }}>{pct}%</span>
         </div>
       </div>
       <div className="text-center">
