@@ -131,10 +131,10 @@ export function HomePage() {
 
   return (
     <>
-      <PageContainer size="lg" padding="sm" className="lg:h-[calc(100vh-3.625rem)] lg:flex lg:flex-col lg:overflow-hidden">
+      <PageContainer size="lg" padding="sm" className="lg:h-[calc(100vh-3.625rem)] lg:flex lg:flex-col lg:justify-center lg:overflow-hidden">
 
         {/* 三入口：快速开局 / 自定义建房 / 邀请码加入（§4.1） */}
-        <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_1.5fr] gap-4 mb-4 shrink-0">
+        <div className="grid grid-cols-1 md:grid-cols-[0.85fr_0.85fr_1.8fr] gap-4 mb-4 shrink-0">
           <button
             onClick={openPicker}
             className="relative overflow-hidden rounded-2xl p-5 flex flex-col items-center justify-center gap-1.5 transition-all hover:scale-[1.02] hover:border-gold/30"
