@@ -131,10 +131,10 @@ export function HomePage() {
 
   return (
     <>
-      <PageContainer size="xl" padding="sm" className="lg:h-[calc(100vh-3.625rem)] lg:flex lg:flex-col lg:overflow-hidden">
+      <PageContainer size="lg" padding="sm" className="lg:h-[calc(100vh-3.625rem)] lg:flex lg:flex-col lg:overflow-hidden">
 
         {/* 三入口：快速开局 / 自定义建房 / 邀请码加入（§4.1） */}
-        <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_1.5fr] gap-4 mb-4 max-w-4xl mx-auto shrink-0">
+        <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_1.5fr] gap-4 mb-4 shrink-0">
           <button
             onClick={openPicker}
             className="relative overflow-hidden rounded-2xl p-5 flex flex-col items-center justify-center gap-1.5 transition-all hover:scale-[1.02] hover:border-gold/30"
@@ -181,7 +181,7 @@ export function HomePage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 flex-1 lg:min-h-0">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 shrink-0 lg:h-[420px]">
         {/* 活跃战场列表 */}
         <div className="rounded-2xl overflow-hidden border flex flex-col min-h-0"
           style={{ background: 'linear-gradient(180deg, rgb(var(--color-ink)) 0%, rgb(var(--color-ink-deep)) 100%)', borderColor: 'rgb(var(--accent-primary)/ 0.12)' }}>
