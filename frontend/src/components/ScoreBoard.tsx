@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion'
-import type { RoomPlayer } from '../api/types'
+import { Trophy } from 'lucide-react'
 import { Avatar } from './Avatar'
 import { Button } from './ui'
 
@@ -32,7 +32,7 @@ export function ScoreBoard({ players, currentUserId, hostId, remainingCount, tot
       {/* Header */}
       <div className="px-4 pt-4 pb-3 border-b border-white/5">
         <div className="flex items-center gap-2 mb-3">
-          <span className="text-base">🏆</span>
+          <Trophy size={14} className="text-gold-dark" aria-hidden="true" />
           <span className="font-serif text-gold text-caption font-medium tracking-widest">实时战况</span>
         </div>
 

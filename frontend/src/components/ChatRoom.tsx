@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, type KeyboardEvent } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { MessageCircle } from 'lucide-react'
 import type { RoomPlayer } from '../api/types'
 import { Button } from './ui'
 
@@ -79,7 +80,7 @@ export function ChatRoom({ messages, players, currentUserId, isSpectator, onSend
             >
               {/* 头部 */}
               <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/5">
-                <span className="text-gold/80 text-caption font-serif">💬 聊天</span>
+                <span className="text-gold/80 text-caption font-serif flex items-center gap-1"><MessageCircle size={12} aria-hidden="true" />聊天</span>
                 <Button variant="ghost" size="sm" onClick={() => setShowEggMenu(v => !v)}
                   className="bg-warning/10 border border-warning/30 text-warning/90 hover:bg-warning/20 hover:text-warning/90">
                   🥚 丢鸡蛋
