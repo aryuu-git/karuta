@@ -4,7 +4,10 @@
 package obs
 
 import (
+	"bufio"
+	"errors"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"sync"
@@ -34,6 +37,25 @@ var HTTPRequestsTotal atomic.Int64
 func (w *statusWriter) WriteHeader(code int) {
 	w.status = code
 	w.ResponseWriter.WriteHeader(code)
+}
+
+// Hijack 透传底层连接劫持：WebSocket 升级（gorilla/websocket）要求
+// 响应链实现 http.Hijacker，包装中间件若吞掉该接口会导致
+// "response does not implement http.Hijacker" 升级失败（回归修复）。
+func (w *statusWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	hj, ok := w.ResponseWriter.(http.Hijacker)
+	if !ok {
+		return nil, nil, errors.New("obs: underlying ResponseWriter does not implement http.Hijacker")
+	}
+	w.status = http.StatusSwitchingProtocols
+	return hj.Hijack()
+}
+
+// Flush 透传 Flush（流式响应/SSE），避免包装层吞掉 http.Flusher 能力。
+func (w *statusWriter) Flush() {
+	if f, ok := w.ResponseWriter.(http.Flusher); ok {
+		f.Flush()
+	}
 }
 
 // RequestLogger 返回结构化访问日志中间件，替代 chi 的文本 Logger：
