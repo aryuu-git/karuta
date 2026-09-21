@@ -25,7 +25,7 @@ type Deck struct {
 	IsPublic    bool      `json:"is_public"`
 	ShareLevel  string    `json:"share_level"`
 	EditLevel   string    `json:"edit_level"`
-	CardCount   int       `json:"card_count,omitempty"`
+	CardCount   int       `json:"card_count"`
 	CreatedAt   time.Time `json:"created_at"`
 	OwnerName   string    `json:"owner_name,omitempty"`
 	// v8 牌组增强：列表封面拼贴（前 4 张成员卡）与点赞

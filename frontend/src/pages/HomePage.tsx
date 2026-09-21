@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 // 图标统一走 lucide-react（映射约定见 A3.1–A3.4）
-import { KeyRound, Zap, Wrench, Crown, RefreshCw, Castle, Star, Trophy } from 'lucide-react'
+import { KeyRound, Zap, Wrench, Crown, RefreshCw, Castle, Trophy, Code2 } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Button, Input, Badge, EmptyState, PageContainer, ConfirmDialog, Skeleton, useToast, type BadgeTone } from '../components/ui'
 import { useAuth } from '../hooks/useAuth'
@@ -102,10 +102,10 @@ export function HomePage() {
     setPickerOpen(true)
   }
 
-  // 全站排行榜（v7 增补：score/wins/world_first 三榜 TOP10）
-  const [rankKind, setRankKind] = useState<'score' | 'wins' | 'world_first'>('score')
+  // 全站排行榜：总分 / 胜场 两榜 TOP10（世一网次数走成就展示，不再单独设榜）
+  const [rankKind, setRankKind] = useState<'score' | 'wins'>('score')
   const rankQ = useRankings(rankKind)
-  const RANK_LABEL: Record<typeof rankKind, string> = { score: '总分', wins: '胜场', world_first: '世一网' }
+  const RANK_LABEL: Record<typeof rankKind, string> = { score: '总分', wins: '胜场' }
 
   // 预设直接创建：成功写上次配置并跳新房，失败 toast（弹层保留）
   const handlePresetSelect = async (config: RoomConfig, deckId: number) => {
@@ -131,70 +131,60 @@ export function HomePage() {
 
   return (
     <>
-      <PageContainer size="md">
+      <PageContainer size="xl" padding="sm" className="lg:h-[calc(100vh-3.625rem)] lg:flex lg:flex-col lg:overflow-hidden">
 
-        {/* 双主 CTA：快速开局 / 自定义建房（§4.1） */}
-        <div className="grid grid-cols-2 gap-4 mb-6">
+        {/* 三入口：快速开局 / 自定义建房 / 邀请码加入（§4.1） */}
+        <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_1.5fr] gap-4 mb-4 max-w-4xl mx-auto shrink-0">
           <button
             onClick={openPicker}
-            className="relative overflow-hidden rounded-2xl p-6 flex flex-col items-center gap-1.5 border border-gold/30 transition-all hover:scale-[1.02] hover:shadow-gold"
-            style={{ background: 'linear-gradient(160deg, rgb(var(--accent-primary)/ 0.25), rgb(var(--accent-bg-mid)/ 0.8))' }}
+            className="relative overflow-hidden rounded-2xl p-5 flex flex-col items-center justify-center gap-1.5 transition-all hover:scale-[1.02] hover:border-gold/30"
+            style={{ background: 'linear-gradient(180deg, rgb(var(--color-ink)) 0%, rgb(var(--color-ink-deep)) 100%)', border: '1px solid rgb(var(--accent-primary)/ 0.12)' }}
           >
-            <Zap size={26} className="text-gold" />
+            <Zap size={22} className="text-gold" />
             <span className="font-serif text-title text-gold font-bold">快速开局</span>
             <span className="text-muted text-caption">选预设，一步开战</span>
           </button>
           <button
             onClick={() => navigate(paths.roomNew())}
-            className="relative overflow-hidden rounded-2xl p-6 flex flex-col items-center gap-1.5 border border-border hover:border-gold/40 transition-all hover:scale-[1.02]"
-            style={{ background: 'linear-gradient(160deg, rgb(var(--accent-bg-end)/ 0.5), rgb(var(--accent-bg-mid)/ 0.8))' }}
+            className="relative overflow-hidden rounded-2xl p-5 flex flex-col items-center justify-center gap-1.5 transition-all hover:scale-[1.02] hover:border-gold/30"
+            style={{ background: 'linear-gradient(180deg, rgb(var(--color-ink)) 0%, rgb(var(--color-ink-deep)) 100%)', border: '1px solid rgb(var(--accent-primary)/ 0.12)' }}
           >
-            <Wrench size={26} className="text-gold/70" />
+            <Wrench size={22} className="text-gold/70" />
             <span className="font-serif text-title text-white/90 font-bold">自定义建房</span>
             <span className="text-muted text-caption">全部规则随你调</span>
           </button>
+          <div
+            className="relative overflow-hidden rounded-2xl p-5 flex flex-col items-center justify-center gap-1.5 transition-all hover:scale-[1.02] hover:border-gold/30"
+            style={{ background: 'linear-gradient(180deg, rgb(var(--color-ink)) 0%, rgb(var(--color-ink-deep)) 100%)', border: '1px solid rgb(var(--accent-primary)/ 0.12)' }}
+          >
+            <KeyRound size={22} className="text-gold" />
+            <span className="font-serif text-title text-gold font-bold">邀请码加入</span>
+            <form onSubmit={handleJoinByCode} className="flex gap-2 relative w-full">
+              <Input
+                type="text"
+                size="sm"
+                onChange={e => handleJoinCodeChange(e.target.value)}
+                className="text-center font-serif font-bold tracking-[0.2em] text-caption"
+                placeholder="输入邀请码"
+                maxLength={10}
+                aria-label="房间邀请码"
+              />
+              <Button type="submit" size="sm" loading={joining} disabled={!joinCode.trim()} className="shrink-0">
+                加入
+              </Button>
+            </form>
+            {joinError && (
+              <p className="text-crimson text-caption text-center bg-crimson/10 border border-crimson/20 rounded-lg px-2 py-1">
+                {joinError}
+              </p>
+            )}
+          </div>
         </div>
 
-        {/* 邀请码入场 */}
-        <div className="rounded-2xl p-5 mb-6 relative overflow-hidden border border-gold/15"
-          style={{ background: 'linear-gradient(135deg, rgb(var(--accent-bg)/ 0.3) 0%, rgb(var(--accent-bg-mid)/ 0.7) 50%, rgb(var(--accent-bg-end)/ 0.3) 100%)' }}>
-          <h2 className="font-serif text-title text-gold font-bold mb-1 relative flex items-center gap-1.5">
-            <KeyRound size={16} className="text-gold-dark" />
-            邀请码加入
-          </h2>
-          <p className="text-muted/50 text-caption mb-3 font-serif italic relative">满 6 位自动加入</p>
-          <form onSubmit={handleJoinByCode} className="flex gap-2 relative">
-            <Input
-              type="text"
-              value={joinCode}
-              onChange={e => handleJoinCodeChange(e.target.value)}
-              className="text-center font-serif font-bold tracking-[0.2em] text-caption"
-              placeholder="输入邀请码"
-              maxLength={10}
-              aria-label="房间邀请码"
-            />
-            <Button type="submit" loading={joining} disabled={!joinCode.trim()} className="shrink-0">
-              加入
-            </Button>
-          </form>
-          {joinError && (
-            <p className="text-crimson text-caption mt-2 text-center bg-crimson/10 border border-crimson/20 rounded-lg px-2 py-1.5">
-              {joinError}
-            </p>
-          )}
-        </div>
-
-        {/* GitHub 开源仓库 */}
-        <a href="https://github.com/aryuu-git/karuta" target="_blank" rel="noopener noreferrer"
-          className="flex items-center gap-2 mb-6 px-4 py-2 rounded-xl transition-all hover:scale-[1.01] border border-border/40 bg-surface/10">
-          <Star size={14} className="text-body-text/60" />
-          <span className="text-caption text-body-text/50">GitHub 开源仓库</span>
-          <span className="ml-auto text-[10px] text-muted/40">aryuu-git/karuta</span>
-        </a>
-
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 flex-1 lg:min-h-0">
         {/* 活跃战场列表 */}
-        <div className="rounded-2xl overflow-hidden mb-8 border border-gold/10"
-          style={{ background: 'linear-gradient(180deg, rgb(var(--accent-bg-end)/ 0.4) 0%, rgb(var(--accent-bg-mid)/ 0.7) 100%)' }}>
+        <div className="rounded-2xl overflow-hidden border flex flex-col min-h-0"
+          style={{ background: 'linear-gradient(180deg, rgb(var(--color-ink)) 0%, rgb(var(--color-ink-deep)) 100%)', borderColor: 'rgb(var(--accent-primary)/ 0.12)' }}>
           <div className="flex items-center justify-between px-5 py-3.5 relative border-b border-gold/10">
             <div className="flex items-center gap-2">
               <h2 className="font-serif text-title text-gold font-bold flex items-center gap-1.5">
@@ -233,7 +223,7 @@ export function HomePage() {
             </p>
           )}
 
-          <div className="divide-y divide-border">
+          <div className="divide-y divide-border flex-1 overflow-y-auto min-h-0">
             <AnimatePresence>
               {rooms.map((room, i) => {
                 const s = STATUS_LABEL[room.status] ?? { text: room.status, tone: 'muted' as BadgeTone }
@@ -283,15 +273,15 @@ export function HomePage() {
           </div>
         </div>
 
-      {/* 全站排行榜（v7 增补）：三榜 TOP10，游客同榜 */}
-      <div className="rounded-2xl overflow-hidden mb-8 border border-gold/10"
-        style={{ background: 'linear-gradient(180deg, rgb(var(--accent-bg-end)/ 0.4) 0%, rgb(var(--accent-bg-mid)/ 0.7) 100%)' }}>
+      {/* 全站排行榜：总分 / 胜场 两榜 TOP20，游客同榜 */}
+      <div className="rounded-2xl overflow-hidden border flex flex-col min-h-0"
+        style={{ background: 'linear-gradient(180deg, rgb(var(--color-ink)) 0%, rgb(var(--color-ink-deep)) 100%)', borderColor: 'rgb(var(--accent-primary)/ 0.12)' }}>
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-gold/10">
           <h2 className="font-serif text-title text-gold font-bold flex items-center gap-1.5">
             <Trophy size={16} className="text-gold-dark" /> 排行榜
           </h2>
           <div className="flex gap-0.5 bg-white/5 rounded-lg p-0.5">
-            {(Object.keys(RANK_LABEL) as Array<'score' | 'wins' | 'world_first'>).map(k => (
+            {(Object.keys(RANK_LABEL) as Array<'score' | 'wins'>).map(k => (
               <button key={k} onClick={() => setRankKind(k)}
                 className={`text-xs px-3 py-1 rounded-md transition-all ${rankKind === k ? 'bg-gold/20 text-gold' : 'text-muted hover:text-white/70'}`}>
                 {RANK_LABEL[k]}
@@ -299,7 +289,7 @@ export function HomePage() {
             ))}
           </div>
         </div>
-        <div className="divide-y divide-border">
+        <div className="divide-y divide-border flex-1 overflow-y-auto min-h-0">
           {(rankQ.data ?? []).length === 0 && !rankQ.isLoading && (
             <p className="text-muted/50 text-xs text-center py-6">还没有战绩，打几局就上榜了</p>
           )}
@@ -314,6 +304,13 @@ export function HomePage() {
           ))}
         </div>
       </div>
+        </div>
+
+        <a href="https://github.com/aryuu-git/karuta" target="_blank" rel="noopener noreferrer" title="aryuu-git/karuta"
+          className="fixed bottom-4 left-4 z-float inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/40 bg-ink-deep/90 backdrop-blur text-tiny text-muted/60 hover:text-gold hover:border-gold/30 transition-all">
+          <Code2 size={12} />
+          GitHub 开源仓库
+        </a>
     </PageContainer>
 
       {/* 快速开局弹层 */}

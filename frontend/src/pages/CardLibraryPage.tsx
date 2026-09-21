@@ -362,11 +362,8 @@ export function CardLibraryPage() {
             placeholder="搜索歌牌名或作品名"
             className="flex-1" />
           <Select size="sm" fit className="w-28 shrink-0" value={sort} aria-label="排序方式"
-            onChange={e => changeSort(e.target.value as SortKey)}>
-            {(Object.keys(SORT_LABEL) as SortKey[]).map(k => (
-              <option key={k} value={k}>{SORT_LABEL[k]}</option>
-            ))}
-          </Select>
+            onChange={v => changeSort(v as SortKey)}
+            options={(Object.keys(SORT_LABEL) as SortKey[]).map(k => ({ value: k, label: SORT_LABEL[k] }))} />
         </div>
         <div className="flex items-center gap-1.5 flex-wrap">
           {chipTags.map(t => {

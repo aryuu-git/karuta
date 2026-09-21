@@ -120,7 +120,7 @@ export function useMyGames(params?: { page?: number; size?: number }) {
 
 /** 全站排行榜（score | wins | world_first） */
 export function useRankings(kind: 'score' | 'wins' | 'world_first' = 'score') {
-  return useQuery({ queryKey: queryKeys.rankings(kind), queryFn: () => api.rankings(kind, 10) })
+  return useQuery({ queryKey: queryKeys.rankings(kind), queryFn: () => api.rankings(kind, 20) })
 }
 
 // —— 以下类型再导出，页面 hook 消费方免多路径导入 ——

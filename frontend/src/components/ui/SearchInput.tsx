@@ -16,7 +16,7 @@ export interface SearchInputProps
 }
 
 const fieldClasses =
-  'w-full pl-10 pr-9 py-2.5 rounded bg-ink-deep border border-border text-sm text-white ' +
+  'w-full h-9 pl-10 pr-9 rounded bg-ink-deep border border-border text-sm text-white ' +
   'placeholder-muted/60 outline-none transition-all duration-fast ' +
   'hover:border-border focus:border-gold focus:shadow-[0_0_0_1px_rgb(var(--gold-foil)/0.3)] ' +
   'disabled:opacity-50 disabled:pointer-events-none'

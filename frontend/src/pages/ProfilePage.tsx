@@ -4,7 +4,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 // 图标统一走 lucide-react（映射约定见 A3.1–A3.4）
 import {
-  Swords, Medal, Trophy, Star, Sparkles, Award, Globe, Ticket,
+  Swords, Medal, Trophy, Star, Sparkles, Award, Ticket,
   Plus, Check, Pencil, Camera, Zap, Shield, type LucideIcon,
 } from 'lucide-react'
 import {
@@ -128,25 +128,27 @@ function AdminUserList() {
 }
 
 /** 统计卡：lucide 图标 + 大数值 + 说明文案（color 同时着色图标与数值）。 */
-function StatCard({ icon: Icon, label, value, sub, color = 'rgb(var(--color-gold))', delay = 0 }: {
+function StatCard({ icon: Icon, label, value, sub, color = 'rgb(var(--color-gold))', delay = 0, compact = false }: {
   icon: LucideIcon
   label: string
   value: string | number
   sub?: string
   color?: string
   delay?: number
+  /** 紧凑档：统计横排使用 */
+  compact?: boolean
 }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay, duration: 0.4 }}
-      className="rounded-xl p-5 flex flex-col gap-2 hover:shadow-lg hover:shadow-pink-500/5 transition-all"
+      className={`rounded-xl flex flex-col hover:shadow-lg hover:shadow-pink-500/5 transition-all ${compact ? 'p-3 gap-1' : 'p-5 gap-2'}`}
       style={{ background: 'linear-gradient(160deg, rgb(var(--accent-bg-end)/ 0.4), rgb(var(--accent-bg-mid)/ 0.6))', border: '1px solid rgb(var(--accent-primary)/ 0.08)' }}
     >
-      <Icon size={22} strokeWidth={1.75} style={{ color }} className="shrink-0" />
+      <Icon size={compact ? 16 : 22} strokeWidth={1.75} style={{ color }} className="shrink-0" />
       <div>
-        <div className="text-2xl font-bold tabular-nums font-serif" style={{ color }}>
+        <div className={`font-bold tabular-nums font-serif ${compact ? 'text-xl' : 'text-2xl'}`} style={{ color }}>
           {value}
         </div>
         {sub && <div className="text-muted text-xs mt-0.5">{sub}</div>}
@@ -221,20 +223,20 @@ function AchievementsSection() {
   const unlockedCount = achievements.filter(a => a.unlocked_at !== null).length
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}
-      className="mt-6 rounded-2xl p-5"
+      className="rounded-2xl p-4 h-full min-h-0 flex flex-col"
       style={{ background: 'linear-gradient(180deg, rgba(255,255,255,0.02) 0%, rgb(var(--accent-bg-mid)/ 0.6) 100%)', border: '1px solid rgb(var(--color-gold)/ 0.15)' }}>
-      <p className="text-muted text-xs mb-4 tracking-widest flex items-center gap-1.5">
+      <p className="text-muted text-xs mb-3 tracking-widest flex items-center gap-1.5 shrink-0">
         <Award size={12} />成就
         <span className="text-gold font-bold ml-1">{unlockedCount}/{achievements.length}</span>
       </p>
-      <div className="space-y-4">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 gap-x-6 flex-1 overflow-y-auto min-h-0 content-start pr-1">
         {ACHIEVEMENT_CATEGORIES.map(cat => {
           const items = achievements.filter(a => a.category === cat.key)
           if (items.length === 0) return null
           return (
             <div key={cat.key}>
               <p className="text-[10px] text-muted/60 tracking-widest mb-1.5">{cat.label}</p>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 {items.map(a => {
                   const unlocked = a.unlocked_at !== null
                   const lockedHidden = a.hidden && !unlocked
@@ -285,7 +287,7 @@ function RecentGamesSection() {
   const modeLabel: Record<string, string> = { auto: '自动', judge: '裁判', duel: '对阵' }
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
-      className="mt-6 rounded-2xl p-5"
+      className="rounded-2xl p-5"
       style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
       <p className="text-muted text-xs mb-3 tracking-widest flex items-center gap-1.5"><Swords size={12} />最近对局</p>
       <div className="space-y-1.5">
@@ -385,9 +387,8 @@ export function ProfilePage() {
       window.location.reload()
     } catch { /* ignore */ }
   }
-
   return (
-    <PageContainer size="sm">
+    <PageContainer size="xl" padding="sm" className="lg:h-[calc(100vh-3.625rem)] lg:flex lg:flex-col lg:overflow-hidden">
       {/* 用户信息头部（HeroHeader：icon=头像，title=昵称） */}
       <HeroHeader
         icon={
@@ -436,85 +437,41 @@ export function ProfilePage() {
         </motion.div>
       ) : (
         <>
-          {/* 前三名环形图 + 核心数据 */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6">
-            {/* 前三名占比 */}
-            <motion.div initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.05 }}
-              className="rounded-2xl p-6 flex items-center justify-center"
+          {/* 核心数据横排：环形图 + 五项紧凑指标 */}
+          <div className="flex gap-3 items-stretch mb-4">
+            <div className="rounded-2xl px-5 flex items-center justify-center shrink-0"
               style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
               <Top3Ring rate={stats.top3_rate} games={stats.total_games} top3={stats.top3_games} />
-            </motion.div>
-
-            {/* 关键数据 */}
-            <div className="flex flex-col gap-3">
-              <StatCard icon={Swords} label="参与场数" value={stats.total_games} sub="场完整对局" delay={0.1} />
-              <StatCard icon={Medal} label="第一名次数" value={stats.first_games}
-                sub={stats.total_games > 0 ? `${Math.round(stats.first_games / stats.total_games * 100)}% 的对局` : ''}
-                color="#FFD700" delay={0.15} />
+            </div>
+            <div className="flex-1 grid grid-cols-2 sm:grid-cols-5 gap-3">
+              <StatCard compact icon={Swords} label="参与场数" value={stats.total_games} delay={0.1} />
+              <StatCard compact icon={Medal} label="第一名" value={stats.first_games} color="#FFD700" delay={0.15} />
+              <StatCard compact icon={Trophy} label="前三名" value={stats.top3_games} delay={0.2} />
+              <StatCard compact icon={Star} label="总得分" value={stats.total_score} color="rgb(var(--color-gold-light))" delay={0.25} />
+              <StatCard compact icon={Sparkles} label="最高分" value={stats.best_score} color="#4ade80" delay={0.3} />
             </div>
           </div>
-
-          {/* 次要数据 */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            <StatCard icon={Trophy} label="前三名次数" value={stats.top3_games} delay={0.2}
-              sub={`共 ${stats.total_games} 场`} />
-            <StatCard icon={Star} label="历史总得分" value={stats.total_score} delay={0.25}
-              sub="所有场次合计" color="rgb(var(--color-gold-light))" />
-            <StatCard icon={Sparkles} label="单场最高分" value={stats.best_score} delay={0.3}
-              sub="个人纪录" color="#4ade80" />
-          </div>
-
-          {/* 称号区 */}
-          {stats.world_first_count > 0 && (
-            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-              className="rounded-xl p-4 mt-1"
-              style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
-              <p className="text-muted text-xs mb-3 tracking-widest flex items-center gap-1.5"><Award size={12} />获得称号</p>
-              <div className="flex flex-wrap gap-2">
-                {stats.world_first_count > 0 && (
-                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg"
-                    style={{ background: 'rgb(var(--accent-primary)/ 0.1)', border: '1px solid rgb(var(--accent-primary)/ 0.25)' }}>
-                    <Globe size={15} className="shrink-0" style={{ color: 'rgb(var(--color-gold))' }} />
-                    <div>
-                      <p className="text-xs font-medium" style={{ color: 'rgb(var(--color-gold))' }}>世一网</p>
-                      <p className="text-muted text-xs">已获得 {stats.world_first_count} 次</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          )}
-
-          {/* 激励文案 */}
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}
-            className="mt-6 text-center">
-            {stats.top3_rate >= 0.7 ? (
-              <p className="text-gold/60 text-sm font-serif">前三名比例很高，继续保持</p>
-            ) : stats.top3_rate >= 0.4 ? (
-              <p className="text-gold/60 text-sm font-serif">表现不错，继续保持</p>
-            ) : stats.total_games > 0 ? (
-              <p className="text-gold/60 text-sm font-serif">再多打几局，会更好</p>
-            ) : null}
-          </motion.div>
         </>
       )}
 
-      {/* 成就（32 项全量；不依赖对局统计，0 局用户也可见内容类成就） */}
-      <AchievementsSection />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 flex-1 lg:min-h-0 lg:overflow-hidden mt-4">
+        <div className="lg:col-span-2 min-h-0">
+          {/* 成就（32 项全量；不依赖对局统计，0 局用户也可见内容类成就） */}
+          <AchievementsSection />
 
-      {/* 最近对局（v7 增补） */}
-      <RecentGamesSection />
+          {/* 最近对局（v7 增补） */}
+          <RecentGamesSection />
+        </div>
+
+        <div className="space-y-4 min-h-0 lg:overflow-y-auto lg:pr-1">
 
       {/* 账号安全：已登录改密（游客无密码体系，转正后可用） */}
       {user && !user.is_guest && (
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }}
-          className="mt-6 rounded-2xl p-5 flex items-center justify-between"
+          className="rounded-2xl p-5 flex items-center justify-between"
           style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
           <div>
             <p className="text-muted text-xs tracking-widest flex items-center gap-1.5"><Shield size={12} />账号安全</p>
-            <p className="text-[10px] text-muted/50 mt-1">定期更换密码，保护你的战绩与牌库</p>
           </div>
           <Button size="sm" variant="outline" onClick={() => setPwDialog(true)}>修改密码</Button>
         </motion.div>
@@ -537,7 +494,7 @@ export function ProfilePage() {
 
       {/* 邀请码 */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}
-        className="mt-6 rounded-2xl p-5"
+        className="rounded-2xl p-5"
         style={{ background: 'linear-gradient(180deg, rgb(var(--accent-bg-end)/ 0.5) 0%, rgb(var(--accent-bg-mid)/ 0.8) 100%)', border: '1px solid rgb(var(--accent-primary)/ 0.12)' }}>
         <div className="flex items-center justify-between mb-3">
           <h2 className="font-serif text-sm font-bold text-gold flex items-center gap-1.5"><Ticket size={13} />我的邀请码</h2>
@@ -568,13 +525,16 @@ export function ProfilePage() {
       {/* 管理员面板（aryuu only） */}
       {user?.is_admin && (
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}
-          className="mt-6 rounded-2xl p-5"
+          className="rounded-2xl p-5"
           style={{ background: 'linear-gradient(180deg, rgba(255,100,50,0.05) 0%, rgb(var(--accent-bg-mid)/ 0.8) 100%)', border: '1px solid rgba(255,100,50,0.2)' }}>
           <h2 className="font-serif text-sm font-bold text-orange-300 mb-1 flex items-center gap-1.5"><Shield size={13} />管理员面板</h2>
           <p className="text-muted text-[10px] mb-3">关闭邀请码时允许公开注册；开启后仅接受未使用的邀请码。</p>
           <AdminUserList />
         </motion.div>
       )}
+
+        </div>
+      </div>
 
       {/* 改名弹窗 */}
       <Dialog

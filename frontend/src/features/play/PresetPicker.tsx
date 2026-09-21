@@ -126,7 +126,7 @@ export function PresetPicker({ open, decks, defaultDeckId, lastConfig, onSelect,
             value={deckId !== null ? String(deckId) : ''}
             disabled={deckLocked}
             options={deckOptions}
-            onChange={e => setDeckId(parseInt(e.target.value, 10))}
+            onChange={v => setDeckId(parseInt(v, 10))}
             hint={deckLocked ? '已锁定该牌组' : undefined}
           />
         )}

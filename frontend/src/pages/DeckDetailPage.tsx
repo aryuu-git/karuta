@@ -382,14 +382,14 @@ export function DeckDetailPage() {
                 {likeOverride?.likes ?? deck?.likes ?? 0}
               </Button>
               {isOwner && (
-                <Button variant="ghost" size="sm" onClick={startEdit} icon={<Pencil size={12} aria-hidden="true" />}>修改</Button>
+                <Button variant="ghost" size="xs" onClick={startEdit} icon={<Pencil size={12} aria-hidden="true" />}>修改</Button>
               )}
-              <Button size="sm" onClick={openPicker} icon={<Swords size={16} />}>用它开局</Button>
-              <Button variant="outline" size="sm" onClick={handleExport} loading={exporting} disabled={cards.length === 0}
-                title="下载所有牌面封面图的压缩包" icon={<Download size={16} />}>导出封面</Button>
-              <Button variant="outline" size="sm" onClick={() => setShowCloneOptions(true)} loading={cloning} icon={<Copy size={16} />}>复制</Button>
+              <Button size="xs" onClick={openPicker} icon={<Swords size={13} />}>用它开局</Button>
+              <Button variant="outline" size="xs" onClick={handleExport} loading={exporting} disabled={cards.length === 0}
+                title="下载所有牌面封面图的压缩包" icon={<Download size={13} />}>导出封面</Button>
+              <Button variant="outline" size="xs" onClick={() => setShowCloneOptions(true)} loading={cloning} icon={<Copy size={13} />}>复制</Button>
               {isOwner && (
-                <Button variant="danger" size="sm" onClick={() => setShowDeleteDeck(true)} icon={<Trash2 size={14} aria-hidden="true" />} aria-label="删除牌组" title="删除牌组" />
+                <Button variant="danger" size="xs" onClick={() => setShowDeleteDeck(true)} icon={<Trash2 size={12} aria-hidden="true" />} aria-label="删除牌组" title="删除牌组" />
               )}
             </>
           ) : undefined

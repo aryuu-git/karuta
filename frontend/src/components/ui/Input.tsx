@@ -17,7 +17,7 @@ export interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 
   fit?: boolean
 }
 
-const densityClasses = { sm: 'px-3 py-2 text-xs', md: 'px-4 py-3' } as const
+const densityClasses = { sm: 'px-3 h-9 text-xs', md: 'px-4 py-3' } as const
 
 const fieldClasses =
   'w-full rounded bg-ink-deep border border-border text-white placeholder-muted/60 ' +
