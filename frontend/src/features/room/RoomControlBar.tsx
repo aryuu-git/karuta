@@ -72,7 +72,7 @@ export function RoomControlBar({
           </Button>
         )}
         {isHost ? (
-          <Button size="sm" variant="danger" className="shrink-0" icon={<DoorClosed size={13} />} onClick={onCloseRoom}>
+          <Button size="sm" variant="ghost" className="shrink-0 text-crimson/70 hover:text-crimson hover:bg-crimson/10" icon={<DoorClosed size={13} />} onClick={onCloseRoom}>
             解散战场
           </Button>
         ) : (
@@ -82,7 +82,7 @@ export function RoomControlBar({
         )}
         {/* 管理员专属：强制结束对局 */}
         {user?.is_admin && (
-          <Button size="sm" variant="outline" className="shrink-0" icon={<Zap size={13} />} onClick={() => setConfirmAction('forceEnd')}>
+          <Button size="sm" variant="ghost" className="shrink-0 text-warning/70 hover:text-warning hover:bg-warning/10" icon={<Zap size={13} />} onClick={() => setConfirmAction('forceEnd')}>
             强制结束
           </Button>
         )}
