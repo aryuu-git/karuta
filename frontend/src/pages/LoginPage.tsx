@@ -60,12 +60,12 @@ export function LoginPage() {
         className="relative z-10 w-full max-w-sm"
       >
         {/* Logo */}
-        <div className="text-center mb-10">
+        <div className="text-center mb-6">
           <motion.h1
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.1, duration: 0.5 }}
-            className="font-serif text-6xl font-bold text-gold-shimmer mb-2"
+            className="font-serif text-5xl font-bold text-gold-shimmer mb-2"
             style={{ textShadow: '0 0 40px rgb(var(--accent-primary)/ 0.4)' }}
           >
             🌸 二次元歌牌大乱斗

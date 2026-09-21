@@ -34,19 +34,25 @@ export function buildMockResults(players: RoomPlayer[]): GameResult[] {
 interface MenuItemProps {
   icon: ReactNode
   label: string
-  danger?: boolean
+  /** 语义色调：danger=解散（红）；warning=管理员强制结束（橙） */
+  tone?: 'danger' | 'warning'
   /** 收起菜单 */
   onClose: () => void
   action: () => void
 }
 
 /** 菜单项按钮：点击先收起菜单，再执行动作 */
-function MenuItem({ icon, label, danger, onClose, action }: MenuItemProps) {
+function MenuItem({ icon, label, tone, onClose, action }: MenuItemProps) {
+  const toneCls = tone === 'danger'
+    ? 'text-crimson/80 hover:text-crimson hover:bg-crimson/10'
+    : tone === 'warning'
+    ? 'text-warning/80 hover:text-warning hover:bg-warning/10'
+    : ''
   return (
     <Button
-      variant={danger ? 'danger' : 'ghost'}
+      variant="ghost"
       size="md"
-      className="w-full justify-start"
+      className={`w-full justify-start ${toneCls}`}
       icon={icon}
       onClick={() => { onClose(); action() }}
     >
@@ -89,7 +95,7 @@ export function ControlMenu({
             <MenuItem
               icon={<DoorClosed size={15} />}
               label="解散战场"
-              danger
+              tone="danger"
               onClose={onClose}
               action={onCloseRoom}
             />
@@ -105,6 +111,7 @@ export function ControlMenu({
             <MenuItem
               icon={<Zap size={15} />}
               label="强制结束"
+              tone="warning"
               onClose={onClose}
               action={() => setConfirmAction('forceEnd')}
             />
