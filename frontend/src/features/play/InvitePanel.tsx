@@ -58,8 +58,8 @@ export function InvitePanel({ code, autoFocus = false, className = '' }: InviteP
   }
 
   return (
-    <div className={`rounded-2xl p-5 border border-gold/15 ${className}`}
-      style={{ background: 'linear-gradient(160deg, rgb(var(--accent-bg-end)/ 0.4), rgb(var(--accent-bg-mid)/ 0.8))' }}>
+    <div className={`rounded-2xl p-5 ${className}`}
+      style={{ background: 'linear-gradient(180deg, rgb(var(--color-ink)) 0%, rgb(var(--color-ink-deep)) 100%)', border: '1px solid rgb(var(--accent-primary)/ 0.12)' }}>
       <p className="text-gold/60 text-caption font-serif tracking-widest text-center mb-3">邀请战友</p>
 
       <div

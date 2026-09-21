@@ -163,8 +163,7 @@ export function WaitingLobby({ room, players, currentUserId, onRoleChange, onKic
         className="absolute inset-0 pointer-events-none"
         style={{ opacity: 0.6 }}
       />
-
-      <div className="relative z-10 flex flex-col items-center gap-8 max-w-md w-full">
+      <div className="relative z-10 flex flex-col items-center gap-6 max-w-md w-full">
         {/* 邀请区：复用 InvitePanel（大字房间码 + 复制链接/复制码 + 系统分享）
             rematch 落地时携带 focusInvite state → 码自动高亮便于直接复制 */}
         <InvitePanel code={room.code} autoFocus={focusInvite} className="w-full" />
