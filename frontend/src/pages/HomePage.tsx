@@ -193,7 +193,7 @@ export function HomePage() {
         </a>
 
         {/* 活跃战场列表 */}
-        <div className="rounded-2xl overflow-hidden mb-8 border border-gold/12"
+        <div className="rounded-2xl overflow-hidden mb-8 border border-gold/10"
           style={{ background: 'linear-gradient(180deg, rgb(var(--accent-bg-end)/ 0.4) 0%, rgb(var(--accent-bg-mid)/ 0.7) 100%)' }}>
           <div className="flex items-center justify-between px-5 py-3.5 relative border-b border-gold/10">
             <div className="flex items-center gap-2">
@@ -284,7 +284,7 @@ export function HomePage() {
         </div>
 
       {/* 全站排行榜（v7 增补）：三榜 TOP10，游客同榜 */}
-      <div className="rounded-2xl overflow-hidden mb-8 border border-gold/12"
+      <div className="rounded-2xl overflow-hidden mb-8 border border-gold/10"
         style={{ background: 'linear-gradient(180deg, rgb(var(--accent-bg-end)/ 0.4) 0%, rgb(var(--accent-bg-mid)/ 0.7) 100%)' }}>
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-gold/10">
           <h2 className="font-serif text-title text-gold font-bold flex items-center gap-1.5">
