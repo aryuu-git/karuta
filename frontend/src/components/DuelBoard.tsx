@@ -98,16 +98,15 @@ export function DuelBoard({ duelState, currentUserId, onGrab, arranging, arrange
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* 顶部状态栏 */}
-      <div className="flex items-center justify-between px-4 py-2 shrink-0"
-        style={{ background: 'rgb(var(--accent-bg-mid)/ 0.7)', borderBottom: '1px solid rgb(var(--accent-primary)/ 0.1)' }}>
+      <div className="flex items-center justify-between px-4 py-2 shrink-0 bg-ink-deep/70 border-b border-gold/10">
         <div className="flex items-center gap-2">
-          <span className="text-crimson/80 text-xs font-serif">
+          <span className="text-crimson/80 text-tiny font-serif">
             {opponentState.username}
           </span>
-          <span className="text-white/50 text-xs tabular-nums">{opponentCount} 张</span>
-          {arranging && <span className="text-xs">{opponentReady ? '✓ 准备好了' : '排阵中…'}</span>}
+          <span className="text-white/50 text-tiny tabular-nums">{opponentCount} 张</span>
+          {arranging && <span className="text-tiny">{opponentReady ? '✓ 准备好了' : '排阵中…'}</span>}
         </div>
-        <div className="flex items-center gap-2 text-xs text-muted">
+        <div className="flex items-center gap-2 text-tiny text-muted">
           {arranging ? (
             <span className="text-gold">{arrangeTimeout != null ? `排阵 ${arrangeTimeout}s` : '排阵中'}</span>
           ) : (
@@ -115,18 +114,17 @@ export function DuelBoard({ duelState, currentUserId, onGrab, arranging, arrange
           )}
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-white/50 text-xs tabular-nums">{myCount} 张</span>
-          <span className="text-gold text-xs font-serif">
+          <span className="text-white/50 text-tiny tabular-nums">{myCount} 张</span>
+          <span className="text-gold text-tiny font-serif">
             {myState.username} (我)
           </span>
         </div>
       </div>
 
       {/* 对方区域 */}
-      <div className="flex-1 overflow-y-auto relative"
-        style={{ borderBottom: '2px solid rgb(var(--accent-primary)/ 0.15)' }}>
+      <div className="flex-1 overflow-y-auto relative border-b-2 border-gold/15">
         <div className="absolute top-1 left-1/2 -translate-x-1/2 z-10 pointer-events-none">
-          <span className="text-crimson/40 text-xs bg-black/40 px-2 py-0.5 rounded-full font-serif">
+          <span className="text-crimson/40 text-tiny bg-black/40 px-2 py-0.5 rounded-full font-serif">
             -- 对方领域 --
           </span>
         </div>
@@ -142,10 +140,9 @@ export function DuelBoard({ duelState, currentUserId, onGrab, arranging, arrange
       </div>
 
       {/* 分隔线 - 中间决斗区标识 */}
-      <div className="flex items-center gap-2 px-4 py-1.5 shrink-0"
-        style={{ background: 'rgb(var(--accent-primary)/ 0.06)' }}>
+      <div className="flex items-center gap-2 px-4 py-1.5 shrink-0 bg-gold/5">
         <div className="h-px flex-1 bg-gold/20" />
-        <span className="text-gold/60 text-xs font-serif tracking-wider">
+        <span className="text-gold/60 text-tiny font-serif tracking-wider">
           -- 决斗场 --
         </span>
         <div className="h-px flex-1 bg-gold/20" />
@@ -154,7 +151,7 @@ export function DuelBoard({ duelState, currentUserId, onGrab, arranging, arrange
       {/* 己方区域 */}
       <div className="flex-1 overflow-y-auto relative">
         <div className="absolute top-1 left-1/2 -translate-x-1/2 z-10 pointer-events-none">
-          <span className="text-gold/40 text-xs bg-black/40 px-2 py-0.5 rounded-full font-serif">
+          <span className="text-gold/40 text-tiny bg-black/40 px-2 py-0.5 rounded-full font-serif">
             -- 我的领域 --
           </span>
         </div>
@@ -171,9 +168,8 @@ export function DuelBoard({ duelState, currentUserId, onGrab, arranging, arrange
 
       {/* 排阵确认按钮 */}
       {arranging && (
-        <div className="shrink-0 px-4 py-3 flex items-center gap-3"
-          style={{ background: 'rgb(var(--accent-bg-mid)/ 0.8)', borderTop: '1px solid rgb(var(--accent-primary)/ 0.1)' }}>
-          <div className="flex-1 text-xs text-muted font-serif">
+        <div className="shrink-0 px-4 py-3 flex items-center gap-3 bg-ink-deep/80 border-t border-gold/10">
+          <div className="flex-1 text-tiny text-muted font-serif">
             {selected !== null ? '点击另一张牌交换（可跨区）' : '点击选中一张牌'}
           </div>
           <motion.button
@@ -181,12 +177,7 @@ export function DuelBoard({ duelState, currentUserId, onGrab, arranging, arrange
             whileTap={{ scale: 0.95 }}
             onClick={onArrangeReady}
             disabled={myReady}
-            className="px-4 py-2 rounded-lg text-sm font-serif transition-all disabled:opacity-40"
-            style={{
-              background: myReady ? 'rgba(34,197,94,0.2)' : 'rgb(var(--accent-primary)/ 0.15)',
-              border: myReady ? '1px solid rgba(34,197,94,0.5)' : '1px solid rgb(var(--accent-primary)/ 0.3)',
-              color: myReady ? '#22c55e' : 'rgb(var(--color-gold))',
-            }}
+            className={`px-4 py-2 rounded-lg text-caption font-serif transition-all disabled:opacity-40 ${myReady ? 'bg-success/20 text-success border border-success/40' : 'bg-gold/15 text-gold border border-gold/30'}`}
           >
             {myReady ? '已准备 ✓' : '准备完毕！'}
           </motion.button>
@@ -210,8 +201,8 @@ function DuelCardGrid({ cards, flipped, onGrab, isOpponent, onCardClickWithIndex
   if (cards.length === 0) {
     return (
       <div className="flex items-center justify-center h-full py-8">
-        <span className="text-muted text-sm font-serif italic">
-          {isOpponent ? '对方场上尚无牌' : '你的场上尚无牌'}
+        <span className="text-muted text-caption font-serif italic">
+          {isOpponent ? '对方场上还没有牌' : '你的场上还没有牌'}
         </span>
       </div>
     )
@@ -248,18 +239,14 @@ function DuelCardGrid({ cards, flipped, onGrab, isOpponent, onCardClickWithIndex
                   whileHover={isClaimed ? {} : { y: -3, scale: 1.05, transition: { duration: 0.1 } }}
                   whileTap={isClaimed ? {} : { scale: 0.93 }}
                   onClick={() => { if (isClaimed) return; onCardClickWithIndex ? onCardClickWithIndex(idx, card.id) : onGrab(card.id) }}
-                  className={`relative overflow-hidden rounded-lg select-none w-full h-full ${isClaimed ? 'cursor-default grayscale' : 'cursor-pointer'}`}
+                  className={`relative overflow-hidden rounded-lg select-none w-full h-full ${isSelected ? 'border-2 border-success/80' : isClaimed ? 'border border-white/5' : 'border border-gold/10'} ${isClaimed ? 'cursor-default grayscale' : 'cursor-pointer'}`}
                   style={{
+                    // 阴影无法用类表达，保留 inline；绿色泛光改用 success 变量引用
                     boxShadow: isSelected
-                      ? '0 0 16px rgba(34,197,94,0.6), 0 4px 12px rgba(0,0,0,0.5)'
+                      ? '0 0 16px rgb(var(--color-success)/ 0.6), 0 4px 12px rgba(0,0,0,0.5)'
                       : isClaimed
                         ? '0 1px 4px rgba(0,0,0,0.3)'
                         : '0 2px 8px rgba(0,0,0,0.4)',
-                    border: isSelected
-                      ? '2px solid rgba(34,197,94,0.8)'
-                      : isClaimed
-                        ? '1px solid rgba(255,255,255,0.05)'
-                        : '1px solid rgb(var(--accent-primary)/ 0.1)',
                   }}
                 >
                   {card.cover_url ? (
@@ -270,7 +257,7 @@ function DuelCardGrid({ cards, flipped, onGrab, isOpponent, onCardClickWithIndex
                   ) : (
                     <div className="absolute inset-0 flex items-center justify-center"
                       style={{ background: 'linear-gradient(160deg, rgb(var(--color-surface)), rgb(var(--color-ink)))' }}>
-                      <span className="text-gold/40 text-xs font-serif">{card.display_text.slice(0, 4)}</span>
+                      <span className="text-gold/40 text-tiny font-serif">{card.display_text.slice(0, 4)}</span>
                     </div>
                   )}
 
@@ -282,7 +269,7 @@ function DuelCardGrid({ cards, flipped, onGrab, isOpponent, onCardClickWithIndex
                   {/* 已抢标记 */}
                   {isClaimed && (
                     <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-                      <span className="text-white/60 text-xs font-bold">✓</span>
+                      <span className="text-white/60 text-tiny font-bold">✓</span>
                     </div>
                   )}
                 </motion.div>

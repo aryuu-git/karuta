@@ -8,14 +8,13 @@ interface AvatarProps {
 export function Avatar({ username, avatarUrl, size = 24, className = '' }: AvatarProps) {
   return (
     <div
-      className={`rounded-full flex items-center justify-center shrink-0 overflow-hidden font-bold ${className}`}
+      className={`rounded-full flex items-center justify-center shrink-0 overflow-hidden font-bold border border-gold/30 text-gold ${className}`}
       style={{
         width: size,
         height: size,
         fontSize: size * 0.4,
+        // 渐变背景保留 inline（条件依赖 avatarUrl，无法用类表达）
         background: avatarUrl ? undefined : 'linear-gradient(135deg, rgb(var(--accent-primary)/ 0.3), rgb(var(--accent-bg-end)/ 0.8))',
-        border: '1px solid rgb(var(--accent-primary)/ 0.3)',
-        color: 'rgb(var(--color-gold))',
       }}
     >
       {avatarUrl ? (

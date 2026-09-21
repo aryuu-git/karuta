@@ -43,16 +43,16 @@ export function AudioUploadOptions({ audioFile, onChange, processing, progress }
   }
 
   return (
-    <div className="border border-border rounded-lg p-3 space-y-3" style={{ background: 'rgb(var(--accent-bg)/ 0.1)' }}>
+    <div className="border border-border rounded-lg p-3 space-y-3 bg-ink-deep/10">
       <div className="flex items-center justify-between">
-        <span className="text-muted text-xs">⚙️ 音频处理</span>
+        <span className="text-muted text-tiny">⚙️ 音频处理</span>
         {duration !== null && (
-          <span className="text-gold/60 text-xs">
+          <span className="text-gold/60 text-tiny">
             时长 {formatDuration(duration)}
           </span>
         )}
         {loadingDuration && (
-          <span className="text-muted/40 text-xs">读取中...</span>
+          <span className="text-muted/40 text-tiny">读取中...</span>
         )}
       </div>
 
@@ -63,15 +63,15 @@ export function AudioUploadOptions({ audioFile, onChange, processing, progress }
           checked={compress}
           onChange={e => setCompress(e.target.checked)}
           disabled={processing}
-          className="accent-pink-500 w-3.5 h-3.5"
+          className="accent-gold w-3.5 h-3.5"
         />
-        <span className="text-white/80 text-xs">压缩为 MP3 (128kbps)</span>
-        <span className="text-muted/50 text-xs ml-auto">减小体积</span>
+        <span className="text-body-text/80 text-tiny">压缩为 MP3 (128kbps)</span>
+        <span className="text-muted/50 text-tiny ml-auto">减小体积</span>
       </label>
 
       {/* 裁剪 */}
       <div className="space-y-1.5">
-        <span className="text-muted text-xs">裁剪：</span>
+        <span className="text-muted text-tiny">裁剪：</span>
         <div className="flex gap-2 flex-wrap">
           {([
             { value: 'none', label: '不裁剪' },
@@ -79,10 +79,10 @@ export function AudioUploadOptions({ audioFile, onChange, processing, progress }
             { value: 'random30', label: '随机 30s' },
           ] as const).map(opt => (
             <label key={opt.value}
-              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs cursor-pointer transition-all ${
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-tiny cursor-pointer transition-all ${
                 trim === opt.value
                   ? 'bg-gold/20 text-gold border border-gold/40'
-                  : 'bg-white/5 text-white/50 border border-transparent hover:border-white/10'
+                  : 'bg-white/5 text-body-text/50 border border-transparent hover:border-white/10'
               } ${(opt.value !== 'none' && tooShort) || processing ? 'opacity-40 cursor-not-allowed' : ''}`}>
               <input
                 type="radio"
@@ -98,7 +98,7 @@ export function AudioUploadOptions({ audioFile, onChange, processing, progress }
           ))}
         </div>
         {tooShort && (
-          <p className="text-muted/50 text-xs">音频不足 30 秒，无法裁剪</p>
+          <p className="text-muted/50 text-tiny">音频不足 30 秒，无法裁剪</p>
         )}
       </div>
 
@@ -106,12 +106,12 @@ export function AudioUploadOptions({ audioFile, onChange, processing, progress }
       {processing && (
         <div className="space-y-1">
           <div className="flex items-center justify-between">
-            <span className="text-gold text-xs">处理中...</span>
-            <span className="text-gold/60 text-xs">{Math.round(progress * 100)}%</span>
+            <span className="text-gold text-tiny">转码中…</span>
+            <span className="text-gold/60 text-tiny">{Math.round(progress * 100)}%</span>
           </div>
           <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
             <div
-              className="h-full bg-gradient-to-r from-pink-500 to-gold rounded-full transition-all duration-300"
+              className="h-full bg-gradient-to-r from-gold-dark to-gold rounded-full transition-all duration-300"
               style={{ width: `${Math.max(progress * 100, 2)}%` }}
             />
           </div>

@@ -28,6 +28,11 @@ type Deck struct {
 	CardCount   int       `json:"card_count,omitempty"`
 	CreatedAt   time.Time `json:"created_at"`
 	OwnerName   string    `json:"owner_name,omitempty"`
+	// v8 牌组增强：列表封面拼贴（前 4 张成员卡）与点赞
+	CoverPaths  string    `json:"-"`
+	CoverURLs   []string  `json:"cover_urls,omitempty"`
+	Likes       int       `json:"likes,omitempty"`
+	LikedByMe   bool      `json:"liked_by_me,omitempty"`
 }
 
 type Card struct {
@@ -48,6 +53,11 @@ type Card struct {
 	CreatedAt   time.Time    `json:"created_at"`
 	Audios      []*CardAudio `json:"audios,omitempty"`
 	AudioCount  int          `json:"audio_count,omitempty"`
+	// AudioDuration 全部音频实测时长合计（秒，列表查询聚合；0=无音频/旧数据）
+	AudioDuration float64    `json:"audio_duration,omitempty"`
+	// Likes/LikedByMe 点赞数与「我是否赞过」（公共库社交，v6）
+	Likes       int          `json:"likes,omitempty"`
+	LikedByMe   bool         `json:"liked_by_me,omitempty"`
 	OwnerName   string       `json:"owner_name,omitempty"`
 }
 
@@ -100,7 +110,10 @@ type Room struct {
 	DuelRoundTime   int       `json:"duel_round_time"`
 	DuelGrabChances int       `json:"duel_grab_chances"`
 	DuelArrangeTime int       `json:"duel_arrange_time"`
-	CreatedAt       time.Time `json:"created_at"`
+	CreatedAt   time.Time `json:"created_at"`
+	// v7：私密房（列表隐藏，凭码可进）与人数上限（0=默认 16）
+	IsPrivate   bool      `json:"is_private"`
+	MaxPlayers  int       `json:"max_players"`
 }
 
 type RoomPlayer struct {

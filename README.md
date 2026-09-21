@@ -36,8 +36,10 @@
 
 ```bash
 # 终端 1 — 后端
+# 注意：DB_PATH 相对运行目录解析——从 backend/ 内启动必须显式指向仓库根 data/，
+# 否则数据库会落进 backend/data/（产物统一约定：一切数据在仓库根 data/）
 cd backend
-go run ./cmd/server
+DB_PATH=../data/karuta.db go run ./cmd/server   # PowerShell: $env:DB_PATH='../data/karuta.db'
 
 # 终端 2 — 前端
 cd frontend

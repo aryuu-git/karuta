@@ -25,10 +25,10 @@ export function TagPicker({ tags, customTags, onToggle, onRequestCustom }: TagPi
           return (
             <button key={tag} type="button"
               onClick={() => onToggle(tag)}
-              className={`text-xs px-2.5 py-1 rounded-md transition-all ${
+              className={`text-tiny px-2.5 py-1 rounded-md transition-all ${
                 isSelected
                   ? 'bg-gold/20 text-gold border border-gold/40'
-                  : 'bg-white/5 text-white/50 border border-transparent hover:border-white/10'
+                  : 'bg-white/5 text-body-text/50 border border-transparent hover:border-white/10'
               }`}>
               {tag}
             </button>
@@ -36,7 +36,7 @@ export function TagPicker({ tags, customTags, onToggle, onRequestCustom }: TagPi
         })}
         <button type="button"
           onClick={onRequestCustom}
-          className="text-xs px-2.5 py-1 rounded-md bg-white/5 text-muted border border-dashed border-white/10 hover:border-gold/30 hover:text-gold/70 transition-all">
+          className="text-tiny px-2.5 py-1 rounded-md bg-white/5 text-muted border border-dashed border-white/10 hover:border-gold/30 hover:text-gold/70 transition-all">
           <Plus className="mr-0.5 inline h-3 w-3" /> 自定义
         </button>
       </div>

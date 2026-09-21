@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef, type RefObject } from 'react'
 import { motion } from 'framer-motion'
-import { Crown, Eye } from 'lucide-react'
 import type { Room, RoomPlayer } from '../api/types'
 import { api } from '../api/client'
 import { Avatar } from './Avatar'
+import { useLocation } from 'react-router-dom'
 import { Button } from './ui'
-
+import { InvitePanel } from '../features/play/InvitePanel'
 interface DuelSeats {
   seat1: { user_id: number; username: string } | null
   seat2: { user_id: number; username: string } | null
@@ -96,13 +96,16 @@ function useAmbientParticles(canvasRef: RefObject<HTMLCanvasElement>) {
 }
 
 export function WaitingLobby({ room, players, currentUserId, onRoleChange, onKick, preloadProgress, duelSeats, onClaimSeat, onLeaveSeat, onKickSeat }: WaitingLobbyProps) {
-  const [copied, setCopied] = useState(false)
   const [starting, setStarting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isSpectator, setIsSpectator] = useState(false)
   const [togglingRole, setTogglingRole] = useState(false)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   useAmbientParticles(canvasRef)
+
+  // rematch 落地标记（useRematch 导航时写入）：邀请面板自动高亮房间码
+  const location = useLocation()
+  const focusInvite = (location.state as { focusInvite?: boolean } | null)?.focusInvite === true
 
   const isHost = room.host_id === currentUserId
 
@@ -120,12 +123,6 @@ export function WaitingLobby({ room, players, currentUserId, onRoleChange, onKic
       onRoleChange?.(newIsSpectator)
     } catch { }
     finally { setTogglingRole(false) }
-  }
-
-  const copyCode = async () => {
-    await navigator.clipboard.writeText(room.code).catch(() => null)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
   }
 
   const handleStart = async () => {
@@ -152,7 +149,7 @@ export function WaitingLobby({ room, players, currentUserId, onRoleChange, onKic
       await api.rooms.start(room.id)
       // 不直接切换 UI，等待 WS room_state 事件（status=reading）触发切换
     } catch (e) {
-      setError(e instanceof Error ? e.message : '出了点差错，请再试一次。')
+      setError(e instanceof Error ? e.message : '开局失败，请重试')
       setStarting(false)
     }
   }
@@ -167,40 +164,15 @@ export function WaitingLobby({ room, players, currentUserId, onRoleChange, onKic
       />
 
       <div className="relative z-10 flex flex-col items-center gap-8 max-w-md w-full">
-        {/* Room code */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center"
-        >
-          <p className="text-pink-300/50 text-sm font-serif mb-2 tracking-widest italic">将此令牌传递给战友，共赴命运之战。</p>
-          <div
-            className="font-serif text-5xl sm:text-6xl font-bold tracking-[0.2em] text-gold cursor-pointer select-all"
-            style={{ textShadow: '0 0 30px rgb(var(--accent-primary)/ 0.5)' }}
-            onClick={copyCode}
-          >
-            {room.code}
-          </div>
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: copied ? 1 : 0 }}
-            className="text-green-400 text-xs mt-2"
-          >
-            已复制——去分享吧。
-          </motion.p>
-          <button
-            onClick={copyCode}
-            className="mt-3 text-muted text-xs hover:text-gold transition-all duration-200 underline underline-offset-2 hover:scale-110"
-          >
-            点击复制邀请码
-          </button>
-        </motion.div>
+        {/* 邀请区：复用 InvitePanel（大字房间码 + 复制链接/复制码 + 系统分享）
+            rematch 落地时携带 focusInvite state → 码自动高亮便于直接复制 */}
+        <InvitePanel code={room.code} autoFocus={focusInvite} className="w-full" />
 
         {/* 房间模式信息 */}
         {room.mask_enabled && (
           <div className="flex items-center gap-2 px-4 py-2 rounded-lg border border-gold/20 bg-gold/5">
-            <span className="text-gold text-sm">🎭</span>
-            <span className="text-sm text-white/80">
+            <span className="text-gold text-caption">🎭</span>
+            <span className="text-caption text-body-text/80">
               模糊牌面：{room.mask_difficulty === 'easy' ? '简单' : room.mask_difficulty === 'hard' ? '困难' : '普通'}难度
             </span>
           </div>
@@ -209,8 +181,8 @@ export function WaitingLobby({ room, players, currentUserId, onRoleChange, onKic
         {/* Duel Seats */}
         {room.mode === 'duel' && duelSeats && (
           <div className="w-full">
-            <p className="text-pink-300/40 text-xs tracking-widest mb-3 text-center font-serif">
-              ⚔ 选手席位 · 点击入座 ⚔
+            <p className="text-gold/40 text-tiny tracking-widest mb-3 text-center font-serif">
+              选手席位 · 点击入座
             </p>
             <div className="grid grid-cols-2 gap-3">
               {([1, 2] as const).map((seatNum) => {
@@ -222,60 +194,45 @@ export function WaitingLobby({ room, players, currentUserId, onRoleChange, onKic
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: seatNum * 0.1 }}
-                    className="flex flex-col items-center gap-2 p-4 rounded-xl border"
-                    style={{
-                      background: seat
-                        ? 'rgb(var(--accent-primary)/ 0.08)'
-                        : 'rgba(255,255,255,0.02)',
-                      border: seat
-                        ? '1px solid rgb(var(--accent-primary)/ 0.3)'
-                        : '1px dashed rgba(255,255,255,0.15)',
-                    }}
+                    className={`flex flex-col items-center gap-2 p-4 rounded-xl border ${seat ? 'bg-gold/10 border-gold/30' : 'bg-body-text/5 border-dashed border-body-text/15'}`}
                   >
-                    <span className="text-xs text-muted font-serif">
+                    <span className="text-tiny text-muted font-serif">
                       P{seatNum}
                     </span>
                     {seat ? (
                       <>
-                        <div className="w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold"
+                        <div className="w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold border-2 border-gold/40 text-gold"
                           style={{
                             background: 'linear-gradient(135deg, rgb(var(--accent-primary)/ 0.2), rgb(var(--accent-primary)/ 0.05))',
-                            border: '2px solid rgb(var(--accent-primary)/ 0.4)',
-                            color: 'rgb(var(--color-gold))',
                           }}>
                           {seat.username.charAt(0).toUpperCase()}
                         </div>
-                        <span className="text-sm text-gold font-serif truncate max-w-full">
+                        <span className="text-caption text-gold font-serif truncate max-w-full">
                           {seat.username}
                         </span>
                         {isMySeat && (
                           <button onClick={onLeaveSeat}
-                            className="text-xs text-muted hover:text-crimson transition-colors">
+                            className="text-tiny text-muted hover:text-crimson transition-colors">
                             离开席位
                           </button>
                         )}
                         {!isMySeat && isHost && onKickSeat && (
                           <button onClick={() => onKickSeat(seat.user_id)}
-                            className="text-xs text-muted hover:text-crimson transition-colors">
+                            className="text-tiny text-muted hover:text-crimson transition-colors">
                             踢下席位
                           </button>
                         )}
                       </>
                     ) : (
                       <>
-                        <div className="w-10 h-10 rounded-full flex items-center justify-center border border-dashed border-white/20">
-                          <span className="text-white/20 text-lg">?</span>
+                        <div className="w-10 h-10 rounded-full flex items-center justify-center border border-dashed border-body-text/20">
+                          <span className="text-body-text/20 text-lg">?</span>
                         </div>
                         <motion.button
                           whileHover={{ scale: 1.05 }}
                           whileTap={{ scale: 0.95 }}
                           onClick={() => onClaimSeat?.(seatNum)}
-                          className="text-xs px-3 py-1 rounded-lg transition-all"
-                          style={{
-                            background: 'rgb(var(--accent-primary)/ 0.1)',
-                            border: '1px solid rgb(var(--accent-primary)/ 0.3)',
-                            color: 'rgb(var(--color-gold))',
-                          }}>
+                          className="text-tiny px-3 py-1 rounded-lg transition-all bg-gold/10 border border-gold/30 text-gold">
                           入座
                         </motion.button>
                       </>
@@ -292,8 +249,8 @@ export function WaitingLobby({ room, players, currentUserId, onRoleChange, onKic
 
         {/* Players */}
         <div className="w-full">
-          <p className="text-pink-300/40 text-xs tracking-widest mb-3 text-center font-serif">
-            {room.mode === 'duel' ? '✦ 旁观席 ✦' : `✦ 集结中的勇者们 · 已到场 ${players.length} 位英杰 ✦`}
+          <p className="text-gold/40 text-tiny tracking-widest mb-3 text-center font-serif">
+            {room.mode === 'duel' ? '旁观席' : `已到场 ${players.length} 位`}
           </p>
           <div className="grid grid-cols-2 gap-2">
             {players.map((player, i) => (
@@ -312,21 +269,21 @@ export function WaitingLobby({ room, players, currentUserId, onRoleChange, onKic
                 {/* Avatar */}
                 <Avatar username={player.username} avatarUrl={player.avatar_url} size={24} />
                 <span
-                  className={`text-sm truncate flex-1 ${
-                    player.user_id === currentUserId ? 'text-gold' : 'text-white/80'
+                  className={`text-caption truncate flex-1 ${
+                    player.user_id === currentUserId ? 'text-gold' : 'text-body-text/80'
                   }`}
                 >
                   {player.username}
                   {player.user_id === room.host_id && (
-                    <Crown size={11} className="text-crimson inline-block ml-1" aria-label="房主" />
+                    <span className="text-crimson text-tiny ml-1">👑</span>
                   )}
                   {player.role === 'spectator' && (
-                    <Eye size={11} className="inline-block ml-0.5" style={{ color: 'rgb(var(--color-muted)/ 0.8)' }} aria-label="旁观" />
+                    <span className="text-tiny ml-1 text-info/70">👁旁观</span>
                   )}
                 </span>
                 {onKick && currentUserId === room.host_id && player.user_id !== currentUserId && (
                   <button onClick={() => onKick(player.user_id)}
-                    className="text-xs text-muted/40 hover:text-crimson transition-colors shrink-0 px-1"
+                    className="text-tiny text-muted/40 hover:text-crimson transition-colors shrink-0 px-1"
                     title="踢出房间">
                     ✕
                   </button>
@@ -339,11 +296,11 @@ export function WaitingLobby({ room, players, currentUserId, onRoleChange, onKic
         {/* 预加载进度条 */}
         {preloadProgress && (
           <div className="w-full">
-            <div className="flex items-center justify-between text-xs mb-1.5">
+            <div className="flex items-center justify-between text-tiny mb-1.5">
               {preloadDone ? (
-                <span className="text-green-400/70 tracking-widest">✓ 全资源加载完成，可以开战了！(ﾉ◕ヮ◕)ﾉ</span>
+                <span className="text-success/70 tracking-widest">✓ 资源加载完成</span>
               ) : (
-                <span className="text-muted">🎵 加载牌组资源中…</span>
+                <span className="text-muted">正在加载牌组资源…</span>
               )}
               <span className="text-muted">{preloadProgress.loaded} / {preloadProgress.total}</span>
             </div>
@@ -361,7 +318,7 @@ export function WaitingLobby({ room, players, currentUserId, onRoleChange, onKic
 
         {/* Error */}
         {error && (
-          <p className="text-crimson text-sm text-center bg-crimson/10 border border-crimson/30 rounded-lg px-4 py-2">
+          <p className="text-crimson text-caption text-center bg-crimson/10 border border-crimson/30 rounded-lg px-4 py-2">
             {error}
           </p>
         )}
@@ -373,13 +330,8 @@ export function WaitingLobby({ room, players, currentUserId, onRoleChange, onKic
               whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
               onClick={toggleSpectate}
               disabled={togglingRole}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm transition-all disabled:opacity-50"
-              style={{
-                background: isSpectator ? 'rgba(128,90,213,0.15)' : 'rgba(255,255,255,0.05)',
-                border: `1px solid ${isSpectator ? 'rgba(128,90,213,0.5)' : 'rgba(255,255,255,0.1)'}`,
-                color: isSpectator ? '#a78bfa' : 'rgba(255,255,255,0.5)',
-              }}>
-              {isSpectator ? '👁 旁观中（点击参与游戏）' : '🎮 参与游戏（点击切换旁观）'}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-caption transition-all disabled:opacity-50 border ${isSpectator ? 'bg-info/15 border-info/50 text-info' : 'bg-body-text/5 border-body-text/10 text-body-text/50'}`}>
+              {isSpectator ? '旁观中（点击参与游戏）' : '参与游戏（点击切换旁观）'}
             </motion.button>
           </div>
         )}
@@ -394,14 +346,14 @@ export function WaitingLobby({ room, players, currentUserId, onRoleChange, onKic
             className="w-full"
             style={{ animation: !starting ? 'glowPulse 2s ease-in-out infinite' : 'none' }}
           >
-            「全军出击——命运之战，开始！」
+            开始游戏
           </Button>
         ) : (
           <div className="text-center">
-            <p className="text-pink-300/50 text-sm font-serif tracking-widest animate-pulse mb-1">
-              等待大将军的号令… (´。• ω •。`)
+            <p className="text-gold/50 text-caption font-serif tracking-widest animate-pulse mb-1">
+              等待房主开始游戏
             </p>
-            <p className="text-pink-300/30 text-xs font-serif italic">将军正在磨刀霍霍 ♪</p>
+            <p className="text-gold/30 text-tiny font-serif italic">房主正在准备中</p>
           </div>
         )}
       </div>

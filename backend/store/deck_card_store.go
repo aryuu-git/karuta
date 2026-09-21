@@ -27,16 +27,44 @@ func (s *DeckCardStore) AddBatch(deckID int64, cardIDs []int64, addedBy int64) e
 	if len(cardIDs) == 0 {
 		return nil
 	}
-	// 获取当前最大 sort_order
+	// 单事务（2026-09-21 修复）：循环单插中途失败会留下部分加入态。
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
 	var maxSort int
-	_ = s.db.QueryRow(`SELECT COALESCE(MAX(sort_order), -1) FROM deck_cards WHERE deck_id = ?`, deckID).Scan(&maxSort)
+	_ = tx.QueryRow(`SELECT COALESCE(MAX(sort_order), -1) FROM deck_cards WHERE deck_id = ?`, deckID).Scan(&maxSort)
 
 	for i, cardID := range cardIDs {
-		if err := s.Add(deckID, cardID, addedBy, maxSort+1+i); err != nil {
+		if _, err := tx.Exec(
+			`INSERT OR IGNORE INTO deck_cards (deck_id, card_id, sort_order, added_by) VALUES (?, ?, ?, ?)`,
+			deckID, cardID, maxSort+1+i, addedBy,
+		); err != nil {
 			return err
 		}
 	}
-	return nil
+	return tx.Commit()
+}
+
+// Reorder 按传入 id 序重排牌组内卡片（单事务；调用方负责权限校验）。
+// 未在列表中的既有卡保持原相对顺序排在末尾（仅更新传入的卡）。
+func (s *DeckCardStore) Reorder(deckID int64, cardIDs []int64) error {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	for i, cardID := range cardIDs {
+		if _, err := tx.Exec(
+			`UPDATE deck_cards SET sort_order = ? WHERE deck_id = ? AND card_id = ?`,
+			i, deckID, cardID,
+		); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
 }
 
 func (s *DeckCardStore) Remove(deckID, cardID int64) error {

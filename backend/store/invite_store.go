@@ -38,34 +38,8 @@ func (s *InviteStore) Generate(creatorID int64) (*Invite, error) {
 	return &Invite{ID: id, Code: code, CreatorID: creatorID, CreatedAt: time.Now()}, nil
 }
 
-func (s *InviteStore) UseCode(code string, userID int64) (creatorID int64, err error) {
-	tx, err := s.db.Begin()
-	if err != nil {
-		return 0, fmt.Errorf("begin use invite: %w", err)
-	}
-	defer tx.Rollback()
-
-	row := tx.QueryRow(`SELECT id, creator_id FROM invites WHERE code = ? AND used_by IS NULL`, code)
-	var inviteID int64
-	if err := row.Scan(&inviteID, &creatorID); err != nil {
-		return 0, fmt.Errorf("invalid or used invite code")
-	}
-	result, err := tx.Exec(`UPDATE invites SET used_by = ?, used_at = CURRENT_TIMESTAMP WHERE id = ? AND used_by IS NULL`, userID, inviteID)
-	if err != nil {
-		return 0, err
-	}
-	affected, err := result.RowsAffected()
-	if err != nil {
-		return 0, err
-	}
-	if affected != 1 {
-		return 0, fmt.Errorf("invalid or used invite code")
-	}
-	if err := tx.Commit(); err != nil {
-		return 0, fmt.Errorf("commit use invite: %w", err)
-	}
-	return creatorID, nil
-}
+// UseCode 已并入 UserStore.CreateUserWithInvite 的注册单事务（修复 #2），
+// 邀请码消费不再有独立调用方。
 
 func (s *InviteStore) ListByCreator(creatorID int64) ([]*Invite, error) {
 	rows, err := s.db.Query(

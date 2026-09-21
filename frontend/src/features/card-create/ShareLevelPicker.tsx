@@ -22,16 +22,16 @@ export function ShareLevelPicker({ shareLevel, onChange }: ShareLevelPickerProps
             key={opt.value}
             type="button"
             onClick={() => onChange(opt.value)}
-            className="flex-1 p-2.5 rounded-lg text-center transition-all duration-200"
-            style={{
-              background: shareLevel === opt.value ? 'rgb(var(--accent-primary)/ 0.1)' : 'rgba(255,255,255,0.03)',
-              border: shareLevel === opt.value ? '1px solid rgb(var(--accent-primary)/ 0.4)' : '1px solid rgba(255,255,255,0.08)',
-            }}
+            className={`flex-1 p-2.5 rounded-lg text-center transition-all duration-200 border ${
+              shareLevel === opt.value
+                ? 'bg-gold/10 border-gold/40'
+                : 'bg-white/5 border-white/10'
+            }`}
           >
-            <p className={`text-xs font-medium ${shareLevel === opt.value ? 'text-gold' : 'text-white/50'}`}>
+            <p className={`text-tiny font-medium ${shareLevel === opt.value ? 'text-gold' : 'text-body-text/50'}`}>
               <opt.Icon className="mr-0.5 inline h-3 w-3" /> {opt.label}
             </p>
-            <p className="text-[9px] text-muted/50 mt-0.5">{opt.desc}</p>
+            <p className="text-tiny text-muted/50 mt-0.5">{opt.desc}</p>
           </button>
         ))}
       </div>

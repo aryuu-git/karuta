@@ -105,7 +105,8 @@ func (h *WSHandler) ServeWS(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Verify user is in the room (or auto-join as spectator)
+	// Verify user is in the room. 非成员一律 403——不会自动以旁观身份加入
+	// （历史注释与行为不符，2026-09-21 更正；加入动作须走 /api/rooms/join）。
 	inRoom, err := h.store.Rooms.IsPlayerInRoom(roomID, userID)
 	if err != nil {
 		http.Error(w, `{"error":"INTERNAL_ERROR","message":"failed to check membership"}`, http.StatusInternalServerError)

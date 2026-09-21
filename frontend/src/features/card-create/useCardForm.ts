@@ -24,7 +24,7 @@ export function useCardForm() {
   const [isShared, setIsShared] = useState(true)
   const [shareLevel, setShareLevel] = useState<ShareLevel>('playable')
 
-  /** 将标签并入 tags 逗号串（去重）——Bangumi 类型标签与自定义标签共用 */
+  /** 将标签并入 tags 逗号串（去重）——自定义标签与预置标签共用 */
   const addTag = useCallback((tag: string) => {
     setTags(prev => {
       const existing = prev.split(',').map(t => t.trim()).filter(Boolean)

@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"karuta/backend/achievement"
 	"karuta/backend/mask"
 	"karuta/backend/model"
 	"karuta/backend/storage"
@@ -531,6 +532,52 @@ func (gs *GameSession) broadcastGameOver() {
 		"last_card_winner_id": lastCardWinner,
 	})
 
+	// 成就评估（2026-09-21；best-effort，绝不阻塞结算）。新解锁逐人推送
+	// achievement_unlocked，前端右下角弹层消费。
+	snap := achievement.GameSnapshot{
+		Mode:           gs.room.Mode,
+		Training:       gs.room.Training,
+		PlayerCount:    len(scoringPlayers),
+		Penalties:      penaltyCount,
+		LastCardWinner: lastCardWinner,
+	}
+	if gs.judgeMode {
+		snap.JudgeUserID = gs.judgeUserID
+	}
+	snap.Ranks = make(map[int64]int, len(scoringPlayers))
+	snap.PlayerIDs = make([]int64, 0, len(scoringPlayers))
+	for i, p := range scoringPlayers {
+		snap.Ranks[p.UserID] = i + 1
+		snap.PlayerIDs = append(snap.PlayerIDs, p.UserID)
+	}
+	gs.mu.Lock()
+	// 语义备忘（2026-09-21 回顾）：once 模式会从 playItems 剔除同牌后续音频，
+	// 被剔除的未读回合计入 MissedRounds——judge_sweep/perfect_round 在 once
+	// 房间几乎不可能达成（once 仅 duel 强制或用户自选，judge 房罕见，可接受）。
+	snap.MissedRounds = len(gs.playItems) - len(gs.roundResults)
+	if len(gs.playItems) > 0 && len(gs.roundResults) == len(gs.playItems) {
+		winner := int64(0)
+		perfect := true
+		for _, w := range gs.roundResults {
+			if winner == 0 {
+				winner = w
+			} else if w != winner {
+				perfect = false
+				break
+			}
+		}
+		if perfect {
+			snap.PerfectWinner = winner
+		}
+	}
+	gs.mu.Unlock()
+	for uid, unlocks := range achievement.NewEvaluator(gs.store).OnGameEnd(snap) {
+		gs.hub.SendJSONToUser(uid, map[string]interface{}{
+			"type":         "achievement_unlocked",
+			"achievements": unlocks,
+		})
+	}
+
 	time.Sleep(4 * time.Second)
 	gs.hub.Stop()
 }
@@ -592,6 +639,19 @@ func (gs *GameSession) broadcastRoomState() {
 			"judge_waiting":   judgeWaiting,
 		},
 	})
+}
+
+// SnapshotBoard 返回当前棋盘的权威投影（REST 快照恢复用）：
+// 每张牌剩余可抢次数 + 已出结果的牌（含无人抢，带 hint_text）。
+// 供 handler 在页面刷新/重连时恢复棋盘，避免从 DB 反推导致已抢牌"复活"。
+func (gs *GameSession) SnapshotBoard() (map[int64]int, []map[string]interface{}) {
+	gs.mu.Lock()
+	defer gs.mu.Unlock()
+	remaining := make(map[int64]int, len(gs.cardRemainingCount))
+	for id, n := range gs.cardRemainingCount {
+		remaining[id] = n
+	}
+	return remaining, gs.buildGrabbedList()
 }
 
 func (gs *GameSession) buildGrabbedList() []map[string]interface{} {
@@ -925,6 +985,9 @@ func (gs *GameSession) HandleGrab(userID, cardID int64, cmdID int64) {
 		gs.hub.SendJSONToUser(userID, map[string]interface{}{
 			"type":    "grab_failed",
 			"card_id": cardID,
+			// reason 补齐（2026-09-21）：前端已有 already_grabbed 分支，
+			// 此前该消息不带 reason 使分支永远不可达。
+			"reason":  "already_grabbed",
 			"penalty": penalty,
 		})
 		gs.hub.BroadcastJSON(map[string]interface{}{

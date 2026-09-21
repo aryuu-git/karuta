@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 /** 聊天消息（结构与 ChatRoom 组件内部 ChatMessage 保持一致） */
 export interface ChatMsg {
@@ -36,6 +36,12 @@ export function useChat() {
   const [chatMessages, setChatMessages] = useState<ChatMsg[]>([])
   const chatIdRef = useRef(0)
   const [eggEvent, setEggEvent] = useState<{ id: number; fromName: string; targetName: string; isMe: boolean } | null>(null)
+  // 定时器句柄留存（2026-09-21 修复）：连丢两蛋时旧定时器会把新动画提前清掉；
+  // 卸载后触发 setState 也是泄漏。
+  const eggTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => () => {
+    if (eggTimerRef.current) clearTimeout(eggTimerRef.current)
+  }, [])
 
   // 收到聊天广播：追加一条消息
   const onChatMessage = useCallback((event: ChatMessageEvent) => {
@@ -61,7 +67,11 @@ export function useChat() {
       targetName: event.target_name,
     }])
     setEggEvent({ id: Date.now(), fromName: event.from_name, targetName: event.target_name, isMe })
-    setTimeout(() => setEggEvent(null), 2500)
+    if (eggTimerRef.current) clearTimeout(eggTimerRef.current)
+    eggTimerRef.current = setTimeout(() => {
+      setEggEvent(null)
+      eggTimerRef.current = null
+    }, 2500)
   }, [])
 
   return { chatMessages, eggEvent, onChatMessage, onEggThrow }

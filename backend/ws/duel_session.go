@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"karuta/backend/achievement"
 	"karuta/backend/mask"
 	"karuta/backend/model"
 	"karuta/backend/storage"
@@ -48,6 +49,9 @@ type DuelSession struct {
 	waitingGive    bool
 	giveFromUserID int64
 	giveCh         chan int64 // card ID chosen to give
+
+	// firstBlood 本局抢中过对方区域牌的玩家（一骑讨成就）
+	firstBlood map[int64]bool
 
 	// Grabbed cards tracking (full game)
 	p1GrabbedCards []int64
@@ -161,6 +165,7 @@ func newDuelSession(hub *RoomHub, room *model.Room, cards []*model.Card, s *stor
 		cardRemaining:  cardRemaining,
 		queue:          queue,
 		claimedFrom:    make(map[int64]int64),
+		firstBlood:     make(map[int64]bool),
 		roundGrabCh:    make(chan duelGrabResult, 10),
 		roundTimeoutCh: make(chan struct{}, 1),
 		stopCh:         make(chan struct{}),
@@ -589,6 +594,7 @@ func (ds *DuelSession) handleGrabResult(result duelGrabResult) {
 		} else {
 			ds.player1Cards = ds.removeCard(ds.player1Cards, answerCardID)
 		}
+		ds.firstBlood[result.UserID] = true // 一骑讨成就
 		// Request give card
 		ds.waitingGive = true
 		ds.giveFromUserID = result.UserID
@@ -739,6 +745,43 @@ func (ds *DuelSession) endGame(reason string) {
 	})
 
 	_ = ds.store.Rooms.UpdateStatus(ds.room.ID, "end")
+
+	// duel 落分与流水（2026-09-21 统计口径修复）：duel 此前是统计黑洞——
+	// score 恒 0 且不写 game_records，导致第一名被 0 分平局灌水、世一网恒 0。
+	// 胜者 score=1；末牌（决胜牌）流水 is_last 归胜者。
+	if winnerID != 0 {
+		_ = ds.store.Rooms.UpdateScore(ds.room.ID, winnerID, 1)
+		grabbed := ds.p1GrabbedCards
+		if winnerID == ds.player2ID {
+			grabbed = ds.p2GrabbedCards
+		}
+		if len(grabbed) > 0 {
+			lastCard := grabbed[len(grabbed)-1]
+			w := winnerID
+			_ = ds.store.GameRecords.InsertRecordFull(ds.room.ID, lastCard, &w, time.Now(), true)
+		}
+	}
+
+	// 成就评估（best-effort；新解锁逐人推送 achievement_unlocked）
+	var snap achievement.DuelSnapshot
+	if winnerID != 0 {
+		snap.LoserID = ds.player1ID
+		snap.LoserGrabbed = len(ds.p1GrabbedCards)
+		if winnerID == ds.player1ID {
+			snap.LoserID = ds.player2ID
+			snap.LoserGrabbed = len(ds.p2GrabbedCards)
+		}
+	}
+	snap.WinnerID = winnerID
+	snap.FirstBlood = ds.firstBlood
+	snap.PlayerIDs = []int64{ds.player1ID, ds.player2ID}
+	for uid, unlocks := range achievement.NewEvaluator(ds.store).OnDuelEnd(snap) {
+		ds.hub.SendJSONToUser(uid, map[string]interface{}{
+			"type":         "achievement_unlocked",
+			"achievements": unlocks,
+		})
+	}
+
 	time.Sleep(3 * time.Second)
 	ds.hub.Stop()
 }

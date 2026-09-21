@@ -1,6 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import type { RoomPlayer } from '../api/types'
 import { Avatar } from './Avatar'
+import { Button } from './ui'
 
 interface ScoreBoardProps {
   players: RoomPlayer[]
@@ -12,7 +13,7 @@ interface ScoreBoardProps {
 }
 
 const RANK_MEDAL = ['🥇', '🥈', '🥉']
-const RANK_GLOW = ['rgba(255,215,0,0.15)', 'rgba(192,192,192,0.1)', 'rgba(205,127,50,0.1)']
+const RANK_GLOW = ['rgb(var(--color-gold)/ 0.15)', 'rgb(var(--color-body-text)/ 0.1)', 'rgb(var(--color-warning)/ 0.1)']
 
 export function ScoreBoard({ players, currentUserId, hostId, remainingCount, totalCount, onKick }: ScoreBoardProps) {
   // 玩家按分数排，旁观者排最后
@@ -26,20 +27,20 @@ export function ScoreBoard({ players, currentUserId, hostId, remainingCount, tot
   const progressPct = totalCount > 0 ? ((totalCount - remainingCount) / totalCount) * 100 : 0
 
   return (
-    <div className="flex flex-col h-full w-52 shrink-0" style={{ background: 'linear-gradient(180deg, rgb(var(--accent-bg-mid)/ 0.98) 0%, rgb(var(--accent-bg-end)/ 0.95) 100%)', borderLeft: '1px solid rgb(var(--accent-primary)/ 0.1)' }}>
+    <div className="flex flex-col h-full w-52 shrink-0 border-l border-gold/10" style={{ background: 'linear-gradient(180deg, rgb(var(--accent-bg-mid)/ 0.98) 0%, rgb(var(--accent-bg-end)/ 0.95) 100%)' }}>
 
       {/* Header */}
       <div className="px-4 pt-4 pb-3 border-b border-white/5">
         <div className="flex items-center gap-2 mb-3">
           <span className="text-base">🏆</span>
-          <span className="font-serif text-gold text-sm font-medium tracking-widest">实时战况</span>
+          <span className="font-serif text-gold text-caption font-medium tracking-widest">实时战况</span>
         </div>
 
         {/* 进度环形 */}
         <div className="flex items-center gap-3">
           <div className="relative w-10 h-10 shrink-0">
             <svg viewBox="0 0 36 36" className="w-full h-full -rotate-90">
-              <circle cx="18" cy="18" r="15" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="3" />
+              <circle cx="18" cy="18" r="15" fill="none" stroke="rgb(var(--color-body-text)/ 0.05)" strokeWidth="3" />
               <motion.circle cx="18" cy="18" r="15" fill="none"
                 stroke="url(#scoreGrad)" strokeWidth="3"
                 strokeDasharray="94.2" strokeLinecap="round"
@@ -54,14 +55,14 @@ export function ScoreBoard({ players, currentUserId, hostId, remainingCount, tot
               </defs>
             </svg>
             <div className="absolute inset-0 flex items-center justify-center">
-              <span className="text-gold font-bold text-xs tabular-nums">{remainingCount}</span>
+              <span className="text-gold font-bold text-tiny tabular-nums">{remainingCount}</span>
             </div>
           </div>
           <div>
-            <p className="text-white/50 text-xs leading-none">剩余牌数</p>
-            <p className="text-muted text-xs mt-0.5">{remainingCount} / {totalCount} 张</p>
+            <p className="text-body-text/50 text-tiny leading-none">剩余牌数</p>
+            <p className="text-muted text-tiny mt-0.5">{remainingCount} / {totalCount} 张</p>
             {remainingCount <= 5 && remainingCount > 0 && (
-              <p className="text-crimson text-[10px] mt-0.5 animate-pulse">最后冲刺！(ﾉ◕ヮ◕)ﾉ</p>
+              <p className="text-crimson text-tiny mt-0.5 animate-pulse">最后冲刺</p>
             )}
           </div>
         </div>
@@ -82,8 +83,8 @@ export function ScoreBoard({ players, currentUserId, hostId, remainingCount, tot
               <motion.div key={player.user_id} layout
                 initial={{ opacity: 0, x: 20 }} animate={{ opacity: player.online ? 1 : 0.35, x: 0 }}
                 transition={{ duration: 0.3, layout: { duration: 0.4, ease: 'easeOut' } }}
-                className="relative rounded-lg mb-1.5 overflow-hidden"
-                style={{ background: isMe ? 'rgb(var(--accent-primary)/ 0.07)' : glow ?? 'rgba(255,255,255,0.02)', border: `1px solid ${isMe ? 'rgb(var(--accent-primary)/ 0.25)' : 'rgba(255,255,255,0.04)'}` }}>
+                className={`relative rounded-lg mb-1.5 overflow-hidden border ${isMe ? 'bg-gold/10 border-gold/25' : `border-body-text/5 ${glow ? '' : 'bg-body-text/5'}`}`}
+                style={isMe || !glow ? undefined : { background: glow }}>
 
                 {/* 我的高亮条 */}
                 {isMe && (
@@ -93,41 +94,42 @@ export function ScoreBoard({ players, currentUserId, hostId, remainingCount, tot
 
                 <div className="flex items-center gap-2 px-3 py-2.5">
                   {/* 奖牌/排名/旁观图标 */}
-                  <span className="text-sm w-5 text-center shrink-0">
-                    {isSpectator ? '👁' : (medal ?? <span className="text-white/30 text-xs font-mono">{rankIdx + 1}</span>)}
+                  <span className="text-caption w-5 text-center shrink-0">
+                    {isSpectator ? '👁' : (medal ?? <span className="text-body-text/30 text-tiny font-mono">{rankIdx + 1}</span>)}
                   </span>
 
                   {/* Avatar + 用户名 */}
                   <Avatar username={player.username} avatarUrl={player.avatar_url} size={20} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1">
-                      <span className={`text-xs font-sans truncate ${isMe ? 'text-gold font-semibold' : isSpectator ? 'text-white/40' : 'text-white/75'} ${!player.online ? 'line-through' : ''}`}>
+                      <span className={`text-tiny font-sans truncate ${isMe ? 'text-gold font-semibold' : isSpectator ? 'text-body-text/40' : 'text-body-text/75'} ${!player.online ? 'line-through' : ''}`}>
                         {player.username}
                       </span>
-                      {isMe && <span className="text-[10px] shrink-0">⭐</span>}
-                      {isSpectator && <span className="text-[10px] shrink-0" style={{ color: 'rgba(128,90,213,0.7)' }}>旁观中</span>}
-                      {!player.online && !isSpectator && <span className="text-muted text-[10px] shrink-0">💤离线</span>}
+                      {isMe && <span className="text-tiny shrink-0">⭐</span>}
+                      {isSpectator && <span className="text-tiny shrink-0 text-info/70">旁观中</span>}
+                      {!player.online && !isSpectator && <span className="text-muted text-tiny shrink-0">💤离线</span>}
                     </div>
                   </div>
 
                   {/* 分数 / 旁观者不显分数 */}
                   {isSpectator ? (
-                    <span className="text-xs shrink-0" style={{ color: 'rgba(128,90,213,0.5)' }}>—</span>
+                    <span className="text-tiny shrink-0 text-info/50">—</span>
                   ) : (
                   <motion.div key={`score-${player.user_id}-${player.score}`}
                     initial={{ scale: 1.6, color: 'rgb(var(--color-gold-light))' }}
                     animate={{ scale: 1, color: isMe ? 'rgb(var(--color-gold))' : 'rgba(255,255,255,0.5)' }}
                     transition={{ duration: 0.4, ease: 'backOut' }}
-                    className="text-sm font-bold tabular-nums shrink-0">
+                    className="text-caption font-bold tabular-nums shrink-0">
                     {player.score}
                   </motion.div>
                   )}
 
                   {/* 踢人按钮 */}
                   {onKick && hostId === currentUserId && !isMe && (
-                    <button onClick={() => onKick(player.user_id)}
-                      className="text-[10px] text-muted/30 hover:text-crimson transition-colors shrink-0 ml-1"
-                      title="踢出房间">✕</button>
+                    <Button onClick={() => onKick(player.user_id)}
+                      variant="danger" size="sm"
+                      className="shrink-0 ml-1"
+                      title="踢出房间">✕</Button>
                   )}
                 </div>
               </motion.div>
@@ -139,7 +141,7 @@ export function ScoreBoard({ players, currentUserId, hostId, remainingCount, tot
       {/* 底部装饰 */}
       <div className="px-4 py-3 border-t border-white/5">
         <div className="text-center">
-          <span className="text-pink-300/30 text-xs font-serif italic">命运之战 · 全力以赴</span>
+          <span className="text-gold/30 text-tiny font-serif italic">🌸 对局进行中</span>
         </div>
       </div>
     </div>

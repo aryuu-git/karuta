@@ -15,9 +15,6 @@ type Config struct {
 	JWTSecret   string
 	DBPath      string
 
-	// Bangumi API (optional)
-	BangumiToken string
-
 	// Invite system: "true" = require a one-time code from the database;
 	// false = open registration.
 	InviteRequired bool
@@ -52,7 +49,6 @@ func Load() *Config {
 		JWTSecret:   getEnv("JWT_SECRET", DefaultJWTSecret),
 		DBPath:      getEnv("DB_PATH", "./data/karuta.db"),
 
-		BangumiToken:   getEnv("BANGUMI_TOKEN", ""),
 		InviteRequired: getEnv("INVITE_REQUIRED", "") == "true",
 
 		COSSecretID:  getEnv("COS_SECRET_ID", ""),

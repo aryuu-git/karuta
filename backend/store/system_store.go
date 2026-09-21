@@ -45,13 +45,15 @@ func (s *SystemStore) SetUserAdmin(actorID, targetID int64, enabled bool, source
 		return err
 	}
 	defer tx.Rollback()
-	var currentlyAdmin bool
-	if err := tx.QueryRow(`SELECT is_admin FROM users WHERE id = ?`, targetID).Scan(&currentlyAdmin); err != nil {
+	// 保护语义：不能降级"最后一个可用管理员"。target 已被禁用时不在可用集合中，
+	// 降级它不损失可用管理员，不应被拦（D12 审计实测触发的误拦修复）
+	var currentlyAdmin, targetDisabled bool
+	if err := tx.QueryRow(`SELECT is_admin, COALESCE(disabled, FALSE) FROM users WHERE id = ?`, targetID).Scan(&currentlyAdmin, &targetDisabled); err != nil {
 		return err
 	}
-	if currentlyAdmin && !enabled {
+	if currentlyAdmin && !enabled && !targetDisabled {
 		var adminCount int
-		if err := tx.QueryRow(`SELECT COUNT(*) FROM users WHERE is_admin = TRUE AND disabled = FALSE`).Scan(&adminCount); err != nil {
+		if err := tx.QueryRow(`SELECT COUNT(*) FROM users WHERE is_admin = TRUE AND COALESCE(disabled, FALSE) = FALSE`).Scan(&adminCount); err != nil {
 			return err
 		}
 		if adminCount <= 1 {
@@ -92,6 +94,15 @@ func (s *SystemStore) userChangeWithAudit(actorID, targetID int64, action, field
 		return err
 	}
 	return tx.Commit()
+}
+
+// Audit 独立审计落库：用于无法与业务写放进同一事务的操作（如管理员强停房间）。
+// 审计失败由调用方决定降级策略（记日志，不回滚业务结果）。
+func (s *SystemStore) Audit(actorID int64, action, targetType, targetID, details, sourceIP string) error {
+	_, err := s.db.Exec(
+		`INSERT INTO admin_audit_logs(actor_id, action, target_type, target_id, details, source_ip) VALUES (?, ?, ?, ?, ?, ?)`,
+		actorID, action, targetType, targetID, details, sourceIP)
+	return err
 }
 
 func (s *SystemStore) SetInviteRequired(actorID int64, enabled bool, sourceIP string) error {

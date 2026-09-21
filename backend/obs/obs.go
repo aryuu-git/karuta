@@ -5,7 +5,7 @@ package obs
 
 import (
 	"bufio"
-	"errors"
+	"fmt"
 	"log/slog"
 	"net"
 	"net/http"
@@ -31,31 +31,35 @@ type statusWriter struct {
 	status int
 }
 
+// Hijack 透传给底层 ResponseWriter。WebSocket 升级依赖 http.Hijacker——
+// 日志包装层若不实现它，全部 WS 连接将以
+// "response does not implement http.Hijacker" 500（D12-补3 实测发现）。
+func (w *statusWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	h, ok := w.ResponseWriter.(http.Hijacker)
+	if !ok {
+		return nil, nil, fmt.Errorf("underlying ResponseWriter does not implement http.Hijacker")
+	}
+	conn, buf, err := h.Hijack()
+	if err == nil {
+		// 升级成功即 101 Switching Protocols（gorilla 直写底层连接，绕过 WriteHeader）
+		w.status = http.StatusSwitchingProtocols
+	}
+	return conn, buf, err
+}
+
+// Flush 透传给底层 ResponseWriter（SSE/流式响应需要）。
+func (w *statusWriter) Flush() {
+	if f, ok := w.ResponseWriter.(http.Flusher); ok {
+		f.Flush()
+	}
+}
+
 // HTTPRequestsTotal 累计处理的 HTTP 请求总数（进程生命周期内）。
 var HTTPRequestsTotal atomic.Int64
 
 func (w *statusWriter) WriteHeader(code int) {
 	w.status = code
 	w.ResponseWriter.WriteHeader(code)
-}
-
-// Hijack 透传底层连接劫持：WebSocket 升级（gorilla/websocket）要求
-// 响应链实现 http.Hijacker，包装中间件若吞掉该接口会导致
-// "response does not implement http.Hijacker" 升级失败（回归修复）。
-func (w *statusWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
-	hj, ok := w.ResponseWriter.(http.Hijacker)
-	if !ok {
-		return nil, nil, errors.New("obs: underlying ResponseWriter does not implement http.Hijacker")
-	}
-	w.status = http.StatusSwitchingProtocols
-	return hj.Hijack()
-}
-
-// Flush 透传 Flush（流式响应/SSE），避免包装层吞掉 http.Flusher 能力。
-func (w *statusWriter) Flush() {
-	if f, ok := w.ResponseWriter.(http.Flusher); ok {
-		f.Flush()
-	}
 }
 
 // RequestLogger 返回结构化访问日志中间件，替代 chi 的文本 Logger：

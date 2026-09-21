@@ -3,15 +3,19 @@ package main
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
 	"os"
 	"path/filepath"
+	"strconv"
 
 	"karuta/backend/storage"
 	"karuta/backend/store"
 
+	"golang.org/x/crypto/bcrypt"
 	_ "modernc.org/sqlite"
 )
 
@@ -44,6 +48,19 @@ func main() {
 		if err := setAdmin(*database, *username, *enabled); err != nil {
 			log.Fatalf("set admin: %v", err)
 		}
+	case "reset-password":
+		fs := flag.NewFlagSet("reset-password", flag.ExitOnError)
+		database := fs.String("database", "./karuta.db", "SQLite database path")
+		username := fs.String("username", "", "existing username")
+		password := fs.String("password", "", "new password (min 6 chars)")
+		_ = fs.Parse(os.Args[2:])
+		if *username == "" || *password == "" {
+			log.Fatal("-username and -password are required")
+		}
+		if err := resetPassword(*database, *username, *password); err != nil {
+			log.Fatalf("reset password: %v", err)
+		}
+		log.Printf("password reset for %q", *username)
 	case "media":
 		// 形式：karuta-admin media gc [-database PATH] [-dry-run] [-yes]
 		if len(os.Args) < 3 || os.Args[2] != "gc" {
@@ -66,6 +83,7 @@ func usage() {
 	fmt.Fprintln(os.Stderr, "usage:")
 	fmt.Fprintln(os.Stderr, "  karuta-admin backup-db -source PATH -destination PATH")
 	fmt.Fprintln(os.Stderr, "  karuta-admin set-admin -database PATH -username NAME [-enabled=true]")
+	fmt.Fprintln(os.Stderr, "  karuta-admin reset-password -database PATH -username NAME -password NEW")
 	fmt.Fprintln(os.Stderr, "  karuta-admin media gc -database PATH [-dry-run=false] [-yes]")
 	os.Exit(2)
 }
@@ -143,22 +161,78 @@ func mediaGC(database string, dryRun, yes bool) error {
 	return nil
 }
 
+// resetPassword 管理员/机主本地重置密码（忘记密码的恢复通道）。
+// 拒绝游客（游客无密码体系，应走转正）；写审计（actor=target，source=cli-local）。
+func resetPassword(database, username, newPassword string) error {
+	if len(newPassword) < 6 {
+		return fmt.Errorf("password must be at least 6 characters")
+	}
+	db, err := sql.Open("sqlite", database)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	var userID int64
+	var isGuest bool
+	if err := db.QueryRow(`SELECT id, COALESCE(is_guest, FALSE) FROM users WHERE username = ?`, username).Scan(&userID, &isGuest); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("user %q not found", username)
+		}
+		return err
+	}
+	if isGuest {
+		return fmt.Errorf("user %q is a guest account (no password); upgrade first", username)
+	}
+	hash, err := bcrypt.GenerateFromPassword([]byte(newPassword), 12)
+	if err != nil {
+		return err
+	}
+	if _, err := db.Exec(`UPDATE users SET password = ? WHERE id = ?`, string(hash), userID); err != nil {
+		return err
+	}
+	details, _ := json.Marshal(map[string]string{"action": "password_reset"})
+	if _, err := db.Exec(
+		`INSERT INTO admin_audit_logs(actor_id, action, target_type, target_id, details, source_ip) VALUES (?, 'user.password_reset_cli', 'user', ?, ?, 'cli-local')`,
+		userID, strconv.FormatInt(userID, 10), string(details),
+	); err != nil {
+		return fmt.Errorf("write audit log: %w", err)
+	}
+	return nil
+}
+
 func setAdmin(database, username string, enabled bool) error {
 	db, err := sql.Open("sqlite", database)
 	if err != nil {
 		return err
 	}
 	defer db.Close()
-	result, err := db.Exec(`UPDATE users SET is_admin = ? WHERE username = ?`, enabled, username)
-	if err != nil {
+
+	var userID int64
+	var isGuest bool
+	if err := db.QueryRow(
+		`SELECT id, COALESCE(is_guest, FALSE) FROM users WHERE username = ?`, username,
+	).Scan(&userID, &isGuest); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("user %q not found", username)
+		}
 		return err
 	}
-	changed, err := result.RowsAffected()
-	if err != nil {
+	// 与 API 路径同语义（修复 #3）：游客是临时身份，不可授予管理员。
+	if enabled && isGuest {
+		return fmt.Errorf("user %q is a guest account; guests cannot be granted administrator", username)
+	}
+	if _, err := db.Exec(`UPDATE users SET is_admin = ? WHERE id = ?`, enabled, userID); err != nil {
 		return err
 	}
-	if changed != 1 {
-		return fmt.Errorf("user %q not found", username)
+	// CLI 提权同样落审计（修复 #5）：否则「谁用 CLI 改了管理员」在审计表无痕。
+	// actor 记为目标自身（CLI 无操作者身份），source_ip 标记 cli-local。
+	details, _ := json.Marshal(map[string]bool{"is_admin": enabled, "cli": true})
+	if _, err := db.Exec(
+		`INSERT INTO admin_audit_logs(actor_id, action, target_type, target_id, details, source_ip) VALUES (?, 'user.admin_changed_cli', 'user', ?, ?, 'cli-local')`,
+		userID, strconv.FormatInt(userID, 10), string(details),
+	); err != nil {
+		return fmt.Errorf("write audit log: %w", err)
 	}
 	return nil
 }

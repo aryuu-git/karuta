@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Crown } from 'lucide-react'
 import type { Card } from '../api/types'
 import { api } from '../api/client'
+import { useToast } from './ui'
 
 interface PlayableItem {
   cardId: number
@@ -31,6 +31,7 @@ export function JudgePanel({
   currentHintText,
   isJudgeWaiting,
 }: JudgePanelProps) {
+  const toast = useToast()
   // 追踪已播放过的条目 key（"cardId-hintText"）
   const [playedItemKeys, setPlayedItemKeys] = useState<Set<string>>(new Set())
   const prevCurrentRef = useRef<string | null>(null)
@@ -79,7 +80,10 @@ export function JudgePanel({
     if (!isJudgeWaiting) return
     try {
       await api.rooms.playCard(roomId, item.cardId, item.audioId)
-    } catch { /* ignore */ }
+    } catch (err) {
+      // 选牌失败必须可见（2026-09-21 修复静默）：如首窗口并发保护/房间状态变化
+      toast.show((err as Error).message || '选牌失败，请重试', 'fail')
+    }
   }
 
   // 统计已播放的 item 数量（被耗尽的 card 的全部 audios 计入）
@@ -92,29 +96,26 @@ export function JudgePanel({
   return (
     <div className="flex flex-col h-full">
       {/* 状态横幅 */}
-      <div className="shrink-0 px-4 py-3 border-b"
-        style={{ borderColor: 'rgb(var(--accent-primary)/ 0.12)', background: 'rgb(var(--accent-primary)/ 0.04)' }}>
+      <div className="shrink-0 px-4 py-3 border-b border-gold/10 bg-gold/5">
         <AnimatePresence mode="wait">
           {currentCardId !== null ? (
             <motion.div key="playing" initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 6 }}
               className="flex items-center gap-2">
               <motion.span animate={{ scale: [1, 1.15, 1] }} transition={{ duration: 0.8, repeat: Infinity }} className="text-base">🎵</motion.span>
-              <span className="text-sm font-medium" style={{ color: 'rgb(var(--color-gold))' }}>正在播放中… 等待抢牌！</span>
-              <span className="ml-auto text-xs text-white/30">{playedItemCount}/{totalCount}</span>
+              <span className="text-caption font-medium text-gold">正在播放，等待抢牌</span>
+              <span className="ml-auto text-tiny text-body-text/30">{playedItemCount}/{totalCount}</span>
             </motion.div>
           ) : isJudgeWaiting ? (
             <motion.div key="waiting" initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 6 }}
               className="flex items-center gap-2">
-              <motion.span animate={{ rotate: [0, 10, -10, 0] }} transition={{ duration: 1.2, repeat: Infinity }} className="inline-flex">
-                <Crown size={16} className="text-gold" aria-label="裁判" />
-              </motion.span>
-              <span className="text-sm font-medium" style={{ color: 'rgb(var(--color-gold))' }}>选择下一首要播放的歌！</span>
-              <span className="ml-auto text-xs" style={{ color: 'rgb(var(--accent-primary)/ 0.5)' }}>剩余 {totalCount - playedItemCount}</span>
+              <motion.span animate={{ rotate: [0, 10, -10, 0] }} transition={{ duration: 1.2, repeat: Infinity }} className="text-base">👑</motion.span>
+              <span className="text-caption font-medium text-gold/50">选择下一首要播放的牌</span>
+              <span className="ml-auto text-tiny text-gold/50">剩余 {totalCount - playedItemCount}</span>
             </motion.div>
           ) : (
             <motion.div key="idle" initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 6 }}
               className="flex items-center gap-2">
-              <span className="text-sm" style={{ color: 'rgb(var(--accent-primary)/ 0.6)' }}>等待开始…</span>
+              <span className="text-caption text-gold/60">等待开始…</span>
             </motion.div>
           )}
         </AnimatePresence>
@@ -136,45 +137,41 @@ export function JudgePanel({
                 disabled={!isClickable}
                 whileHover={isClickable ? { scale: 1.01, x: 2 } : {}}
                 whileTap={isClickable ? { scale: 0.98 } : {}}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg border text-left transition-all duration-200 w-full"
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg border text-left transition-all duration-200 w-full ${isCurrent ? 'bg-gold/15 border-gold/50' : isClickable ? 'bg-gold/5 border-gold/20' : 'bg-body-text/5 border-body-text/10'}`}
                 style={{
-                  background: isCurrent ? 'rgb(var(--accent-primary)/ 0.15)' : isClickable ? 'rgb(var(--accent-primary)/ 0.06)' : 'rgba(255,255,255,0.02)',
-                  borderColor: isCurrent ? 'rgb(var(--accent-primary)/ 0.5)' : isClickable ? 'rgb(var(--accent-primary)/ 0.2)' : 'rgba(255,255,255,0.06)',
                   opacity: isPlayed ? 0.4 : 1,
                   cursor: isClickable ? 'pointer' : 'default',
                 }}>
                 {/* 封面 */}
-                <div className="shrink-0 w-9 h-9 rounded overflow-hidden flex items-center justify-center"
-                  style={{ background: 'rgb(var(--accent-primary)/ 0.08)', border: '1px solid rgb(var(--accent-primary)/ 0.15)' }}>
+                <div className="shrink-0 w-9 h-9 rounded overflow-hidden flex items-center justify-center bg-gold/10 border border-gold/15">
                   {item.coverUrl ? (
                     <img src={item.coverUrl} alt="" className="w-full h-full object-cover" />
                   ) : (
-                    <span className="text-gold/50 font-serif text-sm">♪</span>
+                    <span className="text-gold/50 font-serif text-caption">♪</span>
                   )}
                 </div>
 
                 {/* 文字 */}
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium truncate"
-                    style={{ color: isCurrent ? 'rgb(var(--color-gold))' : isPlayed ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.85)' }}>
+                  <div className={`text-caption font-medium truncate ${isCurrent ? 'text-gold' : isPlayed ? 'text-body-text/30' : 'text-body-text/85'}`}>
                     {item.displayText}
                   </div>
                   {item.hintText && (
-                    <div className="text-xs truncate mt-0.5" style={{ color: 'rgba(255,255,255,0.3)' }}>
+                    <div className="text-tiny truncate mt-0.5 text-body-text/30">
                       ♪ {item.hintText}
                     </div>
                   )}
                 </div>
 
                 {/* 状态 */}
-                <div className="shrink-0 text-xs">
+                <div className="shrink-0 text-tiny">
                   {isCurrent ? (
                     <motion.span animate={{ opacity: [1, 0.4, 1] }} transition={{ duration: 0.8, repeat: Infinity }}
-                      style={{ color: 'rgb(var(--color-gold))' }}>♪ 播放中</motion.span>
+                      className="text-gold">♪ 播放中</motion.span>
                   ) : isPlayed ? (
-                    <span style={{ color: 'rgba(255,255,255,0.2)' }}>✓</span>
+                    <span className="text-body-text/20">✓</span>
                   ) : isClickable ? (
-                    <span style={{ color: 'rgb(var(--accent-primary)/ 0.5)' }}>▶</span>
+                    <span className="text-gold/50">▶</span>
                   ) : null}
                 </div>
               </motion.button>

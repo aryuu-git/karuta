@@ -119,90 +119,66 @@ export function KarutaCard({ card, isExhausted, remaining, audioCount, claimedBy
       className="relative overflow-visible select-none cursor-pointer"
       style={{ width: '100%', aspectRatio: '3/4' }}>
 
-      {/* 堆叠底层（仅多音频牌显示）：纸色暗阶，营造牌摞厚度 */}
+      {/* 堆叠底层（仅多音频牌显示） */}
       {showStack && left >= 3 && (
-        <div className="absolute rounded-xl"
+        <div className="absolute rounded-lg"
           style={{
             inset: 0,
             transform: 'translate(4px, 4px)',
-            background: 'linear-gradient(160deg, rgb(var(--color-card-paper-deep)) 0%, rgb(var(--color-card-paper)) 100%)',
+            background: 'linear-gradient(160deg, rgb(var(--color-surface)) 0%, rgb(var(--color-ink)) 100%)',
             boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
-            opacity: 0.45,
+            opacity: 0.5,
           }} />
       )}
       {showStack && left >= 2 && (
-        <div className="absolute rounded-xl"
+        <div className="absolute rounded-lg"
           style={{
             inset: 0,
             transform: 'translate(2px, 2px)',
-            background: 'linear-gradient(160deg, rgb(var(--color-card-paper-deep)) 0%, rgb(var(--color-card-paper)) 100%)',
+            background: 'linear-gradient(160deg, rgb(var(--color-surface)) 0%, rgb(var(--color-surface)) 100%)',
             boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
-            opacity: 0.65,
+            opacity: 0.7,
           }} />
       )}
 
-      {/* 主牌面：米白和纸 + 纸纹颗粒 + 轻微浮雕；被夺取时整体退色为残影 */}
-      <div className="absolute inset-0 rounded-xl overflow-hidden"
+      {/* 主卡面 */}
+      <div className="absolute inset-0 rounded-lg overflow-hidden"
         style={{
-          background: `var(--washi-grain), linear-gradient(165deg, rgb(var(--color-card-paper)) 0%, rgb(var(--color-card-paper)) 55%, rgb(var(--color-card-paper-deep)) 100%)`,
-          boxShadow: '0 4px 16px rgba(0,0,0,0.5), 0 1px 3px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.5), inset 0 -1px 0 rgba(96,74,48,0.12)',
-          filter: isExhausted ? 'grayscale(0.65) brightness(0.78)' : undefined,
-          transition: 'filter 0.4s cubic-bezier(.4,0,.2,1)',
+          background: 'linear-gradient(160deg, rgb(var(--color-surface)) 0%, rgb(var(--color-surface)) 50%, rgb(var(--color-ink)) 100%)',
+          boxShadow: '0 4px 16px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.04)',
         }}>
 
-        {/* 内嵌金色细框（真实歌牌的描金缘） */}
-        <div className="absolute inset-[4px] rounded-lg pointer-events-none"
-          style={{
-            border: '1px solid rgb(var(--gold-foil)/ 0.45)',
-            boxShadow: 'inset 0 0 12px rgb(var(--gold-foil)/ 0.07)',
-          }} />
+        {/* 封面图 */}
+        {card.cover_url && (
+          <img src={card.cover_url} alt=""
+            className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
+        )}
 
-        {/* 封面图：纸面留白装裱——四周留纸边，下缘留题字区 */}
-        <div className="absolute overflow-hidden rounded-[4px]"
-          style={{
-            left: '6.5%', right: '6.5%', top: '5.5%', bottom: '15%',
-            boxShadow: '0 1px 3px rgba(40,20,10,0.35), inset 0 0 0 1px rgba(96,74,48,0.1)',
-            background: 'rgb(var(--color-card-paper-deep))',
-          }}>
-          {card.cover_url && (
-            <img src={card.cover_url} alt=""
-              className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
-          )}
+        {/* 模糊牌面遮罩层 */}
+        {maskStyle && (
+          <div
+            className="absolute inset-0 pointer-events-none transition-opacity duration-300"
+            style={maskStyle}
+          />
+        )}
 
-          {/* 模糊牌面遮罩层（题面隐藏玩法，位置与图区同步） */}
-          {maskStyle && (
-            <div
-              className="absolute inset-0 pointer-events-none transition-opacity duration-300"
-              style={maskStyle}
-            />
-          )}
-        </div>
+        {/* 内层细框 */}
+        <div className="absolute inset-[3px] rounded-md pointer-events-none border border-gold/10" />
 
         {/* 堆叠角标 */}
         {showStack && (
-          <div className="absolute top-1 right-1 px-1.5 py-0.5 rounded text-xs font-bold"
-            style={{
-              background: 'rgba(40,20,10,0.55)',
-              color: 'rgb(var(--color-card-paper))',
-              border: '1px solid rgb(var(--gold-foil)/ 0.4)',
-              fontSize: '0.65rem',
-            }}>
+          <div className="absolute top-1 right-1 px-1.5 py-0.5 rounded text-tiny font-bold bg-black/70 text-gold border border-gold-foil/40"
+            style={{ fontSize: '0.65rem' }}>
             ×{left}
           </div>
         )}
 
-        {/* 已抢完：残影态——纸面退色 + 抢得者竖排题字（如落款） */}
+        {/* 已抢完遮罩 */}
         {isExhausted && (
-          <div className="absolute inset-0 flex items-center justify-center rounded-xl"
-            style={{ background: 'rgba(10,3,8,0.22)' }}>
+          <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-ink-deep/30">
             {claimedBy && claimedBy !== '无人' && (
-              <span className="text-gold-foil/70 font-serif text-center px-2 leading-tight"
-                style={{
-                  fontSize: 'clamp(0.6rem, 1.3vw, 0.8rem)',
-                  writingMode: 'vertical-rl',
-                  textShadow: '0 0 8px rgb(var(--gold-foil)/ 0.35)',
-                  letterSpacing: '0.15em',
-                }}>
+              <span className="text-gold/50 font-serif text-center px-2 leading-tight"
+                style={{ fontSize: 'clamp(0.5rem, 1.2vw, 0.7rem)' }}>
                 {claimedBy}
               </span>
             )}

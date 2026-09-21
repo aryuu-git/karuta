@@ -35,6 +35,21 @@ func (m *HubManager) GetOrCreate(roomID int64) *RoomHub {
 	return h
 }
 
+// DisconnectUserEverywhere 将用户从全部房间 hub 断开（禁用账号时调用，
+// 消除"禁用后存量 WS 连接仍可抢牌聊天"的语义缺口，D12-补3）。
+func (m *HubManager) DisconnectUserEverywhere(userID int64) {
+	m.mu.RLock()
+	hubs := make([]*RoomHub, 0, len(m.hubs))
+	for _, h := range m.hubs {
+		hubs = append(hubs, h)
+	}
+	m.mu.RUnlock()
+	// 锁外调用：DisconnectUser 内部走 unregister channel，避免持 manager 锁等待 hub
+	for _, h := range hubs {
+		h.DisconnectUser(userID)
+	}
+}
+
 // Get returns an existing hub or nil.
 func (m *HubManager) Get(roomID int64) *RoomHub {
 	m.mu.RLock()
@@ -94,6 +109,18 @@ type RoomHub struct {
 	resumeCh chan struct{}
 }
 
+// LiveBoard 返回进行中对局的权威棋盘投影（剩余次数 + 已出结果牌）；
+// 无进行中对局（未开局/已结束/服务重启）时返回 nil，调用方回退 DB 推导。
+func (h *RoomHub) LiveBoard() (map[int64]int, []map[string]interface{}) {
+	h.mu.RLock()
+	sess := h.session
+	h.mu.RUnlock()
+	if sess == nil {
+		return nil, nil
+	}
+	return sess.SnapshotBoard()
+}
+
 // ConnectionCount 返回当前注册的客户端连接数（供 /metrics 端点）。
 func (h *RoomHub) ConnectionCount() int {
 	h.mu.RLock()
@@ -129,6 +156,20 @@ func (h *RoomHub) Run() {
 	for {
 		select {
 		case <-h.stopCh:
+			// 先终止对局会话（2026-09-21 修复：管理员强停/房主解散只停 hub 的话，
+			// GameSession/DuelSession 独立 goroutine 会跑完整副牌——持续计时、
+			// 写 game_records 流水、结算发成就，全是无人房间的脏数据）。
+			// Stop 幂等：结算路径（broadcastGameOver/endGame）自调 hub.Stop 时
+			// 会话已近尾声，重复 close 走 select-default 无害。
+			h.mu.RLock()
+			sess, ds := h.session, h.duelSession
+			h.mu.RUnlock()
+			if sess != nil {
+				sess.Stop()
+			}
+			if ds != nil {
+				ds.Stop()
+			}
 			h.mu.Lock()
 			for client := range h.clients {
 				close(client.send)

@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"errors"
+	"net"
 	"net/http"
 	"strings"
 
@@ -24,6 +25,25 @@ func isUniqueConstraintError(err error) bool {
 		return false
 	}
 	return strings.Contains(err.Error(), "UNIQUE constraint failed")
+}
+
+// clientIP 提取审计用客户端 IP。生产经 nginx 反代（Go 仅监听环回），
+// X-Real-IP 由 nginx 以 $remote_addr 覆写、X-Forwarded-For 由其追加；
+// 直连开发场景回退 RemoteAddr。仅供审计记录，不参与鉴权判定。
+func clientIP(r *http.Request) string {
+	if ip := strings.TrimSpace(r.Header.Get("X-Real-IP")); ip != "" {
+		return ip
+	}
+	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+		if first := strings.TrimSpace(strings.Split(xff, ",")[0]); first != "" {
+			return first
+		}
+	}
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return r.RemoteAddr
+	}
+	return host
 }
 
 

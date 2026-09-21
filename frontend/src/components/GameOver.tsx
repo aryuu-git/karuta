@@ -1,7 +1,11 @@
-import { useEffect, useRef, type RefObject } from 'react'
+import { useEffect, useRef, useState, type RefObject } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
+import { paths } from '../routes/paths'
 import { Button } from './ui'
+import { useRematch } from '../features/play/useRematch'
+import { subscribeUnlocks } from '../features/achievements/unlockBus'
+import type { AchievementUnlock } from '../api/types'
 
 interface GrabbedCard {
   id: number
@@ -23,6 +27,12 @@ interface GameOverProps {
   results: GameResult[]
   currentUserId: number
   lastCardWinnerId?: number | null
+  /** 源房间 id（rematch 用） */
+  roomId: number
+  /** 当前用户是否房主（仅房主可发起 rematch） */
+  isHost: boolean
+  /** 牌组 id（「换牌组再来」预填） */
+  deckId?: number
 }
 
 // 计算称号
@@ -156,13 +166,17 @@ function useParticles(canvasRef: RefObject<HTMLCanvasElement>) {
 }
 
 const RANK_STYLES: Record<number, { color: string; size: string; label: string }> = {
-  1: { color: '#FFD700', size: 'text-4xl', label: '🥇 冠军！' },
-  2: { color: '#C0C0C0', size: 'text-3xl', label: '🥈 亚军' },
-  3: { color: '#CD7F32', size: 'text-2xl', label: '🥉 季军' },
+  1: { color: 'rgb(var(--color-gold))', size: 'text-4xl', label: '🥇 冠军！' },
+  2: { color: 'rgb(var(--color-body-text))', size: 'text-3xl', label: '🥈 亚军' },
+  3: { color: 'rgb(var(--color-warning))', size: 'text-2xl', label: '🥉 季军' },
 }
 
-export function GameOver({ results, currentUserId, lastCardWinnerId }: GameOverProps) {
+export function GameOver({ results, currentUserId, lastCardWinnerId, roomId, isHost, deckId }: GameOverProps) {
   const navigate = useNavigate()
+  const { rematch, rematching } = useRematch()
+  // 本局成就（v7 增补）：结算钩子逐人推送 achievement_unlocked，挂载期收集
+  const [unlocks, setUnlocks] = useState<AchievementUnlock[]>([])
+  useEffect(() => subscribeUnlocks(u => setUnlocks(prev => prev.some(p => p.key === u.key) ? prev : [...prev, u])), [])
   const canvasRef = useRef<HTMLCanvasElement>(null)
   useParticles(canvasRef)
 
@@ -174,7 +188,7 @@ export function GameOver({ results, currentUserId, lastCardWinnerId }: GameOverP
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.6 }}
-      className="fixed inset-0 z-50 flex items-center justify-center washi-bg"
+      className="fixed inset-0 z-modal flex items-center justify-center washi-bg"
     >
       {/* Sakura canvas */}
       <canvas
@@ -203,12 +217,12 @@ export function GameOver({ results, currentUserId, lastCardWinnerId }: GameOverP
             className="font-serif text-4xl sm:text-5xl font-bold text-gold-shimmer mb-2"
             style={{ textShadow: '0 0 40px rgb(var(--accent-primary)/ 0.4)' }}
           >
-            🌸 战局终焉，华丽落幕
+            🌸 本局结算
           </motion.h1>
           <motion.p
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }}
-            className="text-pink-300/50 text-sm mb-3 font-serif italic">
-            群雄争锋已毕，英姿永铭于此 ✧ (*´▽`*)
+            className="text-gold/50 text-caption mb-3 font-serif italic">
+            对局战果一览 ✧
           </motion.p>
           <div className="h-px bg-gradient-to-r from-transparent via-gold/50 to-transparent" />
         </div>
@@ -216,7 +230,7 @@ export function GameOver({ results, currentUserId, lastCardWinnerId }: GameOverP
         {/* Results */}
         <div className="space-y-3 mb-8">
           {sorted.map((r, i) => {
-            const style = RANK_STYLES[r.rank] ?? { color: '#8a8fa8', size: 'text-xl', label: `第 ${r.rank}` }
+            const style = RANK_STYLES[r.rank] ?? { color: 'rgb(var(--color-muted))', size: 'text-xl', label: `第 ${r.rank}` }
             const isMe = r.user_id === currentUserId
 
             return (
@@ -241,15 +255,14 @@ export function GameOver({ results, currentUserId, lastCardWinnerId }: GameOverP
                 <div className={`font-sans flex-1 min-w-0 ${isMe ? 'text-gold font-medium' : 'text-white/80'}`}>
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <span className="truncate">{r.username}</span>
-                    {isMe && <span className="text-gold/60 text-xs shrink-0">⭐ 就是我！</span>}
+                    {isMe && <span className="text-gold/60 text-tiny shrink-0">⭐ 就是我！</span>}
                   </div>
                   {/* 称号 */}
                   {titles.get(r.user_id)?.map((title, ti) => (
                     <motion.span key={ti}
                       initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }}
                       transition={{ delay: 0.8 + ti * 0.1 }}
-                      className="inline-block text-xs mr-1 px-1.5 py-0.5 rounded-full font-sans font-normal mt-0.5"
-                      style={{ background: 'rgb(var(--accent-primary)/ 0.12)', border: '1px solid rgb(var(--accent-primary)/ 0.25)', color: 'rgb(var(--color-gold))' }}>
+                      className="inline-block text-tiny mr-1 px-1.5 py-0.5 rounded-full font-sans font-normal mt-0.5 bg-gold/10 border border-gold/25 text-gold">
                       {title}
                     </motion.span>
                   ))}
@@ -259,7 +272,7 @@ export function GameOver({ results, currentUserId, lastCardWinnerId }: GameOverP
                   style={{ color: style.color }}
                 >
                   {r.score}
-                  <span className="text-xs ml-1 opacity-60">分 🃏</span>
+                  <span className="text-tiny ml-1 opacity-60">分 🃏</span>
                 </span>
               </motion.div>
             )
@@ -279,8 +292,8 @@ export function GameOver({ results, currentUserId, lastCardWinnerId }: GameOverP
             >
               <div className="flex items-center gap-2 mb-3">
                 <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gold/20 to-transparent" />
-                <span className="text-gold/70 text-xs font-serif shrink-0">
-                  本局你抢到的 {myCards.length} 张牌
+                <span className="text-gold/70 text-tiny font-serif shrink-0">
+                  🌸 本局你抢到的 {myCards.length} 张牌
                 </span>
                 <div className="h-px flex-1 bg-gradient-to-r from-gold/20 via-transparent to-transparent" />
               </div>
@@ -290,8 +303,8 @@ export function GameOver({ results, currentUserId, lastCardWinnerId }: GameOverP
                     initial={{ scale: 0, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     transition={{ delay: 0.9 + myCards.indexOf(card) * 0.05, ease: 'backOut' }}
-                    className="relative rounded-lg overflow-hidden"
-                    style={{ aspectRatio: '3/4', background: 'rgb(var(--color-surface))', border: '1px solid rgb(var(--accent-primary)/ 0.2)' }}
+                    className="relative rounded-lg overflow-hidden bg-surface border border-gold/20"
+                    style={{ aspectRatio: '3/4' }}
                     title={card.display_text || card.hint_text || ''}
                   >
                     {card.cover_url ? (
@@ -304,7 +317,7 @@ export function GameOver({ results, currentUserId, lastCardWinnerId }: GameOverP
                     {(card.display_text || card.hint_text) && (
                       <div className="absolute bottom-0 left-0 right-0 px-1 py-0.5 text-center"
                         style={{ background: 'linear-gradient(to top, rgb(var(--accent-bg-mid)/ 0.95), transparent)' }}>
-                        <p className="text-white/70 leading-tight" style={{ fontSize: '0.45rem' }}>
+                        <p className="text-body-text/70 leading-tight" style={{ fontSize: '0.45rem' }}>
                           {card.display_text !== '—' ? card.display_text : card.hint_text}
                         </p>
                       </div>
@@ -316,6 +329,22 @@ export function GameOver({ results, currentUserId, lastCardWinnerId }: GameOverP
           ) : null
         })()}
 
+        {/* 本局成就（v7 增补）：仪式层集中展示结算推送的新解锁 */}
+        {unlocks.length > 0 && (
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.8 }}
+            className="rounded-2xl p-4 mb-1 text-center"
+            style={{ background: 'rgb(var(--color-gold)/ 0.06)', border: '1px solid rgb(var(--color-gold)/ 0.3)' }}>
+            <p className="text-[10px] tracking-widest text-gold/80 mb-2">本局解锁成就</p>
+            <div className="flex flex-wrap justify-center gap-2">
+              {unlocks.map(u => (
+                <span key={u.key} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/20 border border-gold/30 text-xs text-gold">
+                  <span>{u.icon}</span> {u.title}
+                </span>
+              ))}
+            </div>
+          </motion.div>
+        )}
+
         {/* Buttons */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -326,16 +355,26 @@ export function GameOver({ results, currentUserId, lastCardWinnerId }: GameOverP
           <Button
             variant="gold"
             className="flex-1 text-center font-serif"
-            onClick={() => navigate('/rooms/new')}
+            loading={rematching}
+            disabled={!isHost}
+            title={isHost ? undefined : '由房主发起'}
+            onClick={() => void rematch(roomId)}
           >
-            「再战一次」
+            再来一局
           </Button>
           <Button
             variant="outline"
             className="flex-1 text-center"
-            onClick={() => navigate('/')}
+            onClick={() => navigate(paths.roomNew(deckId))}
           >
-            凯旋归营 (－ω－ ) zzZ
+            换牌组再来
+          </Button>
+          <Button
+            variant="ghost"
+            className="flex-1 text-center"
+            onClick={() => navigate(paths.home())}
+          >
+            回大本营
           </Button>
         </motion.div>
       </motion.div>

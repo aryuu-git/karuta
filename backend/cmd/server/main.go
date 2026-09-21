@@ -101,7 +101,7 @@ func main() {
 	})
 
 	// Handlers
-	authH, err := handler.NewAuthHandler(s, stor, mediaSvc, cfg.JWTSecret, cfg.InviteRequired)
+	authH, err := handler.NewAuthHandler(s, stor, mediaSvc, cfg.JWTSecret, cfg.InviteRequired, hubManager)
 	if err != nil {
 		log.Fatalf("init auth handler: %v", err)
 	}
@@ -109,13 +109,12 @@ func main() {
 	cardH := handler.NewCardHandler(s, stor, mediaSvc)
 	roomH := handler.NewRoomHandler(s, hubManager)
 	wsH := handler.NewWSHandler(s, hubManager, wsTickets)
-	authMiddleware := middleware.Auth(cfg.JWTSecret)
+	authMiddleware := middleware.Auth(cfg.JWTSecret, s.Users)
 
 	r := chi.NewRouter()
 	authRateLimit := middleware.RateLimit(20, time.Minute)
 	uploadRateLimit := middleware.RateLimit(30, time.Minute)
 	wsTicketRateLimit := middleware.RateLimit(120, time.Minute)
-	proxyRateLimit := middleware.RateLimit(120, time.Minute)
 
 	// Global middleware
 	r.Use(obs.RequestLogger)
@@ -182,16 +181,17 @@ func main() {
 	r.With(authRateLimit).Post("/api/auth/guest", authH.GuestLogin)
 	r.Get("/api/auth/invite-status", authH.InviteStatus)
 
-	// Public proxy (no auth needed)
-	bangumiPublic := handler.NewBangumiHandler(cfg.BangumiToken)
-	r.With(proxyRateLimit).Get("/api/bangumi/image", bangumiPublic.ProxyImage)
-
 	// Protected routes
 	r.Group(func(r chi.Router) {
 		r.Use(authMiddleware)
 		r.With(wsTicketRateLimit).Post("/api/ws-ticket", wsH.IssueTicket)
 
 		r.Get("/api/me", authH.Me)
+		r.Post("/api/me/password", authH.ChangePassword)
+		r.Post("/api/me/upgrade", authH.UpgradeGuest)
+		r.Get("/api/me/achievements", authH.MyAchievements)
+		r.Get("/api/me/games", roomH.MyGames)
+		r.Get("/api/rankings", roomH.Rankings)
 		r.Post("/api/me/guest-recovery", authH.IssueGuestRecovery)
 		r.Patch("/api/me", authH.UpdateMe)
 		r.Get("/api/me/stats", authH.MyStats)
@@ -213,6 +213,8 @@ func main() {
 		r.Patch("/api/decks/{id}", deckH.UpdateDeck)
 		r.Delete("/api/decks/{id}", deckH.DeleteDeck)
 		r.Post("/api/decks/{id}/share", deckH.ShareDeck)
+		r.Post("/api/decks/{id}/like", deckH.ToggleLike)
+		r.Post("/api/decks/{id}/reorder", deckH.ReorderCards)
 		r.Post("/api/decks/{id}/cards", deckH.AddCardsToDeck)
 		r.Delete("/api/decks/{id}/cards/{cardID}", deckH.RemoveCardFromDeck)
 		r.Post("/api/decks/{id}/clone", deckH.CloneDeck)
@@ -223,8 +225,10 @@ func main() {
 		r.Get("/api/cards/public", cardH.ListPublicCards)
 		r.Get("/api/cards/{id}", cardH.GetCard)
 		r.With(uploadRateLimit).Post("/api/cards", cardH.CreateCard)
+		r.Post("/api/cards/batch-tag", cardH.BatchUpdateTags)
 		r.Patch("/api/cards/{id}", cardH.UpdateCard)
 		r.Delete("/api/cards/{id}", cardH.DeleteCard)
+		r.Post("/api/cards/{id}/like", cardH.ToggleLike)
 		r.Post("/api/cards/batch-share", cardH.BatchUpdateShareLevel)
 		r.Post("/api/cards/{id}/clone", cardH.CloneCard)
 		r.With(uploadRateLimit).Post("/api/cards/{id}/cover", cardH.UpdateCover)
@@ -233,9 +237,6 @@ func main() {
 		r.Delete("/api/cards/{id}/audios/{audioID}", cardH.DeleteAudio)
 
 		// Room routes
-		bangumiH := handler.NewBangumiHandler(cfg.BangumiToken)
-		r.Get("/api/bangumi/search", bangumiH.Search)
-
 		r.Get("/api/rooms", roomH.ListRooms)
 		r.Post("/api/rooms", roomH.CreateRoom)
 		r.Post("/api/rooms/join", roomH.JoinRoom)
@@ -251,6 +252,7 @@ func main() {
 		r.Post("/api/rooms/{id}/pause", roomH.PauseRoom)
 		r.Post("/api/rooms/{id}/resume", roomH.ResumeRoom)
 		r.Post("/api/rooms/{id}/play-card", roomH.PlayCard)
+		r.Post("/api/rooms/{id}/rematch", roomH.Rematch)
 		r.Delete("/api/rooms/{id}", roomH.CloseRoom)
 	})
 

@@ -17,7 +17,7 @@ export interface ToastItem {
   type: ToastType
 }
 
-interface ToastContextValue {
+export interface ToastContextValue {
   /** 弹出一条 toast（text 支持带 emoji 的文案；ms 默认 2000） */
   show: (text: string, type?: ToastType, ms?: number) => void
   /** 便捷别名 */
@@ -57,7 +57,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     <ToastContext.Provider value={value}>
       {children}
       {/* 渲染层：顶部居中，不阻塞交互 */}
-      <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[200] flex flex-col items-center gap-2 pointer-events-none">
+      <div className="fixed top-4 left-1/2 -translate-x-1/2 z-toast flex flex-col items-center gap-2 pointer-events-none">
         {items.map((t) => (
           <div
             key={t.id}

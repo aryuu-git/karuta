@@ -52,7 +52,7 @@ export function CardGrid({ cards, cardRemaining, discardPile = [], onGrab }: Car
         <div className="mt-6 w-full max-w-3xl">
           <div className="flex items-center gap-2 mb-2">
             <div className="h-px flex-1 bg-white/5" />
-            <span className="text-white/20 text-xs">废牌堆 ({discardPile.length})</span>
+            <span className="text-body-text/20 text-tiny">废牌堆 ({discardPile.length})</span>
             <div className="h-px flex-1 bg-white/5" />
           </div>
           <div className="flex flex-wrap gap-1.5">
@@ -70,13 +70,12 @@ export function CardGrid({ cards, cardRemaining, discardPile = [], onGrab }: Car
                       <img src={card.cover_url} alt="" className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full bg-surface flex items-center justify-center">
-                        <span className="text-gold/30 text-xs">♪</span>
+                        <span className="text-gold/30 text-tiny">♪</span>
                       </div>
                     )}
                     <div className="absolute inset-0 bg-black/30" />
-                    <div className="absolute bottom-0 left-0 right-0 px-0.5 py-0.5 text-center"
-                      style={{ background: 'rgba(0,0,0,0.6)' }}>
-                      <span className="text-white/70 leading-none" style={{ fontSize: '0.5rem' }}>
+                    <div className="absolute bottom-0 left-0 right-0 px-0.5 py-0.5 text-center bg-black/60">
+                      <span className="text-body-text/70 leading-none" style={{ fontSize: '0.5rem' }}>
                         {item.winner === '无人' ? '逃' : item.winner.slice(0, 2)}
                       </span>
                     </div>

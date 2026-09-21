@@ -1,6 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 // 设计系统映射：颜色全部引用 index.css 的 RGB 三元组变量，
-// 唯一主题（樱花粉）由 CSS 变量驱动，无需任何 !important 覆盖。
+// 主题切换（sakura/shimapan）由 CSS 变量驱动，无需任何 !important 覆盖。
 // 详细规范见 docs/design-system.md。
 export default {
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
@@ -24,11 +24,6 @@ export default {
         surface: {
           DEFAULT: 'rgb(var(--color-surface) / <alpha-value>)',
           elevated: 'rgb(var(--color-surface-elevated) / <alpha-value>)',
-        },
-        // 歌牌米白和纸面（KarutaCard 牌理底色，跨主题恒定）
-        paper: {
-          DEFAULT: 'rgb(var(--color-card-paper) / <alpha-value>)',
-          deep: 'rgb(var(--color-card-paper-deep) / <alpha-value>)',
         },
         border: 'rgb(var(--color-border) / <alpha-value>)',
         muted: 'rgb(var(--color-muted) / <alpha-value>)',
@@ -87,6 +82,23 @@ export default {
       transitionDuration: {
         fast: '150ms',
         base: '250ms',
+      },
+      // 层级体系（重构 L1）：替代散落的 z-50/[100]/[200] 任意值。
+      // 递增语义：内容层 < 下拉层 < 吸顶导航 < 浮动按钮 < 全屏覆盖 < 模态 < Toast
+      zIndex: {
+        dropdown: '30',   // 页内绝对定位下拉（读牌倒计时遮罩）
+        sticky: '40',     // 吸顶导航 header
+        float: '50',      // 浮动按钮（聊天 FAB、主题切换器）
+        overlay: '80',     // 全屏一次性覆盖（洗牌遮罩、丢蛋动画，pointer-events-none）
+        modal: '100',     // 模态（Dialog、结算页、更新日志、各类弹层）
+        toast: '200',     // Toast 置顶
+      },
+      // 内嵌滚动区档位（重构 L2）：收敛散落的 max-h-12/20/40/56/60 魔法值
+      maxHeight: {
+        'scroll-xs': '3rem',   // 48px：极小内嵌列表
+        'scroll-sm': '5rem',   // 80px：短列表
+        'scroll-md': '10rem',  // 160px：中列表
+        'scroll-lg': '15rem',  // 240px：长列表
       },
       transitionTimingFunction: {
         standard: 'cubic-bezier(.4,0,.2,1)',

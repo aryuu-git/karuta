@@ -1,185 +1,236 @@
-import { useState, useEffect, useCallback, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { KeyRound, Swords, Crown, RefreshCw, Zap, Search, Star, Layers, Globe, Castle } from 'lucide-react'
-import { Layout } from '../components/Layout'
-import { Button, Input, Badge, EmptyState, SectionTitle, type BadgeTone } from '../components/ui'
+// 图标统一走 lucide-react（映射约定见 A3.1–A3.4）
+import { KeyRound, Zap, Wrench, Crown, RefreshCw, Castle, Star, Trophy } from 'lucide-react'
+import { useQueryClient } from '@tanstack/react-query'
+import { Button, Input, Badge, EmptyState, PageContainer, ConfirmDialog, Skeleton, useToast, type BadgeTone } from '../components/ui'
 import { useAuth } from '../hooks/useAuth'
-import { api } from '../api/client'
-import type { Deck, RoomListItem } from '../api/types'
+import { api, HttpError } from '../api/client'
+import { useRoomList, useMyDecks, useRankings, queryKeys } from '../api/queries'
+import { paths } from '../routes/paths'
+import { PresetPicker } from '../features/play/PresetPicker'
+import { createRoomFromConfig, writeLastConfig, readLastConfig } from '../features/play/roomCreate'
+import type { RoomConfig } from '../features/play/roomConfig'
+import type { RoomListItem } from '../api/types'
 
 /** 房间状态 → 徽章文案与色调（设计系统状态色 token） */
 const STATUS_LABEL: Record<string, { text: string; tone: BadgeTone }> = {
-  waiting: { text: '招募中', tone: 'success' },
-  reading: { text: '激战中', tone: 'crimson' },
+  waiting: { text: '可加入', tone: 'success' },
+  reading: { text: '游戏中', tone: 'crimson' },
   paused:  { text: '暂停中', tone: 'muted' },
   end:     { text: '已结束', tone: 'muted' },
 }
 
+/**
+ * 开战中枢（PlayHub，Home 重构后，§4.1）：双主 CTA（快速开局 / 自定义建房）
+ * + 邀请码加入 + 活跃战场列表。牌组/公共牌区已外迁至牌组页。
+ */
 export function HomePage() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const isAdmin = !!user?.is_admin
+  const queryClient = useQueryClient()
+  const toast = useToast()
 
-  const [rooms, setRooms] = useState<RoomListItem[]>([])
-  const [roomsLoading, setRoomsLoading] = useState(true)
+  // 战场大厅：8 秒可见性感知轮询（后台标签页自动停），刷新中保留旧数据不闪烁。
+  const roomsQuery = useRoomList()
+  const rooms = roomsQuery.data ?? []
+  // 牌组仅作为快速开局的必选项数据源，不再单独成区
+  const decks = useMyDecks().data ?? []
+
   const [joinCode, setJoinCode] = useState('')
   const [joining, setJoining] = useState(false)
   const [joinError, setJoinError] = useState<string | null>(null)
-  const [myDecks, setMyDecks] = useState<Deck[]>([])
-  const [publicDecks, setPublicDecks] = useState<Deck[]>([])
-  const [deckSearch, setDeckSearch] = useState('')
+  const [forceEndTarget, setForceEndTarget] = useState<RoomListItem | null>(null)
+  const [forceEnding, setForceEnding] = useState(false)
 
-  const loadRooms = useCallback(() => {
-    setRoomsLoading(true)
-    api.rooms.list()
-      .then(setRooms)
-      .catch(() => setRooms([]))
-      .finally(() => setRoomsLoading(false))
-  }, [])
-
-  useEffect(() => {
-    loadRooms()
-    api.decks.listMine().then(setMyDecks).catch(() => null)
-    api.decks.listPublic().then(setPublicDecks).catch(() => null)
-    const timer = setInterval(loadRooms, 8000)
-    return () => clearInterval(timer)
-  }, [loadRooms])
+  // 快速开局（PresetPicker）状态
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const [lastConfig, setLastConfig] = useState<RoomConfig | null>(null)
+  const [creating, setCreating] = useState(false)
 
   const doJoin = async (code: string) => {
     setJoining(true)
     setJoinError(null)
     try {
       const res = await api.rooms.join(code)
-      navigate(`/rooms/${res.room.id}`)
+      navigate(paths.room(res.room.id))
     } catch (err) {
-      setJoinError(err instanceof Error ? err.message : '未能入阵——请核对令牌。')
+      // 按错误码本地化（2026-09-21 修复：原透传后端英文 message）
+      const errCode = err instanceof HttpError ? err.code : undefined
+      setJoinError(
+        errCode === 'ROOM_ENDED' ? '这个战场已结束'
+        : errCode === 'NOT_FOUND' ? '房间不存在，请检查邀请码'
+        : '加入失败，请检查邀请码',
+      )
     } finally { setJoining(false) }
   }
 
-  const handleJoinByCode = async (e: FormEvent) => {
+  // 邀请码输入：逐字符大写；满 6 位自动提交；失败保留输入（不清空）
+  const handleJoinCodeChange = (value: string) => {
+    const upper = value.toUpperCase()
+    setJoinCode(upper)
+    setJoinError(null)
+    if (upper.trim().length === 6 && !joining) void doJoin(upper.trim())
+  }
+
+  const handleJoinByCode = (e: FormEvent) => {
     e.preventDefault()
     const code = joinCode.trim().toUpperCase()
-    if (!code) return
-    await doJoin(code)
+    if (code) void doJoin(code)
+  }
+
+  // 管理员强制收束对局：确认后调用接口并失效房间列表缓存。
+  const handleForceEnd = async () => {
+    if (!forceEndTarget) return
+    setForceEnding(true)
+    try {
+      await api.rooms.forceEnd(forceEndTarget.id)
+      queryClient.invalidateQueries({ queryKey: queryKeys.rooms.list })
+      setForceEndTarget(null)
+    } catch {
+      // 失败时保持弹窗，交由用户重试或取消
+    } finally {
+      setForceEnding(false)
+    }
+  }
+
+  // 打开快速开局弹层：读取「上次配置」（无则该行隐藏）
+  const openPicker = () => {
+    setLastConfig(readLastConfig())
+    setPickerOpen(true)
+  }
+
+  // 全站排行榜（v7 增补：score/wins/world_first 三榜 TOP10）
+  const [rankKind, setRankKind] = useState<'score' | 'wins' | 'world_first'>('score')
+  const rankQ = useRankings(rankKind)
+  const RANK_LABEL: Record<typeof rankKind, string> = { score: '总分', wins: '胜场', world_first: '世一网' }
+
+  // 预设直接创建：成功写上次配置并跳新房，失败 toast（弹层保留）
+  const handlePresetSelect = async (config: RoomConfig, deckId: number) => {
+    if (creating) return
+    setCreating(true)
+    try {
+      const room = await createRoomFromConfig(deckId, config)
+      writeLastConfig(config)
+      setPickerOpen(false)
+      navigate(paths.room(room.id))
+    } catch (err) {
+      toast.show(err instanceof Error ? err.message : '开辟失败，请重试', 'fail', 2500)
+    } finally {
+      setCreating(false)
+    }
+  }
+
+  // 预设跳完整表单：携带预设配置，页头标注「基于：{label}」
+  const handlePresetCustomize = (config: RoomConfig, deckId: number) => {
+    setPickerOpen(false)
+    navigate(paths.roomNew(deckId), { state: { presetConfig: config } })
   }
 
   return (
-    <Layout>
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
+    <>
+      <PageContainer size="md">
 
-        {/* 邀请码入场 + 创建房间 */}
-        <div className="flex flex-col sm:flex-row gap-4 mb-8">
-          <div className="flex-1 card-surface p-5 relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-20 h-20 opacity-10 pointer-events-none"
-              style={{ background: 'radial-gradient(circle, rgb(var(--glow-color)/ 0.8), transparent 70%)' }} />
-            <h2 className="font-serif text-title text-gold font-bold mb-1 relative flex items-center gap-1.5">
-              <KeyRound size={16} className="text-gold-dark" />
-              凭令入场
-            </h2>
-            <p className="text-muted/50 text-caption mb-3 font-serif italic relative">持令者，径直入阵。</p>
-            <form onSubmit={handleJoinByCode} className="flex gap-2 relative">
-              <Input
-                type="text"
-                value={joinCode}
-                onChange={e => { setJoinCode(e.target.value.toUpperCase()); setJoinError(null) }}
-                className="text-center font-serif font-bold tracking-[0.2em] text-sm"
-                placeholder="输入令牌…"
-                maxLength={10}
-                aria-label="房间邀请码"
-              />
-              <Button type="submit" loading={joining} disabled={!joinCode.trim()} className="shrink-0">
-                降临！
-              </Button>
-            </form>
-            {joinError && (
-              <p className="text-crimson text-xs mt-2 text-center bg-crimson/10 border border-crimson/20 rounded-lg px-2 py-1.5">
-                {joinError}
-              </p>
-            )}
-          </div>
-
-          <div className="sm:w-52 card-surface p-5 flex flex-col items-center justify-center relative overflow-hidden">
-            <div className="absolute bottom-0 right-0 w-16 h-16 opacity-10 pointer-events-none"
-              style={{ background: 'radial-gradient(circle, rgb(var(--accent-primary)/ 0.8), transparent 70%)' }} />
-            <Button onClick={() => navigate('/rooms/new')} className="w-full" icon={<Swords size={16} />}>
-              开辟战场
-            </Button>
-            <p className="text-muted/40 text-xs mt-2 text-center font-serif italic relative">选定阵容，向命运宣战。</p>
-          </div>
+        {/* 双主 CTA：快速开局 / 自定义建房（§4.1） */}
+        <div className="grid grid-cols-2 gap-4 mb-6">
+          <button
+            onClick={openPicker}
+            className="relative overflow-hidden rounded-2xl p-6 flex flex-col items-center gap-1.5 border border-gold/30 transition-all hover:scale-[1.02] hover:shadow-gold"
+            style={{ background: 'linear-gradient(160deg, rgb(var(--accent-primary)/ 0.25), rgb(var(--accent-bg-mid)/ 0.8))' }}
+          >
+            <Zap size={26} className="text-gold" />
+            <span className="font-serif text-title text-gold font-bold">快速开局</span>
+            <span className="text-muted text-caption">选预设，一步开战</span>
+          </button>
+          <button
+            onClick={() => navigate(paths.roomNew())}
+            className="relative overflow-hidden rounded-2xl p-6 flex flex-col items-center gap-1.5 border border-border hover:border-gold/40 transition-all hover:scale-[1.02]"
+            style={{ background: 'linear-gradient(160deg, rgb(var(--accent-bg-end)/ 0.5), rgb(var(--accent-bg-mid)/ 0.8))' }}
+          >
+            <Wrench size={26} className="text-gold/70" />
+            <span className="font-serif text-title text-white/90 font-bold">自定义建房</span>
+            <span className="text-muted text-caption">全部规则随你调</span>
+          </button>
         </div>
 
-        {/* 我的牌组（快速入口） */}
-        {myDecks.length > 0 && (
-          <div className="mb-6">
-            <SectionTitle
-              icon={<Layers size={14} />}
-              actions={
-                <button onClick={() => navigate('/decks')} className="text-muted/40 text-xs hover:text-gold transition-colors font-serif shrink-0">
-                  全部阵容 →
-                </button>
-              }>
-              我的战阵
-            </SectionTitle>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
-              {myDecks.slice(0, 4).map(deck => (
-                <div key={deck.id}
-                  className="rounded-lg p-3 hover:-translate-y-0.5 hover:shadow-card transition-all cursor-pointer group"
-                  style={{ background: 'linear-gradient(180deg, rgb(var(--accent-bg-end)/ 0.5), rgb(var(--accent-bg-mid)/ 0.8))', border: '1px solid rgb(var(--accent-primary)/ 0.1)' }}
-                  onClick={() => navigate(`/decks/${deck.id}`)}>
-                  <h3 className="text-white/80 text-xs font-medium truncate">{deck.name}</h3>
-                  <div className="flex items-center justify-between mt-1.5">
-                    <span className="text-muted/30 text-[10px]">{deck.card_count} 张</span>
-                    <button onClick={e => { e.stopPropagation(); navigate(`/rooms/new?deck_id=${deck.id}`) }}
-                      className="inline-flex items-center gap-0.5 text-[10px] text-gold/40 group-hover:text-gold transition-colors">
-                      <Swords size={10} />
-                      出阵
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        {/* 邀请码入场 */}
+        <div className="rounded-2xl p-5 mb-6 relative overflow-hidden border border-gold/15"
+          style={{ background: 'linear-gradient(135deg, rgb(var(--accent-bg)/ 0.3) 0%, rgb(var(--accent-bg-mid)/ 0.7) 50%, rgb(var(--accent-bg-end)/ 0.3) 100%)' }}>
+          <h2 className="font-serif text-title text-gold font-bold mb-1 relative flex items-center gap-1.5">
+            <KeyRound size={16} className="text-gold-dark" />
+            邀请码加入
+          </h2>
+          <p className="text-muted/50 text-caption mb-3 font-serif italic relative">满 6 位自动加入</p>
+          <form onSubmit={handleJoinByCode} className="flex gap-2 relative">
+            <Input
+              type="text"
+              value={joinCode}
+              onChange={e => handleJoinCodeChange(e.target.value)}
+              className="text-center font-serif font-bold tracking-[0.2em] text-caption"
+              placeholder="输入邀请码"
+              maxLength={10}
+              aria-label="房间邀请码"
+            />
+            <Button type="submit" loading={joining} disabled={!joinCode.trim()} className="shrink-0">
+              加入
+            </Button>
+          </form>
+          {joinError && (
+            <p className="text-crimson text-caption mt-2 text-center bg-crimson/10 border border-crimson/20 rounded-lg px-2 py-1.5">
+              {joinError}
+            </p>
+          )}
+        </div>
 
         {/* GitHub 开源仓库 */}
         <a href="https://github.com/aryuu-git/karuta" target="_blank" rel="noopener noreferrer"
-          className="flex items-center gap-2 mb-4 px-4 py-2 rounded-xl transition-all hover:scale-[1.01]"
-          style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)' }}>
-          <Star size={14} className="text-white/60" />
-          <span className="text-xs text-white/50">GitHub 开源仓库</span>
+          className="flex items-center gap-2 mb-6 px-4 py-2 rounded-xl transition-all hover:scale-[1.01] border border-border/40 bg-surface/10">
+          <Star size={14} className="text-body-text/60" />
+          <span className="text-caption text-body-text/50">GitHub 开源仓库</span>
           <span className="ml-auto text-[10px] text-muted/40">aryuu-git/karuta</span>
         </a>
 
-        {/* 战场大厅 */}
-        <div className="card-surface overflow-hidden mb-8">
-          <div className="flex items-center justify-between px-5 py-3.5 relative"
-            style={{ borderBottom: '1px solid rgb(var(--accent-primary)/ 0.08)' }}>
+        {/* 活跃战场列表 */}
+        <div className="rounded-2xl overflow-hidden mb-8 border border-gold/12"
+          style={{ background: 'linear-gradient(180deg, rgb(var(--accent-bg-end)/ 0.4) 0%, rgb(var(--accent-bg-mid)/ 0.7) 100%)' }}>
+          <div className="flex items-center justify-between px-5 py-3.5 relative border-b border-gold/10">
             <div className="flex items-center gap-2">
               <h2 className="font-serif text-title text-gold font-bold flex items-center gap-1.5">
                 <Castle size={16} className="text-gold-dark" />
-                战场大厅
+                活跃战场
               </h2>
-              <span className="text-muted/30 text-xs font-serif italic">群雄争霸之地</span>
+              <span className="text-muted/30 text-caption font-serif italic">进行中的房间</span>
             </div>
-            <button onClick={loadRooms}
-              className="flex items-center gap-1 text-muted/40 text-xs hover:text-gold transition-all duration-fast">
+            <Button variant="ghost" size="sm" onClick={() => roomsQuery.refetch()}
+              className="flex items-center gap-1 text-muted/40 hover:text-gold">
               <RefreshCw size={12} />
               刷新
-            </button>
+            </Button>
           </div>
 
-          {roomsLoading && (
-            <div className="text-muted/50 text-xs animate-pulse py-8 text-center font-serif">～ 探查各方战场中 ～</div>
+          {roomsQuery.isLoading && (
+            <div className="px-5 py-3">
+              <Skeleton variant="row" rows={4} />
+            </div>
           )}
 
-          {!roomsLoading && rooms.length === 0 && (
+          {/* 列表空态（§7.2：必须带下一步 CTA） */}
+          {!roomsQuery.isLoading && rooms.length === 0 && (
             <EmptyState
-              icon={<Castle size={44} strokeWidth={1.5} />}
-              title="群雄尚未集结…"
-              description="率先开辟战场者，乃真勇士也。"
-              className="py-8"
+              icon="🌸"
+              title="还没有战场"
+              description="开辟一个，把链接发给战友"
+              action={<Button onClick={openPicker}>开辟第一个 →</Button>}
             />
+          )}
+
+          {/* 轮询失败：保留旧数据 + 顶部细提示 */}
+          {roomsQuery.isError && rooms.length > 0 && (
+            <p className="text-warning/70 text-tiny text-center py-1.5 bg-warning/5 border-b border-warning/15">
+              刷新失败，显示的可能是旧数据
+            </p>
           )}
 
           <div className="divide-y divide-border">
@@ -199,27 +250,25 @@ export function HomePage() {
                     }`} />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="text-white text-sm font-medium truncate">{room.deck_name}</span>
+                        <span className="text-body-text text-caption font-medium truncate">{room.deck_name}</span>
                         <Badge tone={s.tone}>{s.text}</Badge>
+                        {room.is_private && <Badge tone="muted">私密</Badge>}
                       </div>
-                      <div className="text-muted text-xs mt-0.5 flex items-center gap-1">
+                      <div className="text-muted text-tiny mt-0.5 flex items-center gap-1">
                         <Crown size={11} className="text-gold-foil/60" />
-                        {room.host_name} · {room.player_count} 位战士
+                        {room.host_name} · {room.player_count} 位玩家
                       </div>
                     </div>
                     {room.status !== 'end' && (
                       <div className="flex items-center gap-2 shrink-0">
-                        <span className={`text-xs group-hover:text-gold transition-all ${room.training ? 'text-warning/60' : room.status === 'waiting' ? 'text-gold/60' : 'text-muted'}`}>
-                          {room.training ? '旁观 →' : room.status === 'waiting' ? '加入 →' : '旁观 →'}
+                        <span className={`text-caption group-hover:text-gold transition-all ${room.training ? 'text-warning/60' : room.status === 'waiting' ? 'text-gold/60' : 'text-muted'}`}>
+                          {/* CTA 语义只看状态：waiting 以玩家身份加入，其余旁观
+                              （2026-09-21 修复：training 房此前误标「旁观」实际加入为玩家） */}
+                          {room.status === 'waiting' ? '加入 →' : '旁观 →'}
                         </span>
                         {isAdmin && (
                           <button
-                            onClick={async e => {
-                              e.stopPropagation()
-                              if (!confirm(`强制结束「${room.deck_name}」对局？`)) return
-                              await api.rooms.forceEnd(room.id).catch(() => null)
-                              loadRooms()
-                            }}
+                            onClick={e => { e.stopPropagation(); setForceEndTarget(room) }}
                             className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded text-warning border border-warning/35 bg-warning/10 transition-all hover:scale-105">
                             <Zap size={10} />
                             结束
@@ -234,49 +283,62 @@ export function HomePage() {
           </div>
         </div>
 
-        {/* 公共牌组快速开战 */}
-        {publicDecks.length > 0 && (() => {
-          const filtered = deckSearch
-            ? publicDecks.filter(d => d.name.toLowerCase().includes(deckSearch.toLowerCase()))
-            : publicDecks
-          return (
-            <div>
-              <SectionTitle icon={<Globe size={14} />}>
-                万阵共享 · 即刻出阵
-              </SectionTitle>
-              <div className="relative mb-3">
-                <Input
-                  type="text"
-                  value={deckSearch}
-                  onChange={e => setDeckSearch(e.target.value)}
-                  placeholder="以名索阵…"
-                  className="text-sm pl-9"
-                  aria-label="搜索公共牌组"
-                />
-                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted/40" />
-              </div>
-              {filtered.length > 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
-                  {filtered.map((deck) => (
-                    <div key={deck.id}
-                      className="rounded-lg p-3 hover:-translate-y-0.5 hover:shadow-card transition-all cursor-pointer"
-                      style={{ background: 'linear-gradient(180deg, rgb(var(--accent-bg-end)/ 0.5), rgb(var(--accent-bg-mid)/ 0.8))', border: '1px solid rgb(var(--accent-primary)/ 0.1)' }}
-                      onClick={() => navigate(`/rooms/new?deck_id=${deck.id}`)}>
-                      <h3 className="text-white/90 text-xs font-medium truncate">{deck.name}</h3>
-                      <div className="flex items-center justify-between mt-1">
-                        <span className="text-muted/30 text-xs">{deck.card_count}</span>
-                        <Swords size={12} className="text-gold/50" />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-muted/40 text-xs text-center py-4 font-serif">未寻得匹配之阵…换个名字试试。</p>
-              )}
+      {/* 全站排行榜（v7 增补）：三榜 TOP10，游客同榜 */}
+      <div className="rounded-2xl overflow-hidden mb-8 border border-gold/12"
+        style={{ background: 'linear-gradient(180deg, rgb(var(--accent-bg-end)/ 0.4) 0%, rgb(var(--accent-bg-mid)/ 0.7) 100%)' }}>
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-gold/10">
+          <h2 className="font-serif text-title text-gold font-bold flex items-center gap-1.5">
+            <Trophy size={16} className="text-gold-dark" /> 排行榜
+          </h2>
+          <div className="flex gap-0.5 bg-white/5 rounded-lg p-0.5">
+            {(Object.keys(RANK_LABEL) as Array<'score' | 'wins' | 'world_first'>).map(k => (
+              <button key={k} onClick={() => setRankKind(k)}
+                className={`text-xs px-3 py-1 rounded-md transition-all ${rankKind === k ? 'bg-gold/20 text-gold' : 'text-muted hover:text-white/70'}`}>
+                {RANK_LABEL[k]}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="divide-y divide-border">
+          {(rankQ.data ?? []).length === 0 && !rankQ.isLoading && (
+            <p className="text-muted/50 text-xs text-center py-6">还没有战绩，打几局就上榜了</p>
+          )}
+          {(rankQ.data ?? []).map((entry, i) => (
+            <div key={entry.user_id} className="flex items-center gap-3 px-5 py-2.5">
+              <span className={`w-6 text-center font-serif font-bold ${i === 0 ? 'text-gold text-title' : i < 3 ? 'text-gold/70' : 'text-muted/50'} text-sm`}>
+                {i + 1}
+              </span>
+              <span className="flex-1 text-sm text-body-text/90 truncate">{entry.username}</span>
+              <span className="text-sm text-gold font-bold tabular-nums">{entry.value}</span>
             </div>
-          )
-        })()}
+          ))}
+        </div>
       </div>
-    </Layout>
+    </PageContainer>
+
+      {/* 快速开局弹层 */}
+      <PresetPicker
+        open={pickerOpen}
+        decks={decks}
+        lastConfig={lastConfig}
+        onSelect={handlePresetSelect}
+        loading={creating}
+        onCustomize={handlePresetCustomize}
+        onClose={() => setPickerOpen(false)}
+      />
+
+      {/* 管理员强制收束确认 */}
+      <ConfirmDialog
+        open={forceEndTarget !== null}
+        title={`强制结束「${forceEndTarget?.deck_name ?? ''}」对局？`}
+        description="结束后对局将立即停止，所有成员退出，无法撤销。"
+        confirmText="强制结束"
+        cancelText="取消"
+        danger
+        loading={forceEnding}
+        onConfirm={handleForceEnd}
+        onCancel={() => setForceEndTarget(null)}
+      />
+    </>
   )
 }

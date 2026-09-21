@@ -107,3 +107,5 @@ export type WSEvent =
   | { type: 'duel_arrange_start'; timeout: number }
   | { type: 'duel_arrange_state'; player1_cards: Array<{ id: number; display_text: string; cover_url: string }>; player2_cards: Array<{ id: number; display_text: string; cover_url: string }>; p1_ready: boolean; p2_ready: boolean }
   | { type: 'duel_arrange_done'; player1_cards: Array<{ id: number; display_text: string; cover_url: string }>; player2_cards: Array<{ id: number; display_text: string; cover_url: string }> }
+  // 成就解锁推送（结算钩子逐人发送；右下角仪式层弹层消费）
+  | { type: 'achievement_unlocked'; achievements: Array<{ key: string; title: string; icon: string }> }

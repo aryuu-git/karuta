@@ -7,7 +7,7 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-const CurrentSchemaVersion = 4
+const CurrentSchemaVersion = 8
 
 func OpenDB(path string) (*sql.DB, error) {
 	db, err := sql.Open("sqlite", path)
@@ -183,6 +183,25 @@ CREATE TABLE IF NOT EXISTS media_assets (
 	deleted_at DATETIME
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_media_assets_sha_kind ON media_assets(sha256, kind);
+CREATE TABLE IF NOT EXISTS user_achievements (
+	user_id INTEGER NOT NULL REFERENCES users(id),
+	achievement_key TEXT NOT NULL,
+	progress INTEGER NOT NULL DEFAULT 0,
+	unlocked_at DATETIME,
+	PRIMARY KEY (user_id, achievement_key)
+);
+CREATE TABLE IF NOT EXISTS card_likes (
+	card_id INTEGER NOT NULL REFERENCES cards(id) ON DELETE CASCADE,
+	user_id INTEGER NOT NULL REFERENCES users(id),
+	created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+	PRIMARY KEY (card_id, user_id)
+);
+CREATE TABLE IF NOT EXISTS deck_likes (
+	deck_id INTEGER NOT NULL REFERENCES decks(id) ON DELETE CASCADE,
+	user_id INTEGER NOT NULL REFERENCES users(id),
+	created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+	PRIMARY KEY (deck_id, user_id)
+);
 `
 	if _, err := db.Exec(ddl); err != nil {
 		return err
@@ -227,6 +246,9 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_media_assets_sha_kind ON media_assets(sha2
 		{"users", "is_guest", `ALTER TABLE users ADD COLUMN is_guest BOOLEAN DEFAULT FALSE`},
 		{"users", "guest_token_hash", `ALTER TABLE users ADD COLUMN guest_token_hash TEXT DEFAULT ''`},
 		{"card_audios", "duration_sec", `ALTER TABLE card_audios ADD COLUMN duration_sec REAL DEFAULT 0`},
+		{"rooms", "ended_at", `ALTER TABLE rooms ADD COLUMN ended_at DATETIME`},
+		{"rooms", "is_private", `ALTER TABLE rooms ADD COLUMN is_private BOOLEAN DEFAULT FALSE`},
+		{"rooms", "max_players", `ALTER TABLE rooms ADD COLUMN max_players INTEGER DEFAULT 16`},
 	}
 	for _, column := range columns {
 		if err := ensureColumn(db, column.table, column.name, column.ddl); err != nil {
@@ -319,6 +341,7 @@ type Store struct {
 	Invites     *InviteStore
 	System      *SystemStore
 	MediaAssets *MediaAssetStore
+	Achievements *AchievementStore
 }
 
 func NewStore(db *sql.DB) *Store {
@@ -333,5 +356,6 @@ func NewStore(db *sql.DB) *Store {
 		Invites:     NewInviteStore(db),
 		System:      NewSystemStore(db),
 		MediaAssets: NewMediaAssetStore(db),
+		Achievements: NewAchievementStore(db),
 	}
 }

@@ -1,31 +1,34 @@
 # Karuta 设计系统（和风歌牌）
 
+> ⚠️ **2026-09 更新：主题切换已移除，单主题（樱花）运行。** 下文涉及 shimapan/双主题的内容为历史记录；
+> token 机制（RGB 三元组 + `rgb(var(--x) / alpha)`）不变，`[data-theme]` 覆盖块已删除，未来恢复多主题时按此模式扩展。
+
 > 视觉宪法：和纸质感背景、樱花粉×金粉主色、金色光晕、Noto Serif JP 书卷气、KarutaCard 牌面质感。
 > 本文档是前端美化的唯一依据：token 定义于 `frontend/src/index.css`，Tailwind 映射于 `frontend/tailwind.config.js`。
 > 配色原则：**美化是把现有风格做精致，不是换风格。**
 
 ## 1. 设计 token
 
-### 1.1 色彩（樱花粉主题）
+### 1.1 色彩（双主题）
 
-所有颜色以 **RGB 三元组** CSS 变量存储，Tailwind 通过 `rgb(var(--x) / <alpha-value>)` 消费——任意透明度修饰符（`/50`）自动生效。
+所有颜色以 **RGB 三元组** CSS 变量存储，Tailwind 通过 `rgb(var(--x) / <alpha-value>)` 消费——任意透明度修饰符（`/50`）双主题自动生效。
 
-#### 语义色（唯一主题：樱花粉）
+#### 语义色（sakura 值 / shimapan 值）
 
-| Token | 角色 | 值 |
-| --- | --- | --- |
-| `ink` | 主背景/重文字 | `68 32 56` #442038 |
-| `ink-deep` | 深背景/输入框底 | `56 24 48` #381830 |
-| `gold` | **主强调（樱花粉）** | `248 176 200` #f8b0c8 |
-| `gold-light` | 强调亮阶 | `253 216 232` #fdd8e8 |
-| `gold-dark` | 强调暗阶 | `240 144 176` #f090b0 |
-| `crimson` | 强调红粉（警示/对抗） | `248 112 144` #f87090 |
-| `crimson-light` | 红粉亮阶 | `255 152 176` #ff98b0 |
-| `surface` | 卡面/面板底 | `85 42 64` #552a40 |
-| `surface-elevated` | 浮层面板 | `102 48 74` #66304a |
-| `border` | 描边 | `136 72 104` #884868 |
-| `muted` | 次级文字 | `232 192 212` #e8c0d4 |
-| `body-bg` / `body-text` | 页面底/正文 | #442038 / #fef8fa |
+| Token | 角色 | sakura | shimapan |
+| --- | --- | --- | --- |
+| `ink` | 主背景/重文字 | `68 32 56` #442038 | `26 40 72` #1a2848 |
+| `ink-deep` | 深背景/输入框底 | `56 24 48` #381830 | `18 30 56` #121e38 |
+| `gold` | **主强调（樱花粉）** | `248 176 200` #f8b0c8 | `88 152 224` #5898e0 |
+| `gold-light` | 强调亮阶 | `253 216 232` #fdd8e8 | `144 192 248` #90c0f8 |
+| `gold-dark` | 强调暗阶 | `240 144 176` #f090b0 | `56 120 192` #3878c0 |
+| `crimson` | 强调红粉（警示/对抗） | `248 112 144` #f87090 | `224 96 128` #e06080 |
+| `crimson-light` | 红粉亮阶 | `255 152 176` #ff98b0 | `240 128 152` #f08098 |
+| `surface` | 卡面/面板底 | `85 42 64` #552a40 | `32 48 80` #203050 |
+| `surface-elevated` | 浮层面板 | `102 48 74` #66304a | `40 56 96` #283860 |
+| `border` | 描边 | `136 72 104` #884868 | `58 88 136` #3a5888 |
+| `muted` | 次级文字 | `232 192 212` #e8c0d4 | `144 176 208` #90b0d0 |
+| `body-bg` / `body-text` | 页面底/正文 | #442038 / #fef8fa | #1a2848 / #f0f4f8 |
 
 > ⚠️ 历史遗留：`gold` 系实际是**樱花粉**。保留类名不改（150+ 调用点），真金粉另有 token。
 
@@ -34,15 +37,10 @@
 | Token | 角色 | 值 |
 | --- | --- | --- |
 | `gold-foil` | **金粉**（真金，光晕/描金/徽记） | `212 167 106` #d4a76a |
-| `card-paper` / `card-paper-deep` | 歌牌米白和纸面/暗阶（KarutaCard 牌理底色） | `246 240 228` #f6f0e4 / `233 223 203` #e9dfcb |
 | `success` | 成功 | `74 222 128` #4ade80 |
 | `warning` | 警告 | `251 146 60` #fb923c |
 | `danger` | 危险/扣分 | `248 113 113` #f87171 |
 | `info` | 信息 | `96 165 250` #60a5fa |
-
-#### 背景氛围层（body 多层固定背景，自上而下）
-
-四角暗角 vignette → 金粉光晕（右上，alpha 0.09）→ 樱粉光晕（左下，alpha 0.10）→ 和纸颗粒（feTurbulence 内联 SVG，`--washi-grain`）→ 十字织纹（alpha 0.05/0.04）→ 深景三段渐变（`--accent-bg/-mid/-end`）。`background-attachment: fixed`；页面根容器一律用 `.washi-bg`（透明语义占位），不得自带底色遮挡氛围层。
 
 #### 内置色迁移策略
 
@@ -57,14 +55,15 @@ Tailwind 内置 `pink-300` / `pink-500` 在 config 层**重映射**到语义变�
 | display | `text-display` | 40/48 | serif 700 | 页面主标题、结算名次 |
 | title-xl | `text-title-xl` | 30/38 | serif 700 | 区块主标题 |
 | title | `text-title` | 20/28 | serif 500 | 卡片/面板标题 |
-| body-lg | `text-body-lg` | 17/26 | serif | 首要正文 |
-| body | `text-body` | 16/24 | serif | 默认正文 |
-| caption | `text-caption` | 14/20 | serif | 辅助说明 |
+| body-lg | `text-body-lg` | 17/26 | sans | 首要正文 |
+| body | `text-body` | 16/24 | sans | 默认正文 |
+| caption | `text-caption` | 14/20 | sans | 辅助说明 |
 | tiny | `text-tiny` | 12/16 | sans | 角标/时间戳 |
 
 中文渲染：`html` 开启 `text-wrap: balance`（标题）；正文 `font-synthesis-weight: none` 防止伪粗体糊字；字间距标题 `tracking-wide`。
 
-字体族：**正文默认 = `font-serif` 栈**（body 级 `'Noto Serif JP', 'Hiragino Mincho ProN', 'Yu Mincho', serif`，`font-synthesis: none` 防伪粗体），整体书卷气；数据密集 UI（表格/徽章/时间戳）可显式 `font-sans`（system-ui）。
+### 1.3 间距与圆角
+
 间距沿用 Tailwind 4px 网格。**区块间距语义**：页内区块 `gap-6`，卡片内 `gap-3`，表单字段 `gap-4`，页面左右安全边距 `px-4 md:px-6`。
 
 | Token | 值 | 用途 |

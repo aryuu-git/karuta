@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, type KeyboardEvent } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { RoomPlayer } from '../api/types'
+import { Button } from './ui'
 
 interface ChatMessage {
   id: number
@@ -20,9 +21,11 @@ interface ChatRoomProps {
   isSpectator: boolean
   onSend: (text: string) => void
   onEgg: (targetId: number) => void
+  /** 浮动按钮定位类覆盖（默认 bottom-4 right-4）；战场移动端需上移避让底部计分条 */
+  fabClassName?: string
 }
 
-export function ChatRoom({ messages, players, currentUserId, isSpectator, onSend, onEgg }: ChatRoomProps) {
+export function ChatRoom({ messages, players, currentUserId, isSpectator, onSend, onEgg, fabClassName = 'bottom-4 right-4' }: ChatRoomProps) {
   const [open, setOpen] = useState(false)
   const [input, setInput] = useState('')
   const [showEggMenu, setShowEggMenu] = useState(false)
@@ -62,8 +65,8 @@ export function ChatRoom({ messages, players, currentUserId, isSpectator, onSend
 
   return (
     <>
-      {/* 浮动按钮 — bottom-4 确保在所有设备上可见 */}
-      <div className="fixed bottom-4 right-4 z-50 flex flex-col items-end gap-2">
+      {/* 浮动按钮 — 定位由 fabClassName 控制，移动端战场由调用方上移避让计分条 */}
+      <div className={`fixed z-float flex flex-col items-end gap-2 ${fabClassName}`}>
         <AnimatePresence>
           {open && (
             <motion.div
@@ -71,17 +74,16 @@ export function ChatRoom({ messages, players, currentUserId, isSpectator, onSend
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 20, scale: 0.9 }}
               transition={{ duration: 0.2 }}
-              className="w-72 sm:w-80 rounded-2xl overflow-hidden shadow-2xl flex flex-col"
-              style={{ height: '360px', background: 'rgb(var(--accent-bg-mid)/ 0.96)', border: '1px solid rgb(var(--accent-primary)/ 0.15)', backdropFilter: 'blur(12px)' }}
+              className="w-72 sm:w-80 rounded-2xl overflow-hidden shadow-2xl flex flex-col bg-ink-deep/95 border border-gold/15 backdrop-blur"
+              style={{ height: '360px' }}
             >
               {/* 头部 */}
               <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/5">
-                <span className="text-gold/80 text-sm font-serif">💬 战场传书</span>
-                <button onClick={() => setShowEggMenu(v => !v)}
-                  className="text-xs px-2 py-1 rounded-lg transition-all hover:scale-105"
-                  style={{ background: 'rgba(255,165,0,0.12)', border: '1px solid rgba(255,165,0,0.3)', color: 'rgba(255,165,0,0.9)' }}>
+                <span className="text-gold/80 text-caption font-serif">💬 聊天</span>
+                <Button variant="ghost" size="sm" onClick={() => setShowEggMenu(v => !v)}
+                  className="bg-warning/10 border border-warning/30 text-warning/90 hover:bg-warning/20 hover:text-warning/90">
                   🥚 丢鸡蛋
-                </button>
+                </Button>
               </div>
 
               {/* 丢蛋目标菜单 */}
@@ -91,12 +93,11 @@ export function ChatRoom({ messages, players, currentUserId, isSpectator, onSend
                     className="overflow-hidden border-b border-white/5">
                     <div className="px-3 py-2 flex flex-wrap gap-1.5">
                       {targets.length === 0 ? (
-                        <span className="text-muted text-xs">没有可以扔的目标 (°ω°)</span>
+                        <span className="text-muted text-tiny">暂无可丢的目标</span>
                       ) : targets.map(p => (
                         <button key={p.user_id}
                           onClick={() => { onEgg(p.user_id); setShowEggMenu(false) }}
-                          className="text-xs px-2.5 py-1 rounded-full transition-all hover:scale-105"
-                          style={{ background: 'rgba(255,165,0,0.1)', border: '1px solid rgba(255,165,0,0.25)', color: 'rgba(255,200,100,0.9)' }}>
+                          className="text-tiny px-2.5 py-1 rounded-full transition-all hover:scale-105 bg-warning/10 border border-warning/25 text-warning/90">
                           🎯 {p.username}
                         </button>
                       ))}
@@ -108,29 +109,23 @@ export function ChatRoom({ messages, players, currentUserId, isSpectator, onSend
               {/* 消息列表 */}
               <div className="flex-1 overflow-y-auto px-3 py-2 space-y-1.5">
                 {messages.length === 0 && (
-                  <p className="text-pink-300/30 text-xs text-center mt-8 font-serif italic">尚无传书，破冰第一人就是你！✧</p>
+                  <p className="text-gold/30 text-tiny text-center mt-8 font-serif italic">还没有消息，来说点什么吧</p>
                 )}
                 {messages.map(msg => (
                   <div key={msg.id} className={`flex gap-1.5 ${msg.user_id === currentUserId ? 'flex-row-reverse' : ''}`}>
                     {msg.isEgg ? (
                       <div className="w-full text-center">
-                        <span className="text-xs px-2 py-0.5 rounded-full"
-                          style={{ background: 'rgba(255,165,0,0.1)', color: 'rgba(255,200,100,0.8)' }}>
+                        <span className="text-tiny px-2 py-0.5 rounded-full bg-warning/10 text-warning/80">
                           🥚 {msg.fromName} 向 {msg.targetName} 丢了一个鸡蛋！
                         </span>
                       </div>
                     ) : (
                       <div className={`max-w-[85%] ${msg.user_id === currentUserId ? 'items-end' : 'items-start'} flex flex-col gap-0.5`}>
-                        <span className="text-[10px] text-muted/60 px-1">
+                        <span className="text-tiny text-muted/60 px-1">
                           {msg.user_id !== currentUserId && msg.username}
                           {msg.role === 'spectator' && <span className="ml-1 text-muted/40">👁</span>}
                         </span>
-                        <div className="px-3 py-1.5 rounded-2xl text-xs leading-relaxed"
-                          style={{
-                            background: msg.user_id === currentUserId ? 'rgb(var(--accent-primary)/ 0.2)' : 'rgba(255,255,255,0.06)',
-                            color: msg.user_id === currentUserId ? 'rgb(var(--color-gold-light))' : 'rgba(255,255,255,0.8)',
-                            borderRadius: msg.user_id === currentUserId ? '16px 4px 16px 16px' : '4px 16px 16px 16px',
-                          }}>
+						<div className={`px-3 py-1.5 text-tiny leading-relaxed break-words ${msg.user_id === currentUserId ? 'bg-gold/20 text-gold-light rounded-[16px_4px_16px_16px]' : 'bg-body-text/5 text-body-text/80 rounded-[4px_16px_16px_16px]'}`}>
                           {msg.text}
                         </div>
                       </div>
@@ -146,16 +141,14 @@ export function ChatRoom({ messages, players, currentUserId, isSpectator, onSend
                   value={input}
                   onChange={e => setInput(e.target.value)}
                   onKeyDown={handleKey}
-                  className="flex-1 text-xs rounded-xl px-3 py-2 outline-none"
-                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.85)' }}
-                  placeholder={isSpectator ? '旁观者亦可发言（回车发送）' : '说点什么…（回车发送）'}
+                  className="flex-1 text-tiny rounded-xl px-3 py-2 outline-none bg-body-text/5 border border-body-text/10 text-body-text/85"
+                  placeholder={isSpectator ? '旁观者也可以发言' : '说点什么…（回车发送）'}
                   maxLength={100}
                 />
-                <button onClick={handleSend} disabled={!input.trim()}
-                  className="text-xs px-3 py-1.5 rounded-xl transition-all hover:scale-105 disabled:opacity-40"
-                  style={{ background: 'rgb(var(--accent-primary)/ 0.2)', border: '1px solid rgb(var(--accent-primary)/ 0.3)', color: 'rgb(var(--color-gold))' }}>
+                <Button onClick={handleSend} disabled={!input.trim()}
+                  variant="outline" size="sm">
                   发
-                </button>
+                </Button>
               </div>
             </motion.div>
           )}
@@ -165,18 +158,12 @@ export function ChatRoom({ messages, players, currentUserId, isSpectator, onSend
         <motion.button
           whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.92 }}
           onClick={() => { setOpen(v => !v); setUnread(0) }}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-2xl shadow-2xl relative"
-          style={{
-            background: open ? 'rgb(var(--accent-primary)/ 0.2)' : 'rgb(var(--accent-bg-mid)/ 0.95)',
-            border: '1px solid rgb(var(--accent-primary)/ 0.4)',
-            backdropFilter: 'blur(12px)',
-          }}>
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl shadow-2xl relative border border-gold/40 backdrop-blur ${open ? 'bg-gold/20' : 'bg-ink-deep/95'}`}>
           <span className="text-lg">{open ? '✕' : '💬'}</span>
-          {!open && <span className="text-xs font-medium" style={{ color: 'rgb(var(--color-gold))' }}>传书</span>}
+          {!open && <span className="text-tiny font-medium text-gold">聊天</span>}
           {unread > 0 && !open && (
             <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}
-              className="absolute -top-1.5 -right-1.5 min-w-5 h-5 px-1 rounded-full flex items-center justify-center text-[10px] font-bold"
-              style={{ background: '#c0392b', color: 'white' }}>
+              className="absolute -top-1.5 -right-1.5 min-w-5 h-5 px-1 rounded-full flex items-center justify-center text-tiny font-bold bg-danger text-white">
               {unread > 9 ? '9+' : unread}
             </motion.div>
           )}

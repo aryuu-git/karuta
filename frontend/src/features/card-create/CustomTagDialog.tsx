@@ -29,16 +29,14 @@ export function CustomTagDialog({ open, onConfirm, onCancel }: CustomTagDialogPr
     <AnimatePresence>
       {open && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 flex items-center justify-center px-4"
-          style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)' }}
+          className="fixed inset-0 z-modal flex items-center justify-center px-4 bg-black/75 backdrop-blur-sm"
           onClick={onCancel}>
           <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.9, opacity: 0 }}
-            className="w-full max-w-xs rounded-2xl p-5"
-            style={{ background: 'linear-gradient(160deg, rgb(var(--color-ink)), rgb(var(--color-ink-deep)))', border: '1px solid rgb(var(--accent-primary)/ 0.2)' }}
+            className="w-full max-w-xs rounded-2xl p-5 bg-ink border border-gold/20"
             onClick={e => e.stopPropagation()}>
             <h3 className="font-serif text-gold text-base mb-1">✦ 自定义标签</h3>
-            <p className="text-pink-300/40 text-xs mb-4 font-serif">为歌牌赋予独特属性吧～</p>
+            <p className="text-gold/40 text-tiny mb-4 font-serif">为歌牌赋予独特属性吧～</p>
             <Input
               type="text"
               value={value}

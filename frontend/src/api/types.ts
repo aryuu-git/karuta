@@ -19,6 +19,10 @@ export interface Deck {
   edit_level: string  // 'add_only' | 'full'
   created_at: string
   owner_name?: string
+  // v8：列表封面拼贴（前 4 张成员卡）与点赞
+  cover_urls?: string[]
+  likes?: number
+  liked_by_me?: boolean
 }
 
 export interface CardAudio {
@@ -26,6 +30,7 @@ export interface CardAudio {
   card_id: number
   audio_url: string
   hint_text: string
+  duration_sec?: number
   sort_order: number
 }
 
@@ -55,6 +60,9 @@ export interface Card {
   share_level?: string
   sort_order: number
   audio_count?: number
+  audio_duration?: number
+  likes?: number
+  liked_by_me?: boolean
   remaining?: number
   audios?: CardAudio[]
   owner_name?: string
@@ -82,6 +90,8 @@ export interface Room {
   duel_grab_chances?: number
   duel_arrange_time?: number
   training?: boolean
+  is_private?: boolean
+  max_players?: number
 }
 
 // Duel/WS 事件强关联类型（RoomState/RoomPlayer/GrabbedCardInfo/Duel* 等）与 WSEvent
@@ -105,6 +115,7 @@ export interface RoomListItem {
   host_name: string
   player_count: number
   training?: boolean
+  is_private?: boolean
 }
 
 export interface UserStats {
@@ -115,6 +126,44 @@ export interface UserStats {
   best_score: number
   first_games: number
   world_first_count: number
+}
+
+/** 最近对局条目（GET /api/me/games） */
+export interface UserGame {
+  room_id: number
+  mode: string
+  deck_name: string
+  score: number
+  rank: number
+  player_count: number
+  ended_at: string | null
+}
+
+/** 排行榜条目（GET /api/rankings） */
+export interface RankingEntry {
+  user_id: number
+  username: string
+  value: number
+}
+
+/** 成就（注册表定义 × 用户侧状态；后端 32 项权威定义，前端零维护） */
+export interface Achievement {
+  key: string
+  title: string
+  description: string
+  icon: string
+  category: string
+  target: number
+  hidden: boolean
+  progress: number
+  unlocked_at: string | null
+}
+
+/** WS 推送/弹层消费的新解锁摘要 */
+export interface AchievementUnlock {
+  key: string
+  title: string
+  icon: string
 }
 
 export interface AuthResponse {

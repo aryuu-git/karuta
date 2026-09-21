@@ -7,7 +7,9 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 
+	"karuta/backend/achievement"
 	"karuta/backend/middleware"
 	"karuta/backend/model"
 	"karuta/backend/storage"
@@ -15,6 +17,20 @@ import (
 
 	"github.com/go-chi/chi/v5"
 )
+
+// populateDeckCovers 把列表查询聚合的 cover_path 串转为绝对 URL 拼贴（前 4 张）
+func populateDeckCovers(decks []*model.Deck) {
+	for _, d := range decks {
+		if d.CoverPaths == "" {
+			continue
+		}
+		for _, p := range strings.Split(d.CoverPaths, ",") {
+			if url := storage.FileURL(p, "covers"); url != "" {
+				d.CoverURLs = append(d.CoverURLs, url)
+			}
+		}
+	}
+}
 
 const (
 	maxAudioSize = 20 * 1024 * 1024 // 20 MB
@@ -58,11 +74,20 @@ func (h *DeckHandler) CreateDeck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Set share/edit level if provided
+	// Set share/edit level if provided（值域校验 2026-09-21：垃圾 share_level 会被
+	// canPlayDeck 的 != 'private' 判定为公开——意外泄露）
 	if req.ShareLevel != "" {
+		if req.ShareLevel != "private" && req.ShareLevel != "playable" && req.ShareLevel != "editable" {
+			writeError(w, http.StatusBadRequest, "BAD_REQUEST", "share_level must be private, playable, or editable")
+			return
+		}
 		editLevel := req.EditLevel
 		if editLevel == "" {
 			editLevel = "add_only"
+		}
+		if editLevel != "add_only" && editLevel != "full" {
+			writeError(w, http.StatusBadRequest, "BAD_REQUEST", "edit_level must be add_only or full")
+			return
 		}
 		if err := h.store.Decks.UpdateShareLevel(deck.ID, req.ShareLevel, editLevel); err != nil {
 			writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to set share level")
@@ -74,6 +99,8 @@ func (h *DeckHandler) CreateDeck(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusCreated, deck)
+	// 成就（best-effort）：牌组收藏家
+	achievement.NewEvaluator(h.store).OnContentEvent(userID, "deck")
 }
 
 // GET /api/decks/mine
@@ -92,14 +119,16 @@ func (h *DeckHandler) ListMyDecks(w http.ResponseWriter, r *http.Request) {
 	if decks == nil {
 		decks = []*model.Deck{}
 	}
+	populateDeckCovers(decks)
 
 	writeJSON(w, http.StatusOK, decks)
 }
 
 // GET /api/decks/public
 func (h *DeckHandler) ListPublicDecks(w http.ResponseWriter, r *http.Request) {
+	viewerID, _ := middleware.GetUserID(r.Context())
 	owner := r.URL.Query().Get("owner")
-	decks, err := h.store.Decks.ListPublicByShareLevel(owner)
+	decks, err := h.store.Decks.ListPublicByShareLevel(viewerID, owner)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to list public decks")
 		return
@@ -107,12 +136,14 @@ func (h *DeckHandler) ListPublicDecks(w http.ResponseWriter, r *http.Request) {
 	if decks == nil {
 		decks = []*model.Deck{}
 	}
+	populateDeckCovers(decks)
 	writeJSON(w, http.StatusOK, decks)
 }
 
 // GET /api/decks/editable
 func (h *DeckHandler) ListEditableDecks(w http.ResponseWriter, r *http.Request) {
-	decks, err := h.store.Decks.ListEditable()
+	viewerID, _ := middleware.GetUserID(r.Context())
+	decks, err := h.store.Decks.ListEditable(viewerID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to list editable decks")
 		return
@@ -120,6 +151,7 @@ func (h *DeckHandler) ListEditableDecks(w http.ResponseWriter, r *http.Request) 
 	if decks == nil {
 		decks = []*model.Deck{}
 	}
+	populateDeckCovers(decks)
 	writeJSON(w, http.StatusOK, decks)
 }
 
@@ -148,7 +180,8 @@ func (h *DeckHandler) GetDeck(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !canPlayDeck(userID, deck) {
-		writeError(w, http.StatusForbidden, "FORBIDDEN", "access denied")
+		// 防枚举（2026-09-21 对齐 GetCard）：无权一律 404，不暴露存在性
+		writeError(w, http.StatusNotFound, "NOT_FOUND", "deck not found")
 		return
 	}
 
@@ -183,6 +216,14 @@ func (h *DeckHandler) GetDeck(w http.ResponseWriter, r *http.Request) {
 	}
 
 	deck.CardCount = len(cards)
+
+	// 点赞状态（v8）
+	if likes, err := h.store.Decks.LikeCount(deckID); err == nil {
+		deck.Likes = likes
+	}
+	if liked, err := h.store.Decks.LikedByUser(deckID, userID); err == nil {
+		deck.LikedByMe = liked
+	}
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"deck":  deck,
@@ -230,9 +271,18 @@ func (h *DeckHandler) UpdateDeck(w http.ResponseWriter, r *http.Request) {
 		deck.Description = *req.Description
 	}
 	if req.ShareLevel != nil {
+		// 值域校验（2026-09-21 权限审查，同 CreateDeck）
+		if *req.ShareLevel != "private" && *req.ShareLevel != "playable" && *req.ShareLevel != "editable" {
+			writeError(w, http.StatusBadRequest, "BAD_REQUEST", "share_level must be private, playable, or editable")
+			return
+		}
 		deck.ShareLevel = *req.ShareLevel
 	}
 	if req.EditLevel != nil {
+		if *req.EditLevel != "add_only" && *req.EditLevel != "full" {
+			writeError(w, http.StatusBadRequest, "BAD_REQUEST", "edit_level must be add_only or full")
+			return
+		}
 		deck.EditLevel = *req.EditLevel
 	}
 
@@ -354,6 +404,10 @@ func (h *DeckHandler) ShareDeck(w http.ResponseWriter, r *http.Request) {
 		"share_level": req.ShareLevel,
 		"edit_level":  req.EditLevel,
 	})
+	// 成就（best-effort）：分享家（首次公开牌组）
+	if req.ShareLevel != "private" {
+		achievement.NewEvaluator(h.store).OnContentEvent(userID, "share")
+	}
 }
 
 // POST /api/decks/{id}/cards — 添加牌到牌组
@@ -395,6 +449,25 @@ func (h *DeckHandler) AddCardsToDeck(w http.ResponseWriter, r *http.Request) {
 	if len(req.CardIDs) == 0 {
 		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "card_ids is required")
 		return
+	}
+
+	// 可见性校验（2026-09-21 泄露修复）：每张卡必须存在且调用者可见
+	// （owner 或非 private）——此前零校验，可把他人 private 卡塞进可编辑
+	// 牌组，经 GetDeck/建房链路泄露其 hint_text 与音频 URL。
+	for _, cardID := range req.CardIDs {
+		card, err := h.store.Cards.GetByID(cardID)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				writeError(w, http.StatusNotFound, "NOT_FOUND", "card not found")
+				return
+			}
+			writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to check card")
+			return
+		}
+		if card.OwnerID != userID && card.ShareLevel == "private" {
+			writeError(w, http.StatusForbidden, "FORBIDDEN", "access denied to a card")
+			return
+		}
 	}
 
 	if err := h.store.DeckCards.AddBatch(deckID, req.CardIDs, userID); err != nil {
@@ -541,6 +614,71 @@ func (h *DeckHandler) CloneDeck(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, newDeck)
 }
 
+// POST /api/decks/{id}/like — 牌组点赞开关（任意登录用户）
+func (h *DeckHandler) ToggleLike(w http.ResponseWriter, r *http.Request) {
+	userID, ok := middleware.GetUserID(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "not authenticated")
+		return
+	}
+	deckID, err := parseDeckID(r)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "invalid deck id")
+		return
+	}
+	deck, err := h.store.Decks.GetByID(deckID)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "NOT_FOUND", "deck not found")
+		return
+	}
+	if !canPlayDeck(userID, deck) {
+		writeError(w, http.StatusNotFound, "NOT_FOUND", "deck not found")
+		return
+	}
+	liked, err := h.store.Decks.LikeToggle(deckID, userID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to toggle like")
+		return
+	}
+	likes, _ := h.store.Decks.LikeCount(deckID)
+	writeJSON(w, http.StatusOK, map[string]interface{}{"liked": liked, "likes": likes})
+}
+
+// POST /api/decks/{id}/reorder — 牌组内排序（owner 或 editable+full）
+func (h *DeckHandler) ReorderCards(w http.ResponseWriter, r *http.Request) {
+	userID, ok := middleware.GetUserID(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "not authenticated")
+		return
+	}
+	deckID, err := parseDeckID(r)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "invalid deck id")
+		return
+	}
+	deck, err := h.store.Decks.GetByID(deckID)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "NOT_FOUND", "deck not found")
+		return
+	}
+	if !canRemoveCardFromDeck(userID, deck) {
+		writeError(w, http.StatusForbidden, "FORBIDDEN", "access denied")
+		return
+	}
+	var req struct {
+		CardIDs []int64 `json:"card_ids"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || len(req.CardIDs) == 0 {
+		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "card_ids is required")
+		return
+	}
+	if err := h.store.DeckCards.Reorder(deckID, req.CardIDs); err != nil {
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to reorder cards")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
 // Permission helpers
 
 func canAddCardToDeck(userID int64, deck *model.Deck) bool {
@@ -577,6 +715,11 @@ func detectAudioFormat(data []byte) (string, bool) {
 		return "", false
 	}
 	switch {
+	// AAC（ADTS 0xFFF1/0xFFF9）必须先于 mp3 判定：mp3 的 0xFF&0xE0==0xE0
+	// 同样命中 AAC 首字节，原顺序使 aac 分支为死代码、AAC 恒存成 .mp3
+	// （2026-09-21 修复）。
+	case len(data) >= 2 && data[0] == 0xFF && (data[1] == 0xF1 || data[1] == 0xF9):
+		return "aac", true
 	case data[0] == 0xFF && (data[1]&0xE0) == 0xE0:
 		return "mp3", true
 	case data[0] == 'I' && data[1] == 'D' && data[2] == '3':
@@ -590,10 +733,6 @@ func detectAudioFormat(data []byte) (string, bool) {
 		return "flac", true
 	case data[0] == 'O' && data[1] == 'g' && data[2] == 'g' && data[3] == 'S':
 		return "ogg", true
-	case len(data) >= 2 && data[0] == 0xFF && data[1] == 0xF1:
-		return "aac", true
-	case len(data) >= 2 && data[0] == 0xFF && data[1] == 0xF9:
-		return "aac", true
 	}
 	return "", false
 }

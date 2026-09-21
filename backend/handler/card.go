@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 
+	"karuta/backend/achievement"
 	"karuta/backend/media"
 	"karuta/backend/middleware"
 	"karuta/backend/model"
@@ -48,15 +49,24 @@ func parseDurationSec(r *http.Request) float64 {
 	return sec
 }
 
-// GET /api/cards/mine
+// GET /api/cards/mine — 我的牌库（分页 page/size + 排序 sort=latest|name|plays）
 func (h *CardHandler) ListMyCards(w http.ResponseWriter, r *http.Request) {
 	userID, ok := middleware.GetUserID(r.Context())
 	if !ok {
 		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "not authenticated")
 		return
 	}
+	page := 1
+	if p, err := strconv.Atoi(r.URL.Query().Get("page")); err == nil && p > 0 {
+		page = p
+	}
+	size := 50
+	if s, err := strconv.Atoi(r.URL.Query().Get("size")); err == nil && s > 0 && s <= 100 {
+		size = s
+	}
 
-	cards, err := h.store.Cards.ListByOwner(userID)
+	cards, err := h.store.Cards.ListByOwner(userID, r.URL.Query().Get("sort"),
+		r.URL.Query().Get("search"), r.URL.Query().Get("tag"), size, (page-1)*size)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to list cards")
 		return
@@ -85,6 +95,7 @@ func (h *CardHandler) ListPublicTags(w http.ResponseWriter, r *http.Request) {
 
 // GET /api/cards/public
 func (h *CardHandler) ListPublicCards(w http.ResponseWriter, r *http.Request) {
+	viewerID, _ := middleware.GetUserID(r.Context())
 	search := r.URL.Query().Get("search")
 	series := r.URL.Query().Get("series")
 	tag := r.URL.Query().Get("tag")
@@ -100,7 +111,7 @@ func (h *CardHandler) ListPublicCards(w http.ResponseWriter, r *http.Request) {
 	}
 	offset := (page - 1) * size
 
-	cards, err := h.store.Cards.ListPublic(search, series, tag, owner, size, offset)
+	cards, err := h.store.Cards.ListPublic(search, series, tag, owner, r.URL.Query().Get("sort"), viewerID, size, offset)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to list public cards")
 		return
@@ -119,6 +130,11 @@ func (h *CardHandler) ListPublicCards(w http.ResponseWriter, r *http.Request) {
 
 // GET /api/cards/{id}
 func (h *CardHandler) GetCard(w http.ResponseWriter, r *http.Request) {
+	userID, ok := middleware.GetUserID(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "not authenticated")
+		return
+	}
 	cardID, err := parseCardID(r)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "invalid card id")
@@ -135,6 +151,14 @@ func (h *CardHandler) GetCard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// 可见性门（2026-09-21 权限审查修复）：此前本端点零校验——任意登录用户
+	// 按自增 ID 即可拉取他人 private 卡的 hint/音频 URL（全站私有内容泄露）。
+	// 仅 owner 或非 private 可读；无权一律 404，不暴露存在性。
+	if card.OwnerID != userID && card.ShareLevel == "private" {
+		writeError(w, http.StatusNotFound, "NOT_FOUND", "card not found")
+		return
+	}
+
 	// Populate URLs
 	card.CoverURL = storage.FileURL(card.CoverPath, "covers")
 
@@ -146,10 +170,77 @@ func (h *CardHandler) GetCard(w http.ResponseWriter, r *http.Request) {
 	card.Audios = audios
 	card.AudioCount = len(audios)
 
+	// 被引用的牌组数（牌库详情抽屉展示「被 N 个牌组使用」）
+	deckRefs := 0
+	if decks, err := h.store.DeckCards.DecksUsingCard(cardID); err == nil {
+		deckRefs = len(decks)
+	}
+	// 点赞状态（v6 社交）
+	if likes, err := h.store.Cards.LikeCount(cardID); err == nil {
+		card.Likes = likes
+	}
+	if liked, err := h.store.Cards.LikedByUser(cardID, userID); err == nil {
+		card.LikedByMe = liked
+	}
+
 	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"card":   card,
-		"audios": audios,
+		"card":      card,
+		"audios":    audios,
+		"deck_refs": deckRefs,
 	})
+}
+
+// POST /api/cards/{id}/like — 点赞开关（任意登录用户；返回最新状态）
+func (h *CardHandler) ToggleLike(w http.ResponseWriter, r *http.Request) {
+	userID, ok := middleware.GetUserID(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "not authenticated")
+		return
+	}
+	cardID, err := parseCardID(r)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "invalid card id")
+		return
+	}
+	if _, err := h.store.Cards.GetByID(cardID); err != nil {
+		writeError(w, http.StatusNotFound, "NOT_FOUND", "card not found")
+		return
+	}
+	liked, err := h.store.Cards.LikeToggle(cardID, userID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to toggle like")
+		return
+	}
+	likes, _ := h.store.Cards.LikeCount(cardID)
+	writeJSON(w, http.StatusOK, map[string]interface{}{"liked": liked, "likes": likes})
+}
+
+// POST /api/cards/batch-tag — 批量并入标签（owner 校验逐卡；已存在不重复）
+func (h *CardHandler) BatchUpdateTags(w http.ResponseWriter, r *http.Request) {
+	userID, ok := middleware.GetUserID(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "not authenticated")
+		return
+	}
+	var req struct {
+		CardIDs []int64 `json:"card_ids"`
+		Tags    []string `json:"tags"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || len(req.CardIDs) == 0 || len(req.Tags) == 0 {
+		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "card_ids and tags required")
+		return
+	}
+	applied := 0
+	for _, id := range req.CardIDs {
+		card, err := h.store.Cards.GetByID(id)
+		if err != nil || card.OwnerID != userID {
+			continue // 非本人的卡静默跳过（批量语义：尽力而为，逐卡生效）
+		}
+		if err := h.store.Cards.MergeTags(id, req.Tags); err == nil {
+			applied++
+		}
+	}
+	writeJSON(w, http.StatusOK, map[string]interface{}{"applied": applied})
 }
 
 // POST /api/cards
@@ -293,6 +384,8 @@ func (h *CardHandler) CreateCard(w http.ResponseWriter, r *http.Request) {
 	card.AudioCount = 1
 
 	writeJSON(w, http.StatusCreated, card)
+	// 成就（best-effort）：造牌者/量产家
+	achievement.NewEvaluator(h.store).OnContentEvent(userID, "card")
 }
 
 // PATCH /api/cards/{id}
@@ -350,6 +443,12 @@ func (h *CardHandler) UpdateCard(w http.ResponseWriter, r *http.Request) {
 	}
 	shareLevel := card.ShareLevel
 	if req.ShareLevel != nil {
+		// 值域校验（2026-09-21 权限审查）：垃圾值绕过 is_shared 推导且不被
+		// ListPublic 的 IN 过滤识别，权限语义不可预期
+		if *req.ShareLevel != "private" && *req.ShareLevel != "playable" && *req.ShareLevel != "editable" {
+			writeError(w, http.StatusBadRequest, "BAD_REQUEST", "share_level must be private, playable, or editable")
+			return
+		}
 		shareLevel = *req.ShareLevel
 	}
 	isShared := shareLevel != "private"
@@ -657,6 +756,8 @@ func (h *CardHandler) AddAudio(w http.ResponseWriter, r *http.Request) {
 	audio.AudioURL = storage.FileURL(audioPath, "audio")
 
 	writeJSON(w, http.StatusCreated, audio)
+	// 成就（best-effort）：组曲师（单卡 5 音频）
+	achievement.NewEvaluator(h.store).OnAudioAdded(userID, cardID)
 }
 
 // DELETE /api/cards/{id}/audios/{audioID}
@@ -687,6 +788,13 @@ func (h *CardHandler) UpdateAudio(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusForbidden, "FORBIDDEN", "access denied")
 		return
 	}
+	// IDOR 修复（2026-09-21）：audioID 必须属于该卡——此前只校验卡归属，
+	// 可借自己的卡当跳板改任意用户的音频 hint_text。
+	audio, err := h.store.CardAudios.GetByID(audioID)
+	if err != nil || audio.CardID != cardID {
+		writeError(w, http.StatusNotFound, "NOT_FOUND", "audio not found")
+		return
+	}
 	var req struct {
 		HintText string `json:"hint_text"`
 	}
@@ -698,11 +806,7 @@ func (h *CardHandler) UpdateAudio(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to update audio")
 		return
 	}
-	audio, err := h.store.CardAudios.GetByID(audioID)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to get audio")
-		return
-	}
+	audio.HintText = req.HintText
 	audio.AudioURL = storage.FileURL(audio.AudioPath, "audio")
 	writeJSON(w, http.StatusOK, audio)
 }

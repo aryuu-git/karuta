@@ -9,6 +9,7 @@ import {
 import { createElement } from 'react'
 import { api } from '../api/client'
 import type { User } from '../api/types'
+import { AUTH_TOKEN_KEY } from '../config'
 
 interface AuthContextValue {
   user: User | null
@@ -22,11 +23,16 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
-const TOKEN_KEY = 'karuta_token'
+const TOKEN_KEY = AUTH_TOKEN_KEY
 const GUEST_RECOVERY_PREFIX = 'karuta_guest_recovery:'
-
+// 恢复码本地存取键：与后端 GetByUsername 的精确匹配语义对齐——
+// 后端 username UNIQUE 为 BINARY collation（区分大小写），"Alice" 与 "alice"
+// 是两个独立游客账号。若此处做小写折叠（旧实现 toLocaleLowerCase），
+// 两个账号会共享同一 localStorage key 互相覆盖恢复码 → 后注册者顶掉
+// 先注册者的 token，先注册者同浏览器再登录即 401 锁死（视觉审计发现）。
+// 附带消除 toLocaleLowerCase 的 locale 陷阱（tr-TR 下 "I" 折叠为 "ı"）。
 function guestRecoveryKey(username: string): string {
-  return GUEST_RECOVERY_PREFIX + username.trim().toLocaleLowerCase()
+  return GUEST_RECOVERY_PREFIX + username.trim()
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {

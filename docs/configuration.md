@@ -9,7 +9,7 @@
 | PORT | 8080 | 后端监听端口 |
 | BIND_ADDR | 开发为空；生产为 127.0.0.1 | 后端监听地址；仅在明确需要直连时改为 `0.0.0.0` |
 | JWT_SECRET | karuta-secret-key | JWT 签名密钥；生产环境至少 32 个字符 |
-| DB_PATH | ./data/karuta.db | SQLite 数据库文件路径 |
+| DB_PATH | ./data/karuta.db | SQLite 数据库路径；**相对运行目录解析**——从 `backend/` 内启动须设 `DB_PATH=../data/karuta.db`，否则落进 `backend/data/`（产物统一约定：一切数据在仓库根 `data/`） |
 | COS_SECRET_ID | — | 腾讯云 SecretId（**必填**） |
 | COS_SECRET_KEY | — | 腾讯云 SecretKey（**必填**） |
 | COS_BUCKET | karuta-1321249409 | COS Bucket 名称 |

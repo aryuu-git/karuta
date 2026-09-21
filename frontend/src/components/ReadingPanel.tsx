@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Flame } from 'lucide-react'
 
 interface ReadingPanelProps {
   hintText: string | null
@@ -108,9 +107,9 @@ export function ReadingPanel({ hintText, audioUrl, startRatio, intervalSec: _int
 
   const urgency = progress > 85 ? 'urgent' : progress > 65 ? 'warning' : 'normal'
   const barColor = urgency === 'urgent'
-    ? 'linear-gradient(90deg, #ff6b6b, #ff8e53)'
+    ? 'linear-gradient(90deg, rgb(var(--color-danger)), rgb(var(--color-danger)/ 0.8))'
     : urgency === 'warning'
-    ? 'linear-gradient(90deg, #f5a623, rgb(var(--color-gold-light)))'
+    ? 'linear-gradient(90deg, rgb(var(--color-warning)), rgb(var(--color-gold-light)))'
     : 'linear-gradient(90deg, rgb(var(--color-gold)), rgb(var(--color-gold-light)), rgb(var(--color-gold)))'
 
   return (
@@ -124,13 +123,13 @@ export function ReadingPanel({ hintText, audioUrl, startRatio, intervalSec: _int
             initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.4 }}
             className="absolute top-0 left-0 right-0 z-10 flex items-center justify-center gap-2 py-1.5"
-            style={{ background: 'linear-gradient(90deg, rgba(192,57,43,0.6), rgba(231,76,60,0.4), rgba(192,57,43,0.6))', borderBottom: '1px solid rgba(231,76,60,0.4)' }}
+            style={{ background: 'linear-gradient(90deg, rgb(var(--color-danger)/ 0.6), rgb(var(--color-danger)/ 0.4), rgb(var(--color-danger)/ 0.6))', borderBottom: '1px solid rgb(var(--color-danger)/ 0.4)' }}
           >
-            <motion.span animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 0.6, repeat: Infinity }} className="inline-flex"><Flame size={14} className="text-white" /></motion.span>
-            <span className="text-white text-xs font-medium tracking-widest">
-              最后一张！网速对决开始！
+            <motion.span animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 0.6, repeat: Infinity }}>🔥</motion.span>
+            <span className="text-body-text text-tiny font-medium tracking-widest">
+              最后一张牌
             </span>
-            <motion.span animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 0.6, repeat: Infinity, delay: 0.3 }} className="inline-flex"><Flame size={14} className="text-white" /></motion.span>
+            <motion.span animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 0.6, repeat: Infinity, delay: 0.3 }}>🔥</motion.span>
           </motion.div>
         )}
       </AnimatePresence>
@@ -141,23 +140,21 @@ export function ReadingPanel({ hintText, audioUrl, startRatio, intervalSec: _int
           <motion.div key={`cd-${countdown}`}
             initial={{ opacity: 0, scale: 2.5 }} animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.3 }} transition={{ duration: 0.3, ease: 'backOut' }}
-            className="absolute inset-0 flex flex-col items-center justify-center z-20"
-            style={{ background: 'rgb(var(--accent-bg-mid)/ 0.92)', backdropFilter: 'blur(4px)' }}>
+            className="absolute inset-0 flex flex-col items-center justify-center z-20 bg-ink-deep/90 backdrop-blur">
             <motion.span
               animate={{ scale: [1, 1.1, 1] }} transition={{ duration: 0.4 }}
-              className="font-serif font-bold tabular-nums"
-              style={{ fontSize: '5rem', lineHeight: 1, color: 'rgb(var(--color-gold))', textShadow: '0 0 60px rgb(var(--accent-primary)/ 0.8), 0 0 120px rgb(var(--accent-primary)/ 0.4)' }}>
+              className="font-serif font-bold tabular-nums text-gold"
+              style={{ fontSize: '5rem', lineHeight: 1, textShadow: '0 0 60px rgb(var(--accent-primary)/ 0.8), 0 0 120px rgb(var(--accent-primary)/ 0.4)' }}>
               {countdown}
             </motion.span>
-            <span className="text-muted text-sm mt-2 tracking-widest">深呼吸…全神贯注。</span>
+            <span className="text-muted text-caption mt-2 tracking-widest">准备开始</span>
           </motion.div>
         )}
         {countdown === 0 && (
           <motion.div key="go"
             initial={{ opacity: 0, scale: 0.4 }} animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.35, ease: 'backOut' }}
-            className="absolute inset-0 flex items-center justify-center z-20"
-            style={{ background: 'rgb(var(--accent-bg-mid)/ 0.85)', backdropFilter: 'blur(4px)' }}>
+            className="absolute inset-0 flex items-center justify-center z-20 bg-ink-deep/85 backdrop-blur">
             <span className="font-serif font-bold text-gold"
               style={{ fontSize: '3.5rem', textShadow: '0 0 40px rgb(var(--accent-primary)/ 1)' }}>
               開始！
@@ -182,17 +179,17 @@ export function ReadingPanel({ hintText, audioUrl, startRatio, intervalSec: _int
                 {/* 上句文字 */}
                 <div className="flex-1 text-center">
                   {audioError ? (
-                    <span className="text-crimson text-sm">音频加载失败——靠直觉寻牌吧。</span>
+                    <span className="text-crimson text-caption">音频加载失败，可凭提示找牌</span>
                   ) : hintText ? (
                     <motion.p initial={{ opacity: 0, letterSpacing: '0.1em' }} animate={{ opacity: 1, letterSpacing: '0.3em' }}
                       transition={{ duration: 0.4 }}
-                      className="font-serif text-2xl sm:text-3xl font-medium text-white tracking-widest drop-shadow-lg"
+                      className="font-serif text-2xl sm:text-3xl font-medium text-body-text tracking-widest drop-shadow-lg"
                       style={{ textShadow: '0 2px 20px rgb(var(--accent-primary)/ 0.3)' }}>
                       {hintText}
                     </motion.p>
                   ) : (
                     <p className="text-muted text-base font-serif tracking-widest animate-pulse">
-                      竖起耳朵——快找到那张牌！
+                      ♪ 仔细听，找到那张牌
                     </p>
                   )}
                 </div>
@@ -221,27 +218,27 @@ export function ReadingPanel({ hintText, audioUrl, startRatio, intervalSec: _int
               {isPaused ? (
                 <div className="flex items-center gap-3 text-muted">
                   <span className="text-xl">⏸</span>
-                  <span className="font-serif tracking-widest text-sm">喘口气，深呼吸～ (´-ω-`) 暂停中…</span>
+                  <span className="font-serif tracking-widest text-caption">已暂停</span>
                 </div>
               ) : intervalCountdown !== null ? (
                 <div className="flex items-center gap-4">
                   <motion.div animate={{ opacity: [0.3, 0.7, 0.3] }} transition={{ duration: 1.2, repeat: Infinity }}
-                    className="text-muted font-serif tracking-widest text-sm">
-                    下一张牌即将来袭，做好准备！
+                    className="text-muted font-serif tracking-widest text-caption">
+                    下一首即将开始
                   </motion.div>
                   <motion.div
                     key={intervalCountdown}
                     initial={{ scale: 1.4, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     transition={{ duration: 0.25, ease: 'backOut' }}
-                    className="font-serif font-bold tabular-nums"
-                    style={{ fontSize: '1.8rem', color: intervalCountdown <= 3 ? 'rgb(var(--color-gold))' : 'rgba(255,255,255,0.5)', textShadow: intervalCountdown <= 3 ? '0 0 20px rgb(var(--accent-primary)/ 0.6)' : 'none' }}>
+                    className={`font-serif font-bold tabular-nums ${intervalCountdown <= 3 ? 'text-gold' : 'text-body-text/50'}`}
+                    style={{ fontSize: '1.8rem', textShadow: intervalCountdown <= 3 ? '0 0 20px rgb(var(--accent-primary)/ 0.6)' : 'none' }}>
                     {intervalCountdown}
                   </motion.div>
                 </div>
               ) : (
                 <motion.div animate={{ opacity: [0.3, 0.7, 0.3] }} transition={{ duration: 1.2, repeat: Infinity }}>
-                  <span className="font-serif tracking-widest text-muted text-sm">蓄势待发… (´。• ω •。`)</span>
+                  <span className="font-serif tracking-widest text-muted text-caption">等待下一首…</span>
                 </motion.div>
               )}
             </motion.div>

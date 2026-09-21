@@ -64,9 +64,46 @@ Manual rollback:
 sudo /opt/karuta/scripts/rollback-server.sh
 ```
 
+## Observability endpoints
+
+The server exposes three operational endpoints that require no authentication
+(they sit at the same level as health checks for the service manager and reverse
+proxy):
+
+- `GET /healthz` — liveness only.
+- `GET /readyz` — readiness: DB ping **and** schema version must equal the
+  binary's expected version (a stale binary against a migrated database refuses
+  traffic instead of corrupting data).
+- `GET /version` — release version / commit / build time.
+- `GET /metrics` — minimal JSON counters for human inspection and log scraping:
+  rooms by status, WS connections, media assets/bytes, process uptime /
+  goroutines / heap. Deliberately no Prometheus exposition at this scale.
+
+```bash
+curl --fail http://127.0.0.1:8080/readyz
+curl -s http://127.0.0.1:8080/metrics | jq
+```
+
+## Maintenance CLI (karuta-admin)
+
+Operational recovery commands, run directly on the server against the SQLite
+file. All mutating commands write to `admin_audit_logs` where applicable.
+
+```bash
+karuta-admin backup-db -source /opt/karuta/current/data/karuta.db -destination /data/karuta/backups/karuta-$(date +%F).db
+karuta-admin set-admin -database PATH -username NAME [-enabled=false]   # grant/revoke admin (audit-logged)
+karuta-admin reset-password -database PATH -username NAME -password NEW # forgot-password recovery (guests refused, audit-logged)
+karuta-admin media gc -database PATH [-dry-run=false] [-yes]            # physically delete unreferenced COS objects
+```
+
 ## Database compatibility rule
 
 Automatic application rollback is safe only while the previous release remains
 compatible with the current schema. Use additive/expand-contract migrations.
 Take a maintenance window and restore the database backup for destructive schema
 changes; never attempt to automatically reverse them during a failed deploy.
+
+Note that `DB_PATH` resolves **relative to the process working directory**. The
+systemd unit must (and does) run from the release root so `./data/karuta.db`
+lands in `/opt/karuta/current/data/`; for ad-hoc local runs from `backend/`,
+pass `DB_PATH=../data/karuta.db` explicitly.

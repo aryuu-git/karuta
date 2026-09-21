@@ -7,7 +7,7 @@ export function ShuffleOverlay() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none"
+      className="fixed inset-0 z-overlay flex items-center justify-center pointer-events-none"
       style={{ background: 'rgba(0,0,0,0.5)' }}
     >
       <motion.div
@@ -18,7 +18,7 @@ export function ShuffleOverlay() {
       >
         <span className="text-5xl sm:text-7xl font-bold font-serif text-gold"
           style={{ textShadow: '0 0 40px rgb(var(--accent-primary)/ 0.6)' }}>
-          🌀 打乱！
+          🌀 打乱牌面
         </span>
       </motion.div>
     </motion.div>

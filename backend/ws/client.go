@@ -16,6 +16,12 @@ const (
 	pongWait       = 60 * time.Second
 	pingPeriod     = 30 * time.Second
 	maxMessageSize = 4096
+	// chatMaxRunes 单条聊天文本上限（与前端 input maxLength=100 对齐，
+	// 2026-09-21：直调 WS 可绕过前端限制，超长无空格串还会撑破气泡布局）。
+	chatMaxRunes = 100
+	// chatMinInterval 同一连接聊天/丢蛋最小间隔（防刷屏轰炸；REST 有限流
+	// 而 WS 消息层此前没有）。静默丢弃，不回错误——避免被利用做回显放大。
+	chatMinInterval = 300 * time.Millisecond
 )
 
 var upgrader = websocket.Upgrader{
@@ -77,6 +83,8 @@ func (c *Client) readPump() {
 		return nil
 	})
 
+	var lastChat time.Time
+
 	for {
 		_, raw, err := c.conn.ReadMessage()
 		if err != nil {
@@ -128,16 +136,31 @@ func (c *Client) readPump() {
 		case "resume":
 			c.hub.ResumeGame()
 		case "chat":
-			if msg.Text != "" {
+			// 限流（2026-09-21）：聊天与丢蛋共享同一连接级最小间隔，超频静默丢弃
+			if time.Since(lastChat) < chatMinInterval {
+				continue
+			}
+			lastChat = time.Now()
+			// 长度上限与前端对齐：超限按 rune 截断（防多字节字符切半）
+			text := []rune(msg.Text)
+			if len(text) > chatMaxRunes {
+				text = text[:chatMaxRunes]
+			}
+			if len(text) > 0 {
 				c.hub.BroadcastJSON(map[string]interface{}{
 					"type":     "chat_message",
 					"user_id":  c.userID,
 					"username": c.username,
 					"role":     c.role,
-					"text":     msg.Text,
+					"text":     string(text),
 				})
 			}
 		case "egg_throw":
+			// 与聊天共享限流窗口
+			if time.Since(lastChat) < chatMinInterval {
+				continue
+			}
+			lastChat = time.Now()
 			// 丢鸡蛋给指定玩家
 			targetName := c.hub.GetUsername(msg.TargetID)
 			c.hub.BroadcastJSON(map[string]interface{}{

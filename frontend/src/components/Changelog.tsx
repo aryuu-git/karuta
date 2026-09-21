@@ -2,10 +2,28 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from './ui'
 
-const CURRENT_VERSION = '3.2.0'
+const CURRENT_VERSION = '4.0.0'
 const STORAGE_KEY = 'karuta_changelog_seen'
 
 const CHANGELOG = [
+  {
+    version: '4.0.0',
+    date: '2026-09',
+    title: '🏠 开战改版 + 再来一局 + 对局屏升级',
+    items: [
+      { emoji: '🏠', text: '首页改版为「开战」：快速开局/自定义建房双入口，邀请码满 6 位自动加入' },
+      { emoji: '⚡', text: '快速开局预设：标准抢牌/对决/裁判/练手四个模板，也记住上次配置' },
+      { emoji: '🔁', text: '再来一局：结算页一键用同配置同牌组开新房，房主发起后自动复制邀请链接' },
+      { emoji: '📋', text: '邀请面板升级：大字房间码 + 复制邀请链接/复制码/系统分享' },
+      { emoji: '🎵', text: '对局新增状态条：随时知道当前能不能抢牌、是否出局、身份是玩家还是旁观' },
+      { emoji: '📡', text: '对局断线提示：连接中断显示重连进度，恢复后即时提示' },
+      { emoji: '📱', text: '手机对局体验：计分改为底部抽屉，操作收进「⋯」菜单，不再横向溢出' },
+      { emoji: '🃏', text: '造牌改四步向导：素材→信息→权限→预览，随时回退，数据不丢' },
+      { emoji: '🔧', text: '音频处理更透明：逐文件显示转码/上传进度，失败可单独重试' },
+      { emoji: '✉️', text: '邀请链接直达：未登录打开链接可走游客通道，邀请码自动填好' },
+      { emoji: '🎨', text: '界面精简：统一骨架屏加载、空状态引导、文案全面平实化' },
+    ],
+  },
   {
     version: '3.2.0',
     date: '2026-05',
@@ -115,7 +133,7 @@ const CHANGELOG = [
   {
     version: '1.4.0',
     date: '2026-04',
-    title: '游戏体验全面升级 (ง •̀_•́)ง',
+    title: '游戏体验全面升级',
     items: [
       { emoji: '⏭', text: '房主新增「跳过」按钮，任何时候都能跳过当前牌，防止卡死' },
       { emoji: '🔥', text: '最后一张牌时顶部显示「最后一张！网速对决开始！」红色横幅' },
@@ -130,7 +148,7 @@ const CHANGELOG = [
   {
     version: '1.3.0',
     date: '2026-04',
-    title: '裁判模式 · 聊天室 · 旁观 ٩(ˊᗜˋ*)و',
+    title: '裁判模式 · 聊天室 · 旁观',
     items: [
       { emoji: '👑', text: '裁判模式：房主作为裁判手动选牌播放，不参与抢牌' },
       { emoji: '👁', text: '旁观者模式：游戏中可切换旁观，不抢牌不计分不进排名' },
@@ -143,7 +161,7 @@ const CHANGELOG = [
   {
     version: '1.2.0',
     date: '2026-04',
-    title: '旁观模式 · 聊天室 · 丢鸡蛋 ٩(ˊᗜˋ*)و',
+    title: '旁观模式 · 聊天室 · 丢鸡蛋',
     items: [
       { emoji: '👁', text: '新增旁观者模式，加入后可切换旁观，不参与抢牌不计分' },
       { emoji: '💬', text: '游戏中新增实时聊天室，旁观者和玩家都能发言' },
@@ -156,13 +174,13 @@ const CHANGELOG = [
   {
     version: '1.1.0',
     date: '2026-04',
-    title: '抢牌系统大升级 (ง •̀_•́)ง',
+    title: '抢牌系统大升级',
     items: [
-      { emoji: '⚡', text: '抢错扣1分，本首禁止再抢！三思而后行~' },
+      { emoji: '⚡', text: '抢错扣1分，本首禁止再抢' },
       { emoji: '🎵', text: '进度条跟随实际音频时长，歌放多久就等多久' },
       { emoji: '💀', text: '全员出局后自动结束本首，不浪费时间' },
       { emoji: '📢', text: '抢牌结果全房公告，成功失败都广播给所有人' },
-      { emoji: '🏆', text: '分数可以为负数，手滑太多就赤字了 (╥_╥)' },
+      { emoji: '🏆', text: '分数可以为负数，抢错太多会扣成负分' },
     ],
   },
   {
@@ -202,8 +220,7 @@ export function Changelog() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[100] flex items-center justify-center px-4"
-          style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)' }}
+          className="fixed inset-0 z-modal flex items-center justify-center px-4 bg-black/75 backdrop-blur"
           onClick={handleClose}
         >
           <motion.div
@@ -211,8 +228,8 @@ export function Changelog() {
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.92, opacity: 0, y: 16 }}
             transition={{ duration: 0.4, ease: 'backOut' }}
-            className="w-full max-w-md max-h-[80vh] flex flex-col rounded-2xl overflow-hidden"
-            style={{ background: 'linear-gradient(160deg, rgb(var(--color-ink)) 0%, rgb(var(--color-ink-deep)) 100%)', border: '1px solid rgb(var(--accent-primary)/ 0.2)', boxShadow: '0 0 60px rgb(var(--accent-primary)/ 0.15), 0 24px 48px rgba(0,0,0,0.6)' }}
+            className="w-full max-w-md max-h-[80vh] flex flex-col rounded-2xl overflow-hidden border border-gold/20"
+            style={{ background: 'linear-gradient(160deg, rgb(var(--color-ink)) 0%, rgb(var(--color-ink-deep)) 100%)', boxShadow: '0 0 60px rgb(var(--accent-primary)/ 0.15), 0 24px 48px rgba(0,0,0,0.6)' }}
             onClick={e => e.stopPropagation()}
           >
             {/* 头部 */}
@@ -222,15 +239,14 @@ export function Changelog() {
                   <div className="flex items-center gap-2 mb-1">
                     <span className="text-xl">🌸</span>
                     <h2 className="font-serif text-lg font-bold text-gold">更新日志</h2>
-                    <span className="text-xs px-2 py-0.5 rounded-full font-mono"
-                      style={{ background: 'rgb(var(--accent-primary)/ 0.15)', color: 'rgb(var(--color-gold))', border: '1px solid rgb(var(--accent-primary)/ 0.25)' }}>
+                    <span className="text-tiny px-2 py-0.5 rounded-full font-mono bg-gold/15 text-gold border border-gold/25">
                       v{CURRENT_VERSION}
                     </span>
                   </div>
-                  <p className="text-muted text-xs">有新东西啦！看看更新了什么 (ﾉ◕ヮ◕)ﾉ*:･ﾟ✧</p>
+                  <p className="text-muted text-tiny">看看更新了什么</p>
                 </div>
                 <button onClick={handleClose}
-                  className="text-muted hover:text-white transition-colors text-lg leading-none shrink-0 mt-0.5">
+                  className="text-muted hover:text-body-text transition-colors text-lg leading-none shrink-0 mt-0.5">
                   ✕
                 </button>
               </div>
@@ -241,19 +257,18 @@ export function Changelog() {
               {CHANGELOG.map((log, li) => (
                 <div key={log.version}>
                   <div className="flex items-center gap-2 mb-3">
-                    <span className="text-xs font-mono px-2 py-0.5 rounded"
-                      style={{ background: li === 0 ? 'rgb(var(--accent-primary)/ 0.15)' : 'rgba(255,255,255,0.05)', color: li === 0 ? 'rgb(var(--color-gold))' : 'rgba(255,255,255,0.3)', border: `1px solid ${li === 0 ? 'rgb(var(--accent-primary)/ 0.2)' : 'rgba(255,255,255,0.08)'}` }}>
+                    <span className={`text-tiny font-mono px-2 py-0.5 rounded border ${li === 0 ? 'bg-gold/15 text-gold border-gold/20' : 'bg-body-text/5 text-body-text/30 border-body-text/10'}`}>
                       v{log.version}
                     </span>
-                    <span className="font-medium text-sm" style={{ color: li === 0 ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.4)' }}>
+                    <span className={`font-medium text-caption ${li === 0 ? 'text-body-text/90' : 'text-body-text/40'}`}>
                       {log.title}
                     </span>
                   </div>
                   <div className="space-y-1.5 pl-1">
                     {log.items.map((item, i) => (
                       <div key={i} className="flex items-start gap-2">
-                        <span className="text-sm shrink-0 mt-0.5">{item.emoji}</span>
-                        <span className="text-xs leading-relaxed" style={{ color: li === 0 ? 'rgba(255,255,255,0.75)' : 'rgba(255,255,255,0.35)' }}>
+                        <span className="text-caption shrink-0 mt-0.5">{item.emoji}</span>
+                        <span className={`text-tiny leading-relaxed ${li === 0 ? 'text-body-text/75' : 'text-body-text/35'}`}>
                           {item.text}
                         </span>
                       </div>
@@ -268,7 +283,7 @@ export function Changelog() {
               <Button variant="gold" size="lg" className="w-full" onClick={handleClose}>
                 知道了
               </Button>
-              <p className="text-muted/40 text-xs text-center mt-2">下次不再自动弹出</p>
+              <p className="text-muted/40 text-tiny text-center mt-2">本次更新不再弹出</p>
             </div>
           </motion.div>
         </motion.div>

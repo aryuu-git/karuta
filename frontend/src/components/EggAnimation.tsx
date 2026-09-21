@@ -20,9 +20,7 @@ export function EggAnimation({ event }: EggAnimationProps) {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none"
-          style={{ background: 'rgba(0,0,0,0.3)' }}
-        >
+          className="fixed inset-0 z-overlay flex items-center justify-center pointer-events-none bg-black/30">
           <motion.div
             initial={{ scale: 0, rotate: -180, y: -200 }}
             animate={{ scale: [0, 1.4, 1], rotate: [0, 20, -10, 0], y: 0 }}
@@ -54,20 +52,19 @@ export function EggAnimation({ event }: EggAnimationProps) {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
-              className="text-center px-6 py-3 rounded-2xl"
-              style={{ background: 'rgb(var(--accent-bg-mid)/ 0.9)', border: '1px solid rgba(255,165,0,0.4)' }}
+              className="text-center px-6 py-3 rounded-2xl bg-ink-deep/90 border border-warning/40"
             >
               {event.isMe ? (
-                <p className="text-base font-serif" style={{ color: 'rgba(255,200,100,0.95)' }}>
+                <p className="text-base font-serif text-warning/95">
                   😱 <strong>{event.fromName}</strong> 向你丢了一个鸡蛋！
                 </p>
               ) : (
-                <p className="text-base font-serif" style={{ color: 'rgba(255,200,100,0.9)' }}>
+                <p className="text-base font-serif text-warning/90">
                   🥚 <strong>{event.fromName}</strong> 向 <strong>{event.targetName}</strong> 丢了一个鸡蛋！
                 </p>
               )}
-              <p className="text-xs mt-1" style={{ color: 'rgba(255,255,255,0.4)' }}>
-                {event.isMe ? '(╥_╥) 怎么是我啊！！！' : '哈哈哈 (≧▽≦)'}
+              <p className="text-tiny mt-1 text-body-text/40">
+                {event.isMe ? '被砸中了' : '命中！'}
               </p>
             </motion.div>
           </motion.div>

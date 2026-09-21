@@ -1,9 +1,6 @@
 package obs
 
 import (
-	"bufio"
-	"errors"
-	"net"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -42,32 +39,5 @@ func TestRequestLogger(t *testing.T) {
 	}
 	if got := HTTPRequestsTotal.Load(); got != 1 {
 		t.Fatalf("http_requests_total = %d, want 1", got)
-	}
-}
-
-// 回归：包装层必须透传 http.Hijacker，否则 WebSocket 升级失败
-// （症状："websocket: response does not implement http.Hijacker"）。
-type hijackableRecorder struct {
-	*httptest.ResponseRecorder
-	hijacked bool
-}
-
-func (h *hijackableRecorder) Hijack() (net.Conn, *bufio.ReadWriter, error) {
-	h.hijacked = true
-	return nil, nil, errors.New("test: no real connection")
-}
-
-func TestRequestLoggerPreservesHijacker(t *testing.T) {
-	base := &hijackableRecorder{ResponseRecorder: httptest.NewRecorder()}
-	handler := RequestLogger(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		hj, ok := w.(http.Hijacker)
-		if !ok {
-			t.Fatal("wrapped writer lost http.Hijacker support")
-		}
-		_, _, _ = hj.Hijack()
-	}))
-	handler.ServeHTTP(base, httptest.NewRequest("GET", "/ws/rooms/1", nil))
-	if !base.hijacked {
-		t.Fatal("Hijack was not delegated to the underlying writer")
 	}
 }

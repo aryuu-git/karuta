@@ -5,11 +5,14 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"io"
+	"log/slog"
 	"math/big"
 	"net/http"
 	"strconv"
 	"time"
 
+	"karuta/backend/achievement"
 	"karuta/backend/mask"
 	"karuta/backend/middleware"
 	"karuta/backend/storage"
@@ -75,7 +78,49 @@ func (h *RoomHandler) KickPlayer(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
-// POST /api/rooms/{id}/force-end — 管理员强制结束对局（仅 aryuu）
+// GET /api/me/games — 最近对局（历史对局分页；与统计同口径）
+func (h *RoomHandler) MyGames(w http.ResponseWriter, r *http.Request) {
+	userID, ok := middleware.GetUserID(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "not authenticated")
+		return
+	}
+	page := 1
+	if p, err := strconv.Atoi(r.URL.Query().Get("page")); err == nil && p > 0 {
+		page = p
+	}
+	size := 20
+	if s, err := strconv.Atoi(r.URL.Query().Get("size")); err == nil && s > 0 && s <= 50 {
+		size = s
+	}
+	games, err := h.store.Rooms.UserGames(userID, size, (page-1)*size)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to list games")
+		return
+	}
+	if games == nil {
+		games = []store.UserGame{}
+	}
+	writeJSON(w, http.StatusOK, games)
+}
+
+// GET /api/rankings — 全站排行（kind=score|wins|world_first，默认 score）
+func (h *RoomHandler) Rankings(w http.ResponseWriter, r *http.Request) {
+	limit := 10
+	if l, err := strconv.Atoi(r.URL.Query().Get("limit")); err == nil && l > 0 && l <= 50 {
+		limit = l
+	}
+	list, err := h.store.Rooms.Rankings(r.URL.Query().Get("kind"), limit)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to load rankings")
+		return
+	}
+	if list == nil {
+		list = []store.RankingEntry{}
+	}
+	writeJSON(w, http.StatusOK, list)
+}
+
 // POST /api/rooms/{id}/spectate — 切换旁观/玩家身份（仅 waiting 状态）
 func (h *RoomHandler) SetSpectate(w http.ResponseWriter, r *http.Request) {
 	userID, ok := middleware.GetUserID(r.Context())
@@ -99,6 +144,8 @@ func (h *RoomHandler) SetSpectate(w http.ResponseWriter, r *http.Request) {
 	if req.Spectate {
 		role = "spectator"
 	}
+	// Owner 裁定（2026-09-21）：对局中允许旁观↔玩家切换——中途下场是合法玩法
+	// （曾经加过的 waiting-only 限制已撤；切换后下一首起生效）
 	if err := h.store.Rooms.SetPlayerRole(roomID, userID, role); err != nil {
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to update role")
 		return
@@ -298,7 +345,7 @@ func (h *RoomHandler) ForceEndRoom(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	user, err := h.store.Users.GetByID(userID)
-	if err != nil || !user.IsAdmin {
+	if err != nil || !user.IsAdmin || user.Disabled {
 		writeError(w, http.StatusForbidden, "FORBIDDEN", "admin only")
 		return
 	}
@@ -307,18 +354,35 @@ func (h *RoomHandler) ForceEndRoom(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "invalid room id")
 		return
 	}
+	// 先落库再断连：状态写失败时保持房间可服务，避免「连接已断、状态未终」。
+	if err := h.store.Rooms.UpdateStatus(roomID, "end"); err != nil {
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to end room")
+		return
+	}
 	hub := h.hubManager.Get(roomID)
 	if hub != nil {
 		hub.BroadcastJSON(map[string]interface{}{"type": "room_closed"})
 		hub.Stop()
 	}
-	_ = h.store.Rooms.UpdateStatus(roomID, "end")
+	// 管理员强停属高权限操作，必须可追溯（修复 #6）。审计失败不回滚强停，
+	// 仅记日志：紧急操作可用性优先。
+	details, _ := json.Marshal(map[string]int64{"room_id": roomID})
+	if err := h.store.System.Audit(userID, "room.force_end", "room", strconv.FormatInt(roomID, 10), string(details), clientIP(r)); err != nil {
+		slog.Error("audit room.force_end failed", "room_id", roomID, "err", err)
+	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ended"})
 }
 
 // GET /api/rooms
 func (h *RoomHandler) ListRooms(w http.ResponseWriter, r *http.Request) {
-	list, err := h.store.Rooms.ListActive()
+	// 私密房可见性：普通用户过滤，管理员带出（is_private 标记随行）
+	viewerAdmin := false
+	if userID, ok := middleware.GetUserID(r.Context()); ok {
+		if u, err := h.store.Users.GetByID(userID); err == nil && u.IsAdmin && !u.Disabled {
+			viewerAdmin = true
+		}
+	}
+	list, err := h.store.Rooms.ListActive(viewerAdmin)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to list rooms")
 		return
@@ -360,6 +424,9 @@ func (h *RoomHandler) CreateRoom(w http.ResponseWriter, r *http.Request) {
 		DuelRoundTime   int  `json:"duel_round_time"`
 		DuelGrabChances int  `json:"duel_grab_chances"`
 		DuelArrangeTime int  `json:"duel_arrange_time"`
+		// v7：私密房（列表隐藏）与人数上限（2-32，默认 16）
+		IsPrivate   bool `json:"is_private"`
+		MaxPlayers  int  `json:"max_players"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "invalid request body")
@@ -412,7 +479,14 @@ func (h *RoomHandler) CreateRoom(w http.ResponseWriter, r *http.Request) {
 	if randomStartMax <= 0 || randomStartMax > 80 {
 		randomStartMax = 50
 	}
-	room, err := h.store.Rooms.CreateRoom(code, req.DeckID, userID, req.IntervalSec, req.Mode, req.MaskEnabled, req.MaskDifficulty, penaltyWrong, penaltySlow, req.ShuffleRemaining, req.RandomStart, randomStartMax)
+	room, err := h.store.Rooms.CreateRoom(code, req.DeckID, userID, req.IntervalSec, req.Mode, req.MaskEnabled, req.MaskDifficulty, penaltyWrong, penaltySlow, req.ShuffleRemaining, req.RandomStart, randomStartMax, req.IsPrivate, req.MaxPlayers)
+	if err != nil && isUniqueConstraintError(err) {
+		// 撞码兜底（2026-09-21 修复）：generateUniqueCode 查重与 INSERT 非原子，
+		// 并发窗口内撞码此前直接 500。换码重试一次，仍撞才失败。
+		if code, genErr := h.generateUniqueCode(); genErr == nil {
+			room, err = h.store.Rooms.CreateRoom(code, req.DeckID, userID, req.IntervalSec, req.Mode, req.MaskEnabled, req.MaskDifficulty, penaltyWrong, penaltySlow, req.ShuffleRemaining, req.RandomStart, randomStartMax, req.IsPrivate, req.MaxPlayers)
+		}
+	}
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to create room")
 		return
@@ -473,9 +547,15 @@ func (h *RoomHandler) CreateRoom(w http.ResponseWriter, r *http.Request) {
 
 	// Auto-join the host as a player
 	if err := h.store.Rooms.AddPlayer(room.ID, userID, "player"); err != nil {
+		// 建房补偿（2026-09-21 修复）：房主入座失败时清掉刚建的房间，
+		// 避免「房间已建但房主不在」的孤儿房。此时无其他玩家，删除无外键阻塞。
+		_ = h.store.Rooms.Delete(room.ID)
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to add host as player")
 		return
 	}
+
+	// 成就（best-effort）：常主
+	achievement.NewEvaluator(h.store).OnContentEvent(userID, "room")
 
 	writeJSON(w, http.StatusCreated, room)
 }
@@ -522,7 +602,19 @@ func (h *RoomHandler) JoinRoom(w http.ResponseWriter, r *http.Request) {
 		role = "spectator"
 	}
 
-	if err := h.store.Rooms.AddPlayer(room.ID, userID, role); err != nil {
+	// 人数上限（v7，回顾修复为原子入座）：满员拒绝新玩家；在房成员重连/刷新
+	// 幂等成功，旁观不占名额
+	if role == "player" {
+		joined, err := h.store.Rooms.AddPlayerWithCap(room.ID, userID, role, room.MaxPlayers)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to join room")
+			return
+		}
+		if !joined {
+			writeError(w, http.StatusConflict, "ROOM_FULL", "room is full")
+			return
+		}
+	} else if err := h.store.Rooms.AddPlayer(room.ID, userID, role); err != nil {
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to join room")
 		return
 	}
@@ -586,6 +678,15 @@ func (h *RoomHandler) GetRoom(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// 对局进行中：牌面剩余次数与已抢结果以内存权威投影为准。
+	// DB 只存 game_records 落牌流水，不含"剩余次数"，从 audio_count 反推
+	// 会让已抢的牌在刷新后"复活"（严重 bug：重连后棋盘全亮）。
+	var liveRemaining map[int64]int
+	var liveGrabbed []map[string]interface{}
+	if hub != nil {
+		liveRemaining, liveGrabbed = hub.LiveBoard()
+	}
+
 	// 返回牌组（供刷新页面恢复棋盘、等待大厅预加载等）
 	var cardList interface{}
 	{
@@ -624,6 +725,10 @@ func (h *RoomHandler) GetRoom(w http.ResponseWriter, r *http.Request) {
 					"cover_url":    coverURL,
 					"audio_count":  audioCount,
 				}
+				// 权威投影存在时带上 remaining（前端 buildRemaining 优先消费此字段）
+				if liveRemaining != nil {
+					item["remaining"] = liveRemaining[c.ID]
+				}
 				if masks != nil {
 					if m, ok := masks[c.ID]; ok {
 						item["mask"] = m
@@ -637,7 +742,11 @@ func (h *RoomHandler) GetRoom(w http.ResponseWriter, r *http.Request) {
 
 	// 已被抢走的牌（含无人抢的），供刷新后恢复棋盘状态
 	var grabbedList interface{}
-	if room.Status == "reading" || room.Status == "paused" {
+	if liveGrabbed != nil {
+		// 对局进行中：内存权威投影（带 hint_text）
+		grabbedList = liveGrabbed
+	} else if room.Status == "reading" || room.Status == "paused" {
+		// 内存投影不可用（服务重启等）：回退 DB 流水，仅能恢复 winner 信息
 		grabbed, err := h.store.GameRecords.ListGrabbed(roomID)
 		if err == nil && len(grabbed) > 0 {
 			gl := make([]map[string]interface{}, 0, len(grabbed))
@@ -880,6 +989,63 @@ func (h *RoomHandler) CloseRoom(w http.ResponseWriter, r *http.Request) {
 	}
 	_ = h.store.Rooms.UpdateStatus(roomID, "end")
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// POST /api/rooms/{id}/rematch — 结算页「原班再来一局」：复制配置开新房，
+// 原班人马整体迁入。契约见 docs/ui-interaction-design.md §4.7。
+// 仅房主可调；源房间必须已 end。不动 ws 包，新房开局仍走现有 start 流程。
+func (h *RoomHandler) Rematch(w http.ResponseWriter, r *http.Request) {
+	userID, ok := middleware.GetUserID(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "not authenticated")
+		return
+	}
+	roomID, err := parseRoomID(r)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "invalid room id")
+		return
+	}
+	room, err := h.store.Rooms.GetByID(roomID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			writeError(w, http.StatusNotFound, "NOT_FOUND", "room not found")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to get room")
+		return
+	}
+	if room.HostID != userID {
+		writeError(w, http.StatusForbidden, "FORBIDDEN", "only the host can rematch")
+		return
+	}
+	if room.Status != "end" {
+		writeError(w, http.StatusConflict, "ROOM_NOT_ENDED", "room has not ended yet")
+		return
+	}
+
+	// reinvite 缺省 true：原班人马整体迁入新房；body 允许为空。
+	var req struct {
+		Reinvite *bool `json:"reinvite"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil && !errors.Is(err, io.EOF) {
+		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "invalid request body")
+		return
+	}
+	reinvite := req.Reinvite == nil || *req.Reinvite
+
+	// 复用建房流程的 code 生成逻辑，保证全局唯一
+	code, err := h.generateUniqueCode()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to generate room code")
+		return
+	}
+	// 单事务（2026-09-21 修复）：复制配置 + 玩家迁入/房主入座原子完成。
+	newRoom, err := h.store.Rooms.RematchAndMigrate(roomID, code, reinvite)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to create rematch room")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]interface{}{"room": newRoom})
 }
 
 // POST /api/rooms/{id}/play-card — 裁判模式：裁判选择一张牌播放

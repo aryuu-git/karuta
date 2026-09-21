@@ -1,10 +1,10 @@
 import { useState, useRef, type Dispatch, type SetStateAction } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Button, Input } from '../../components/ui'
+import { Button, Input, ConfirmDialog } from '../../components/ui'
 import { api } from '../../api/client'
 import type { CardAudio } from '../../api/types'
 import { UploadZone, isAudioFile } from './UploadZone'
-import { Music, Play, Pause, Plus, Check, Trash2 } from 'lucide-react'
+import { Music, Play, Pause, Plus, Check } from 'lucide-react'
 
 interface EditAudioPanelProps {
   cardId: number
@@ -14,15 +14,38 @@ interface EditAudioPanelProps {
   onTogglePlay: (audio: CardAudio) => void
 }
 
+/** 待追加音频单项状态机：queued → uploading → done | failed（docs §6.4） */
+type PendingState = 'queued' | 'uploading' | 'done' | 'failed'
+
+/** 待追加音频条目：文件 + 当前状态 */
+interface PendingAudio {
+  file: File
+  status: PendingState
+}
+
+/** 单项状态 → 展示文案（操作层） */
+const PENDING_STATE_TEXT: Record<PendingState, string> = {
+  queued: '等待中',
+  uploading: '上传中',
+  done: '已完成',
+  failed: '上传失败',
+}
+
+/** 单项状态 → 展示色（token 体系） */
+const PENDING_STATE_CLASS: Record<PendingState, string> = {
+  queued: 'text-muted/60',
+  uploading: 'text-gold',
+  done: 'text-success',
+  failed: 'text-crimson',
+}
+
 /**
  * 编辑模式音频管理面板：音频列表/提示就地编辑/追加音频/删除确认流
  * 拉取与变更均直连卡片 API，音频列表经由 onAudiosChange 回写页面状态
  */
 export function EditAudioPanel({ cardId, audios, onAudiosChange, playingAudioId, onTogglePlay }: EditAudioPanelProps) {
-  const [newAudioFiles, setNewAudioFiles] = useState<File[]>([])
-  const [uploadProgress, setUploadProgress] = useState(0)
+  const [pendingFiles, setPendingFiles] = useState<PendingAudio[]>([])
   const [newHintText, setNewHintText] = useState('')
-  const [newProcessing] = useState(false)
   const [addingAudio, setAddingAudio] = useState(false)
   const newAudioInputRef = useRef<HTMLInputElement>(null)
 
@@ -30,25 +53,65 @@ export function EditAudioPanel({ cardId, audios, onAudiosChange, playingAudioId,
   const [deleteAudioId, setDeleteAudioId] = useState<number | null>(null)
   const [deletingAudio, setDeletingAudio] = useState(false)
 
-  /** 逐个上传追加的音频文件并合并进列表，结束后清空选择与输入 */
-  const handleAddAudios = async () => {
-    if (newAudioFiles.length === 0) return
-    setAddingAudio(true)
-    setUploadProgress(0)
+  /** 按下标更新单项状态 */
+  const setPendingStatus = (index: number, status: PendingState) => {
+    setPendingFiles(prev => prev.map((p, i) => i === index ? { ...p, status } : p))
+  }
+
+  /** 清空待追加列表与提示输入（全部成功后调用） */
+  const clearPending = () => {
+    setPendingFiles([])
+    setNewHintText('')
+    if (newAudioInputRef.current) newAudioInputRef.current.value = ''
+  }
+
+  /** 上传单项：成功写回音频列表并标记 done，失败仅标记该项 */
+  const uploadOne = async (index: number, file: File): Promise<boolean> => {
+    setPendingStatus(index, 'uploading')
     try {
-      for (let i = 0; i < newAudioFiles.length; i++) {
-        setUploadProgress(i + 1)
-        const formData = new FormData()
-        formData.append('audio', newAudioFiles[i])
-        if (newHintText.trim()) formData.append('hint_text', newHintText.trim())
-        const newAudio = await api.cards.addAudio(cardId, formData)
-        onAudiosChange(prev => [...prev, newAudio])
+      const formData = new FormData()
+      formData.append('audio', file)
+      if (newHintText.trim()) formData.append('hint_text', newHintText.trim())
+      const newAudio = await api.cards.addAudio(cardId, formData)
+      onAudiosChange(prev => [...prev, newAudio])
+      setPendingStatus(index, 'done')
+      return true
+    } catch {
+      setPendingStatus(index, 'failed')
+      return false
+    }
+  }
+
+  /** 逐个上传待追加音频：单项失败不中断整批；全成功才清空列表，失败项保留供独立重试 */
+  const handleAddAudios = async () => {
+    const targets = pendingFiles
+      .map((p, i) => ({ ...p, index: i }))
+      .filter(p => p.status === 'queued')
+    if (targets.length === 0) return
+    setAddingAudio(true)
+    try {
+      let allOk = true
+      for (const t of targets) {
+        const ok = await uploadOne(t.index, t.file)
+        if (!ok) allOk = false
       }
-      setNewAudioFiles([])
-      setNewHintText('')
-      if (newAudioInputRef.current) newAudioInputRef.current.value = ''
-    } catch { /* ignore */ }
-    finally { setAddingAudio(false) }
+      if (allOk) {
+        clearPending()
+      } else {
+        setPendingFiles(prev => prev.filter(p => p.status !== 'done'))
+      }
+    } finally { setAddingAudio(false) }
+  }
+
+  /** 失败项独立重试：只重传该项，已成功项不回滚 */
+  const retryOne = async (index: number) => {
+    const entry = pendingFiles[index]
+    if (!entry || entry.status !== 'failed' || addingAudio) return
+    setAddingAudio(true)
+    try {
+      const ok = await uploadOne(index, entry.file)
+      if (ok) setPendingFiles(prev => prev.filter((_, i) => i !== index))
+    } finally { setAddingAudio(false) }
   }
 
   /** 删除单条音频：至少保留 1 条；经确认弹窗后调用删除 API */
@@ -69,7 +132,7 @@ export function EditAudioPanel({ cardId, audios, onAudiosChange, playingAudioId,
   return (
     <>
       <div className="mt-8">
-        <h2 className="text-gold text-sm font-medium mb-3"><Music className="mr-1 inline h-3.5 w-3.5" /> 音频列表 ({audios.length} 条)</h2>
+        <h2 className="text-gold text-caption font-medium mb-3"><Music className="mr-1 inline h-3.5 w-3.5" /> 音频列表 ({audios.length} 条)</h2>
         <div className="space-y-2">
           <AnimatePresence>
             {audios.map((audio, i) => (
@@ -80,19 +143,19 @@ export function EditAudioPanel({ cardId, audios, onAudiosChange, playingAudioId,
                 transition={{ delay: i * 0.02 }}
                 className="flex items-center gap-3 bg-surface border border-border rounded-lg p-3 group hover:border-gold/20 transition-colors">
                 <button onClick={() => onTogglePlay(audio)}
-                  className="text-gold/60 hover:text-gold text-sm px-2 py-1 rounded hover:bg-gold/10 transition-all shrink-0"
+                  className="text-gold/60 hover:text-gold text-caption px-2 py-1 rounded hover:bg-gold/10 transition-all shrink-0"
                   title={playingAudioId === audio.id ? '暂停' : '播放'}>
                   {playingAudioId === audio.id ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
                 </button>
                 <div className="flex-1 min-w-0">
-                  <p className="text-white/80 text-sm truncate">
+                  <p className="text-body-text/80 text-caption truncate">
                     音频 #{audio.sort_order + 1}
                   </p>
                   <input
                     type="text"
                     defaultValue={audio.hint_text || ''}
                     placeholder="输入提示文字（如歌名/上句）…"
-                    className="text-muted text-xs mt-0.5 bg-transparent border-b border-transparent hover:border-border focus:border-gold focus:text-white/80 outline-none w-full transition-all"
+                    className="text-muted text-tiny mt-0.5 bg-transparent border-b border-transparent hover:border-border focus:border-gold focus:text-body-text/80 outline-none w-full transition-all"
                     onBlur={async (e) => {
                       const newHint = e.target.value.trim()
                       if (newHint !== (audio.hint_text || '')) {
@@ -107,7 +170,7 @@ export function EditAudioPanel({ cardId, audios, onAudiosChange, playingAudioId,
                 </div>
                 <button onClick={() => setDeleteAudioId(audio.id)}
                   disabled={audios.length <= 1}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity text-muted hover:text-crimson text-xs px-2 py-1 rounded hover:bg-crimson/10 disabled:opacity-30 disabled:cursor-not-allowed"
+                  className="opacity-0 group-hover:opacity-100 transition-opacity text-muted hover:text-crimson text-tiny px-2 py-1 rounded hover:bg-crimson/10 disabled:opacity-30 disabled:cursor-not-allowed"
                   title={audios.length <= 1 ? '至少保留 1 条音频' : '删除'}>
                   删除
                 </button>
@@ -118,7 +181,7 @@ export function EditAudioPanel({ cardId, audios, onAudiosChange, playingAudioId,
 
         {/* Add new audio (edit mode) */}
         <div className="mt-4 bg-surface border border-border rounded-xl p-4">
-          <h3 className="text-gold/80 text-xs font-medium mb-3"><Plus className="mr-0.5 inline h-3 w-3" /> 添加新音频</h3>
+          <h3 className="text-gold/80 text-tiny font-medium mb-3"><Plus className="mr-0.5 inline h-3 w-3" /> 添加新音频</h3>
           <div className="flex flex-col gap-3">
             {/* Drop zone + file selector */}
             <UploadZone
@@ -129,26 +192,39 @@ export function EditAudioPanel({ cardId, audios, onAudiosChange, playingAudioId,
               baseStyle={{ borderColor: 'rgb(var(--accent-primary)/ 0.3)' }}
               dragOverStyle={{ borderColor: 'rgb(var(--accent-primary)/ 0.8)', background: 'rgb(var(--accent-primary)/ 0.05)' }}
               inputRef={newAudioInputRef}
-              onFiles={files => { if (files.length > 0) setNewAudioFiles(files) }}>
-              {newAudioFiles.length > 0 ? (
-                <p className="text-gold/80 text-xs"><Check className="mr-0.5 inline h-3 w-3" /> 已选 {newAudioFiles.length} 个文件</p>
+              onFiles={files => { if (files.length > 0) setPendingFiles(files.map(file => ({ file, status: 'queued' as const }))) }}>
+              {pendingFiles.length > 0 ? (
+                <p className="text-gold/80 text-tiny"><Check className="mr-0.5 inline h-3 w-3" /> 已选 {pendingFiles.length} 个文件</p>
               ) : (
                 <>
-                  <p className="text-muted text-xs"><Music className="mr-0.5 inline h-3 w-3" /> 拖拽音频到这里，或点击选择</p>
+                  <p className="text-muted text-tiny"><Music className="mr-0.5 inline h-3 w-3" /> 拖拽音频到这里，或点击选择</p>
                   <p className="text-muted/40 text-[10px] mt-1">支持同时选择多个文件</p>
                 </>
               )}
             </UploadZone>
-            {newAudioFiles.length > 0 && (
+            {pendingFiles.length > 0 && (
               <>
-                <div className="text-xs text-muted space-y-1 max-h-20 overflow-y-auto">
-                  {newAudioFiles.map((f, i) => <p key={i} className="truncate">♪ {f.name}</p>)}
+                <div className="text-tiny space-y-1 max-h-scroll-sm overflow-y-auto">
+                  {pendingFiles.map((p, i) => (
+                    <div key={`${p.file.name}-${i}`} className="flex items-center gap-2">
+                      <span className="flex-1 min-w-0 truncate text-muted">♪ {p.file.name}</span>
+                      <span className={`${PENDING_STATE_CLASS[p.status]} shrink-0`}>{PENDING_STATE_TEXT[p.status]}</span>
+                      {p.status === 'failed' && (
+                        <button type="button" disabled={addingAudio}
+                          onClick={() => void retryOne(i)}
+                          className="text-gold hover:text-gold/80 shrink-0 disabled:opacity-40">
+                          重试
+                        </button>
+                      )}
+                    </div>
+                  ))}
                 </div>
                 <Input type="text" value={newHintText} onChange={e => setNewHintText(e.target.value)}
-                  className="text-sm" placeholder="播放提示（选填，多首共用）" />
-                <Button type="button" onClick={handleAddAudios}
-                  loading={addingAudio} disabled={newProcessing}>
-                  {addingAudio ? `添加中… (${uploadProgress}/${newAudioFiles.length})` : <><Plus className="mr-0.5 inline h-3 w-3" /> 添加 {newAudioFiles.length} 首音频</>}
+                  className="text-caption" placeholder="播放提示（选填，多首共用）" />
+                <Button type="button" onClick={handleAddAudios} loading={addingAudio}>
+                  {addingAudio
+                    ? `上传中 ${pendingFiles.filter(p => p.status !== 'queued').length}/${pendingFiles.length}`
+                    : <><Plus className="mr-0.5 inline h-3 w-3" /> 添加 {pendingFiles.length} 首音频</>}
                 </Button>
               </>
             )}
@@ -156,32 +232,17 @@ export function EditAudioPanel({ cardId, audios, onAudiosChange, playingAudioId,
         </div>
       </div>
 
-      {/* Delete audio confirm */}
-      <AnimatePresence>
-        {deleteAudioId !== null && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center px-4"
-            style={{ background: 'rgba(0,0,0,0.7)' }}
-            onClick={() => setDeleteAudioId(null)}>
-            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-ink-deep border border-border rounded-xl p-6 w-full max-w-xs text-center"
-              onClick={e => e.stopPropagation()}>
-              <div className="flex justify-center mb-3"><Trash2 className="h-8 w-8" /></div>
-              <p className="text-white font-medium mb-1">要删除这条音频吗？</p>
-              <p className="text-muted text-sm mb-5">删除后无法恢复。</p>
-              <div className="flex gap-3">
-                <Button variant="outline" className="flex-1" onClick={() => setDeleteAudioId(null)}>取消</Button>
-                <button onClick={() => handleDeleteAudio(deleteAudioId)}
-                  disabled={deletingAudio}
-                  className="flex-1 px-4 py-2.5 rounded bg-crimson hover:bg-crimson-light text-white font-medium text-sm transition-all disabled:opacity-50">
-                  {deletingAudio ? '删除中…' : '确认删除'}
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* 删除音频确认（统一 ConfirmDialog，替换原手写遮罩弹窗） */}
+      <ConfirmDialog
+        open={deleteAudioId !== null}
+        title="要删除这条音频吗？"
+        description="删除后无法恢复"
+        confirmText="确认删除"
+        danger
+        loading={deletingAudio}
+        onConfirm={() => { if (deleteAudioId !== null) void handleDeleteAudio(deleteAudioId) }}
+        onCancel={() => setDeleteAudioId(null)}
+      />
     </>
   )
 }

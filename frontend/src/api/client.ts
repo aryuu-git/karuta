@@ -1,10 +1,21 @@
-import type { User, Deck, Card, CardAudio, Room, RoomState, RoomListItem, UserStats, AuthResponse } from './types'
-import { API_BASE } from '../config'
+import type { User, Deck, Card, CardAudio, Room, RoomState, RoomListItem, UserStats, UserGame, RankingEntry, AuthResponse, Achievement } from './types'
+import { API_BASE, AUTH_TOKEN_KEY } from '../config'
 
 const BASE = API_BASE
 
+/**
+ * 携带 HTTP 状态码的请求错误：extends Error 保持 `instanceof Error` 兼容，
+ * 调用方需要按状态码分支（如 rematch 的 409/404）时读取 status。
+ */
+export class HttpError extends Error {
+  constructor(message: string, readonly status: number, readonly code?: string) {
+    super(message)
+    this.name = 'HttpError'
+  }
+}
+
 function getToken(): string | null {
-  return localStorage.getItem('karuta_token')
+  return localStorage.getItem(AUTH_TOKEN_KEY)
 }
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
@@ -19,7 +30,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({ message: res.statusText }))
-    throw new Error(err.message || err.error || 'Request failed')
+    throw new HttpError(err.message || err.error || 'Request failed', res.status, err.error)
   }
   if (res.status === 204 || res.headers.get('content-length') === '0') {
     return undefined as T
@@ -38,7 +49,7 @@ async function uploadRequest<T>(path: string, formData: FormData): Promise<T> {
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({ message: res.statusText }))
-    throw new Error(err.message || err.error || 'Upload failed')
+    throw new HttpError(err.message || err.error || 'Upload failed', res.status, err.error)
   }
   return res.json()
 }
@@ -74,11 +85,18 @@ function myStats(): Promise<UserStats> {
 }
 
 // Cards (Library)
-function listMyCards(): Promise<Card[]> {
-  return request('/cards/mine')
+function listMyCards(params?: { page?: number; size?: number; sort?: string; search?: string; tag?: string }): Promise<Card[]> {
+  const qs = new URLSearchParams()
+  if (params?.page) qs.set('page', String(params.page))
+  if (params?.size) qs.set('size', String(params.size))
+  if (params?.sort) qs.set('sort', params.sort)
+  if (params?.search) qs.set('search', params.search)
+  if (params?.tag) qs.set('tag', params.tag)
+  const q = qs.toString()
+  return request('/cards/mine' + (q ? `?${q}` : ''))
 }
 
-function listPublicCards(params?: { search?: string; series?: string; tag?: string; owner?: string; page?: number; size?: number }): Promise<Card[]> {
+function listPublicCards(params?: { search?: string; series?: string; tag?: string; owner?: string; page?: number; size?: number; sort?: string }): Promise<Card[]> {
   const qs = new URLSearchParams()
   if (params?.search) qs.set('search', params.search)
   if (params?.series) qs.set('series', params.series)
@@ -86,12 +104,44 @@ function listPublicCards(params?: { search?: string; series?: string; tag?: stri
   if (params?.owner) qs.set('owner', params.owner)
   if (params?.page) qs.set('page', String(params.page))
   if (params?.size) qs.set('size', String(params.size))
+  if (params?.sort) qs.set('sort', params.sort)
   const q = qs.toString()
   return request(`/cards/public${q ? '?' + q : ''}`)
 }
 
-function getCard(id: number): Promise<{ card: Card; audios: CardAudio[] }> {
+function getCard(id: number): Promise<{ card: Card; audios: CardAudio[]; deck_refs?: number }> {
   return request(`/cards/${id}`)
+}
+
+function batchTagCards(cardIds: number[], tags: string[]): Promise<{ applied: number }> {
+  return request('/cards/batch-tag', {
+    method: 'POST',
+    body: JSON.stringify({ card_ids: cardIds, tags }),
+  })
+}
+
+function toggleCardLike(cardId: number): Promise<{ liked: boolean; likes: number }> {
+  return request(`/cards/${cardId}/like`, { method: 'POST' })
+}
+
+function changePassword(oldPassword: string, newPassword: string): Promise<{ status: string }> {
+  return request('/me/password', { method: 'POST', body: JSON.stringify({ old_password: oldPassword, new_password: newPassword }) })
+}
+
+function upgradeGuest(username: string, password: string): Promise<{ user: User }> {
+  return request('/me/upgrade', { method: 'POST', body: JSON.stringify({ username, password }) })
+}
+
+function myGames(params?: { page?: number; size?: number }): Promise<UserGame[]> {
+  const qs = new URLSearchParams()
+  if (params?.page) qs.set('page', String(params.page))
+  if (params?.size) qs.set('size', String(params.size))
+  const q = qs.toString()
+  return request('/me/games' + (q ? `?${q}` : ''))
+}
+
+function rankings(kind: 'score' | 'wins' | 'world_first' = 'score', limit = 10): Promise<RankingEntry[]> {
+  return request(`/rankings?kind=${kind}&limit=${limit}`)
 }
 
 function createCard(formData: FormData): Promise<Card> {
@@ -224,9 +274,32 @@ interface DuelConfig {
   arrange_time?: number
 }
 
-function createRoom(deckId: number, intervalSec: number, mode = 'auto', maskEnabled = false, maskDifficulty = 'normal', penaltyWrong = true, penaltySlow = true, shuffleRemaining = 0, randomStart = false, randomStartMax = 50, duelConfig?: DuelConfig, penaltyLast = 0, training = false, minPlayTime = 0, multiAudioMode = 'all'): Promise<Room> {
-  const body: Record<string, unknown> = { deck_id: deckId, interval_sec: intervalSec, mode, mask_enabled: maskEnabled, mask_difficulty: maskDifficulty, penalty_wrong: penaltyWrong, penalty_slow: penaltySlow, penalty_last: penaltyLast, shuffle_remaining: shuffleRemaining, random_start: randomStart, random_start_max: randomStartMax, training, min_play_time: minPlayTime, multi_audio_mode: multiAudioMode }
-  if (mode === 'duel' && duelConfig) {
+/** 建房请求体（对象参数化，2026-09-21 消除 17 位置参数脆弱性） */
+export interface CreateRoomBody {
+  deck_id: number
+  interval_sec: number
+  mode: string
+  mask_enabled: boolean
+  mask_difficulty: string
+  penalty_wrong: boolean
+  penalty_slow: boolean
+  shuffle_remaining: number
+  random_start: boolean
+  random_start_max: number
+  penalty_last: number
+  training: boolean
+  min_play_time: number
+  multi_audio_mode: string
+  is_private: boolean
+  max_players: number
+  duel?: DuelConfig
+}
+
+function createRoom(input: CreateRoomBody): Promise<Room> {
+  const body: Record<string, unknown> = { ...input }
+  const duelConfig = input.duel
+  delete body.duel
+  if (input.mode === 'duel' && duelConfig) {
     body.duel_total_cards = duelConfig.total_cards ?? 50
     body.duel_flip = duelConfig.flip ?? true
     body.duel_requeue = duelConfig.requeue ?? true
@@ -315,6 +388,14 @@ function nextCard(id: number): Promise<void> {
   return request(`/rooms/${id}/next-card`, { method: 'POST' })
 }
 
+/** 原班再来一局：复制源房间全部配置开新房，reinvite=true 时把源房间玩家整体迁入 */
+function rematchRoom(id: number, reinvite = true): Promise<{ room: Room }> {
+  return request(`/rooms/${id}/rematch`, {
+    method: 'POST',
+    body: JSON.stringify({ reinvite }),
+  })
+}
+
 export const api = {
   auth: {
     register, login, guestLogin, me, myStats,
@@ -324,6 +405,10 @@ export const api = {
     uploadAvatar: (formData: FormData) => uploadRequest<User>('/me/avatar', formData),
     generateInvite: () => request<{ id: number; code: string }>('/me/invites', { method: 'POST' }),
     listInvites: () => request<Array<{ id: number; code: string; used_by?: number; created_at: string }>>('/me/invites'),
+    myAchievements: () => request<{ achievements: Achievement[] }>('/me/achievements'),
+    changePassword,
+    upgrade: upgradeGuest,
+    myGames,
     adminListUsers: () => request<Array<{ id: number; username: string; invited_by: number; disabled: boolean; is_admin: boolean; is_guest: boolean; created_at: string }>>('/admin/users'),
     adminToggleUser: (id: number, disabled: boolean) => request('/admin/users/' + id + '/disable', { method: 'POST', body: JSON.stringify({ disabled }) }),
     adminSetAdmin: (id: number, isAdmin: boolean) => request('/admin/users/' + id + '/admin', { method: 'POST', body: JSON.stringify({ is_admin: isAdmin }) }),
@@ -335,6 +420,8 @@ export const api = {
     listTags: () => request<string[]>('/cards/tags'),
     listPublic: listPublicCards,
     get: getCard,
+    batchTag: batchTagCards,
+    toggleLike: toggleCardLike,
     create: createCard,
     update: updateCard,
     delete: deleteCard,
@@ -356,6 +443,8 @@ export const api = {
     delete: deleteDeck,
     share: shareDeck,
     addCards: addCardsToDeck,
+    toggleLike: (deckId: number) => request<{ liked: boolean; likes: number }>(`/decks/${deckId}/like`, { method: 'POST' }),
+    reorder: (deckId: number, cardIds: number[]) => request<{ status: string }>(`/decks/${deckId}/reorder`, { method: 'POST', body: JSON.stringify({ card_ids: cardIds }) }),
     removeCard: removeCardFromDeck,
     clone: cloneDeck,
     createCard: createCardOnDeck,
@@ -378,9 +467,7 @@ export const api = {
     claimSeat,
     leaveSeat,
     kickFromSeat,
+    rematch: rematchRoom,
   },
-  bangumi: {
-    search: (keyword: string, type?: string): Promise<{ data: Array<{ id: number; name: string; name_cn: string; type: number; images?: { large?: string; common?: string } }> }> =>
-      request(`/bangumi/search?keyword=${encodeURIComponent(keyword)}${type ? '&type=' + type : ''}`),
-  },
+  rankings,
 }

@@ -7,9 +7,10 @@
    约定：全部颜色变量存 "R G B" 三元组，消费方统一用
    rgb(var(--x) / <alpha>) 语法（现代空格斜杠语法），任意透明度
    修饰符（Tailwind 的 /50 等）自动生效。
+   单主题：樱花（和纸质感 + 樱花粉 × 金粉）。主题切换已移除，
+   若未来恢复多主题，按 [data-theme] 覆盖块扩展即可。
    ============================================================ */
 
-/* 樱花粉主题（唯一主题）：和纸质感 + 樱花粉 × 金粉 */
 :root {
   --color-ink: 68 32 56;            /* 主背景 / 重文字 #442038 */
   --color-ink-deep: 56 24 48;       /* 深背景 / 输入框底 #381830 */
@@ -24,8 +25,8 @@
   --color-muted: 232 192 212;       /* 次级文字 #e8c0d4 */
   --color-body-bg: 68 32 56;
   --color-body-text: 254 248 250;
-  --gold-foil: 212 167 106;         /* 金粉（真金，跨主题恒定）#d4a76a */
-  --color-success: 74 222 128;      /* 状态色，跨主题恒定 */
+  --gold-foil: 212 167 106;         /* 金粉（真金）#d4a76a */
+  --color-success: 74 222 128;      /* 状态色 */
   --color-warning: 251 146 60;
   --color-danger: 248 113 113;
   --color-info: 96 165 250;
@@ -35,23 +36,29 @@
   --accent-bg-mid: 26 5 16;
   --accent-bg-end: 45 10 26;
   --glow-color: 212 167 106;        /* 金色光晕 */
-  --color-card-paper: 246 240 228;  /* 歌牌米白和纸面（物理纸色，跨主题恒定）#f6f0e4 */
-  --color-card-paper-deep: 233 223 203; /* 牌面纸色暗阶 #e9dfcb */
+
+  /* 布局契约（重构 L1）：吸顶导航高度，AppLayout 与对局视图共用，
+     改头部高度只改这里，战场视口高度自动跟随 */
+  --header-h: 3.5rem;
 }
-
-/* ============================================================
-   背景氛围层（body 多层固定背景，自上而下）：
-   四角暗角 vignette → 金粉/樱粉径向光晕 → 和纸颗粒（feTurbulence SVG）
-   → 十字织纹 → 深景三段渐变。全部 CSS 实现，attachment: fixed。
-   ============================================================ */
-:root {
-  --washi-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1  0 0 0 0 0.93  0 0 0 0 0.86  0.09 0.06 0 0 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23p)'/%3E%3C/svg%3E");
- }
-
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* 对局视口（重构 L3）：战场全高 = 视口 - 吸顶导航。
+   dvh 让移动端浏览器地址栏收展时高度实时跟随（vh 会把底部内容顶出屏幕），
+   老浏览器 @supports 回退 vh。头部高度契约见 --header-h。 */
+@layer utilities {
+  .battle-viewport {
+    height: calc(100vh - var(--header-h));
+  }
+  @supports (height: 100dvh) {
+    .battle-viewport {
+      height: calc(100dvh - var(--header-h));
+    }
+  }
+}
 
 @layer base {
   *,
@@ -71,29 +78,12 @@
   }
 
   body {
+    background-color: rgb(var(--color-body-bg));
     color: rgb(var(--color-body-text));
-    /* 正文书卷字体：本地 Noto Serif JP 优先，日文明朝体系回退 */
-    font-family: 'Noto Serif JP', 'Hiragino Mincho ProN', 'Yu Mincho', serif;
-    font-synthesis: none;
+    font-family: system-ui, sans-serif;
     min-height: 100vh;
     overflow-x: hidden;
-    transition: color 0.3s;
-    background-color: rgb(var(--accent-bg-mid));
-    background-image:
-      /* 四角暗角 */
-      radial-gradient(140% 105% at 50% 42%, transparent 52%, rgb(8 2 6 / 0.42) 100%),
-      /* 金粉光晕（右上，alpha ≤ 0.1） */
-      radial-gradient(52rem 38rem at 84% 4%, rgb(var(--gold-foil) / 0.09), transparent 68%),
-      /* 樱粉光晕（左下） */
-      radial-gradient(46rem 34rem at 10% 94%, rgb(var(--accent-primary) / 0.1), transparent 70%),
-      /* 和纸颗粒（feTurbulence 内联 SVG） */
-      var(--washi-grain),
-      /* 十字织纹（可见度 0.05/0.04） */
-      repeating-linear-gradient(0deg, transparent 0 2px, rgb(var(--accent-primary) / 0.05) 2px 3px),
-      repeating-linear-gradient(90deg, transparent 0 2px, rgb(var(--accent-primary) / 0.04) 2px 3px),
-      /* 深景三段渐变 */
-      linear-gradient(165deg, rgb(var(--accent-bg)) 0%, rgb(var(--accent-bg-mid)) 42%, rgb(var(--accent-bg-end)) 100%);
-    background-attachment: fixed;
+    transition: background-color 0.3s, color 0.3s;
   }
 
   #root {
@@ -183,27 +173,27 @@
     box-shadow: 0 0 0 1px rgb(var(--gold-foil) / 0.3);
   }
 
-  /* 面板质感：表面微渐变 + 顶部内高光 + 柔和外投影 + 金粉发丝渐变描边 */
   .card-surface {
-    @apply rounded-xl;
-    border: 1px solid transparent;
-    background:
-      linear-gradient(180deg, rgb(var(--color-surface-elevated)) 0%, rgb(var(--color-surface)) 100%) padding-box,
-      linear-gradient(150deg,
-        rgb(var(--gold-foil) / 0.32) 0%,
-        rgb(var(--accent-primary) / 0.10) 32%,
-        rgb(var(--accent-primary) / 0.08) 58%,
-        rgb(var(--gold-foil) / 0.20) 100%) border-box;
-    box-shadow:
-      inset 0 1px 0 rgb(255 255 255 / 0.06),
-      0 2px 6px rgb(12 3 9 / 0.35),
-      0 12px 32px rgb(12 3 9 / 0.28);
+    @apply bg-surface border border-border rounded-lg;
   }
 
-  /* 和纸氛围由 body 多层固定背景统一承载；本类仅作语义占位（透明），
-     保证页面根容器不遮挡氛围层。 */
+  /* 和纸质感：细密十字纹理，随主题基色变化 */
   .washi-bg {
-    background: transparent;
+    background-color: rgb(var(--color-body-bg));
+    background-image: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgb(var(--accent-primary) / 0.03) 2px,
+        rgb(var(--accent-primary) / 0.03) 4px
+      ),
+      repeating-linear-gradient(
+        90deg,
+        transparent,
+        transparent 2px,
+        rgb(var(--accent-primary) / 0.02) 2px,
+        rgb(var(--accent-primary) / 0.02) 4px
+      );
   }
 
   /* 金粉流光标题 */
@@ -254,35 +244,4 @@
 @keyframes toastIn {
   from { opacity: 0; transform: translateY(-16px) scale(0.95); }
   to { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-/* 花瓣飘落装饰层（PetalsLayer，pointer-events-none / aria-hidden）：
-   --drift 由组件内联注入横向摆幅；respect prefers-reduced-motion。 */
-.petals-layer {
-  position: fixed;
-  inset: 0;
-  z-index: 40;
-  overflow: hidden;
-  pointer-events: none;
-}
-
-.petal {
-  position: absolute;
-  top: -4%;
-  border-radius: 100% 0 100% 0;
-  opacity: 0;
-  animation: petalFall linear infinite;
-}
-
-@keyframes petalFall {
-  0%   { transform: translate3d(0, -4vh, 0) rotate(0deg); opacity: 0; }
-  8%   { opacity: 0.75; }
-  50%  { transform: translate3d(var(--drift, 20px), 52vh, 0) rotate(200deg); }
-  92%  { opacity: 0.45; }
-  100% { transform: translate3d(calc(var(--drift, 20px) * -0.6), 104vh, 0) rotate(430deg); opacity: 0; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .petal { animation: none; opacity: 0; }
-  .animate-float { animation: none; }
 }
