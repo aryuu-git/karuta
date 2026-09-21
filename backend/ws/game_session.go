@@ -582,6 +582,17 @@ func (gs *GameSession) broadcastGameOver() {
 	gs.hub.Stop()
 }
 
+// safeSend 向客户端写入数据。注销/停止路径会 close(client.send)，与本写入
+// 并发时存在竞态窗口（select 也可能命中已关闭通道触发 panic），统一在此
+// recover 兜底并静默丢弃——已离线/慢客户端丢包无害。
+func safeSend(c *Client, data []byte) {
+	defer func() { _ = recover() }()
+	select {
+	case c.send <- data:
+	default:
+	}
+}
+
 func (gs *GameSession) SendRoomStateToClient(client *Client) {
 	cardList := gs.buildCardList()
 	players, _ := gs.store.Rooms.ListPlayers(gs.room.ID)
@@ -610,10 +621,7 @@ func (gs *GameSession) SendRoomStateToClient(client *Client) {
 	if err != nil {
 		return
 	}
-	select {
-	case client.send <- data:
-	default:
-	}
+	safeSend(client, data)
 }
 
 func (gs *GameSession) broadcastRoomState() {

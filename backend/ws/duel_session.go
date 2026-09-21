@@ -834,10 +834,7 @@ func (ds *DuelSession) SendDuelStateToClient(client *Client) {
 			"flip":       ds.room.DuelFlip,
 		},
 	})
-	select {
-	case client.send <- data:
-	default:
-	}
+	safeSend(client, data)
 
 	// If in arranging phase, also send arrange state so reconnecting client can participate
 	if ds.phase == "arranging" {
@@ -848,10 +845,7 @@ func (ds *DuelSession) SendDuelStateToClient(client *Client) {
 			"p1_ready":      ds.p1Ready,
 			"p2_ready":      ds.p2Ready,
 		})
-		select {
-		case client.send <- arrangeData:
-		default:
-		}
+		safeSend(client, arrangeData)
 	}
 }
 

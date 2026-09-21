@@ -274,11 +274,7 @@ func (h *RoomHub) Run() {
 		case msg := <-h.broadcast:
 			h.mu.RLock()
 			for client := range h.clients {
-				select {
-				case client.send <- msg:
-				default:
-					// Drop slow clients
-				}
+				safeSend(client, msg) // Drop slow clients
 			}
 			h.mu.RUnlock()
 		}
@@ -308,10 +304,7 @@ func (h *RoomHub) SendToUser(userID int64, msg []byte) {
 	defer h.mu.RUnlock()
 	for client := range h.clients {
 		if client.userID == userID {
-			select {
-			case client.send <- msg:
-			default:
-			}
+			safeSend(client, msg)
 		}
 	}
 }
