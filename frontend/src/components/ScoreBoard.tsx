@@ -1,5 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { Trophy } from 'lucide-react'
+import type { RoomPlayer } from '../api/types'
 import { Avatar } from './Avatar'
 import { Button } from './ui'
 
