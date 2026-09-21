@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import type { Room, RoomPlayer } from '../api/types'
 import { api } from '../api/client'
 import { Avatar } from './Avatar'
+import { Crown, Eye, EyeOff, X } from 'lucide-react'
 import { useLocation } from 'react-router-dom'
 import { Button } from './ui'
 import { InvitePanel } from '../features/play/InvitePanel'
@@ -171,7 +172,7 @@ export function WaitingLobby({ room, players, currentUserId, onRoleChange, onKic
         {/* 房间模式信息 */}
         {room.mask_enabled && (
           <div className="flex items-center gap-2 px-4 py-2 rounded-lg border border-gold/20 bg-gold/5">
-            <span className="text-gold text-caption">🎭</span>
+            <EyeOff size={14} className="text-gold" aria-hidden="true" />
             <span className="text-caption text-body-text/80">
               模糊牌面：{room.mask_difficulty === 'easy' ? '简单' : room.mask_difficulty === 'hard' ? '困难' : '普通'}难度
             </span>
@@ -275,17 +276,17 @@ export function WaitingLobby({ room, players, currentUserId, onRoleChange, onKic
                 >
                   {player.username}
                   {player.user_id === room.host_id && (
-                    <span className="text-crimson text-tiny ml-1">👑</span>
+                    <Crown size={11} className="inline-block align-[-1px] ml-1 text-crimson" aria-hidden="true" />
                   )}
                   {player.role === 'spectator' && (
-                    <span className="text-tiny ml-1 text-info/70">👁旁观</span>
+                    <span className="text-tiny ml-1 text-info/70 inline-flex items-center gap-0.5 align-middle"><Eye size={10} aria-hidden="true" />旁观</span>
                   )}
                 </span>
                 {onKick && currentUserId === room.host_id && player.user_id !== currentUserId && (
                   <button onClick={() => onKick(player.user_id)}
                     className="text-tiny text-muted/40 hover:text-crimson transition-colors shrink-0 px-1"
                     title="踢出房间">
-                    ✕
+                    <X size={12} aria-hidden="true" />
                   </button>
                 )}
               </motion.div>
