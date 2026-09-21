@@ -79,7 +79,7 @@ export function ChatRoom({ messages, players, currentUserId, isSpectator, onSend
               style={{ height: '360px' }}
             >
               {/* 头部 */}
-              <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/5">
+              <div className="flex items-center justify-between px-4 py-2.5 border-b border-gold/10">
                 <span className="text-gold/80 text-caption font-serif flex items-center gap-1"><MessageCircle size={12} aria-hidden="true" />聊天</span>
                 <Button variant="ghost" size="sm" onClick={() => setShowEggMenu(v => !v)}
                   className="bg-warning/10 border border-warning/30 text-warning/90 hover:bg-warning/20 hover:text-warning/90">
@@ -91,7 +91,7 @@ export function ChatRoom({ messages, players, currentUserId, isSpectator, onSend
               <AnimatePresence>
                 {showEggMenu && (
                   <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }}
-                    className="overflow-hidden border-b border-white/5">
+                    className="overflow-hidden border-b border-gold/10">
                     <div className="px-3 py-2 flex flex-wrap gap-1.5">
                       {targets.length === 0 ? (
                         <span className="text-muted text-tiny">暂无可丢的目标</span>
@@ -137,7 +137,7 @@ export function ChatRoom({ messages, players, currentUserId, isSpectator, onSend
               </div>
 
               {/* 输入框 */}
-              <div className="px-3 py-2.5 border-t border-white/5 flex gap-2">
+              <div className="px-3 py-2.5 border-t border-gold/10 flex gap-2">
                 <input
                   value={input}
                   onChange={e => setInput(e.target.value)}

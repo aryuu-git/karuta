@@ -31,7 +31,7 @@ export function ScoreBoard({ players, currentUserId, hostId, remainingCount, tot
     <div className="flex flex-col h-full w-52 shrink-0 border-l border-gold/10" style={{ background: 'linear-gradient(180deg, rgb(var(--accent-bg-mid)/ 0.98) 0%, rgb(var(--accent-bg-end)/ 0.95) 100%)' }}>
 
       {/* Header */}
-      <div className="px-4 pt-4 pb-3 border-b border-white/5">
+      <div className="px-4 pt-4 pb-3 border-b border-gold/10">
         <div className="flex items-center gap-2 mb-3">
           <Trophy size={14} className="text-gold-dark" aria-hidden="true" />
           <span className="font-serif text-gold text-caption font-medium tracking-widest">实时战况</span>
@@ -140,7 +140,7 @@ export function ScoreBoard({ players, currentUserId, hostId, remainingCount, tot
       </div>
 
       {/* 底部装饰 */}
-      <div className="px-4 py-3 border-t border-white/5">
+      <div className="px-4 py-3 border-t border-gold/10">
         <div className="text-center">
           <span className="text-gold/30 text-tiny font-serif italic">🌸 对局进行中</span>
         </div>

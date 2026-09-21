@@ -192,7 +192,7 @@ export function CardDrawer({ cardId, onClose, onEdit, onDelete, onClone, onAddTo
                   </section>
 
                   {/* 操作组 */}
-                  <section className="flex flex-wrap gap-2 pt-2 border-t border-white/5">
+                  <section className="flex flex-wrap gap-2 pt-2 border-t border-gold/10">
                     {onAddToDeck && <Button size="sm" variant="outline" icon={<Plus size={13} />} onClick={() => onAddToDeck(card)}>加入牌组</Button>}
                     {onExport && <Button size="sm" variant="outline" icon={<Download size={13} />} onClick={() => onExport(card)}>导出</Button>}
                     {onEdit && <Button size="sm" variant="outline" icon={<Pencil size={13} />} onClick={() => onEdit(card)}>编辑</Button>}

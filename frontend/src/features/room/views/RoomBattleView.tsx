@@ -139,7 +139,7 @@ export function RoomBattleView({
       ) : isJudgeMode && isHost ? (
         // 裁判视图：上方选牌区 + 下方只读棋布
         <div className="flex flex-col flex-1 overflow-hidden">
-          <div className="shrink-0 border-b border-white/5 h-[38%] overflow-hidden">
+          <div className="shrink-0 border-b border-gold/10 h-[38%] overflow-hidden">
             <JudgePanel
               roomId={room.id}
               cards={state.cards}

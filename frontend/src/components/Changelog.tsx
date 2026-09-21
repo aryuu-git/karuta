@@ -233,7 +233,7 @@ export function Changelog() {
             onClick={e => e.stopPropagation()}
           >
             {/* 头部 */}
-            <div className="px-6 pt-6 pb-4 border-b border-white/5 shrink-0">
+            <div className="px-6 pt-6 pb-4 border-b border-gold/10 shrink-0">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <div className="flex items-center gap-2 mb-1">
@@ -279,7 +279,7 @@ export function Changelog() {
             </div>
 
             {/* 底部按钮 */}
-            <div className="px-6 pb-5 pt-3 border-t border-white/5 shrink-0">
+            <div className="px-6 pb-5 pt-3 border-t border-gold/10 shrink-0">
               <Button variant="gold" size="lg" className="w-full" onClick={handleClose}>
                 知道了
               </Button>
