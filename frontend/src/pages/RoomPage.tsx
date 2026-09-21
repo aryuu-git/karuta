@@ -66,6 +66,20 @@ export function RoomPage() {
     return <GameOver results={state.gameResults} currentUserId={user?.id ?? 0} lastCardWinnerId={state.lastCardWinnerId} roomId={room.id} isHost={isHost} deckId={room.deck_id} />
   }
 
+  // 已结束但本端没有结算数据（强停/中途放弃后重进）：避免渲染死战场
+  if (state.status === 'end') {
+    return (
+      <div className="flex items-center justify-center py-32">
+        <EmptyState
+          icon="🏁"
+          title="这场对局已经结束"
+          description="对局已在别处结束或已过期，没有可回看的结算数据。"
+          action={<Button variant="outline" onClick={leaveRoom}>回到大本营</Button>}
+        />
+      </div>
+    )
+  }
+
   // 等待大厅
   if (state.status === 'waiting') {
     return (

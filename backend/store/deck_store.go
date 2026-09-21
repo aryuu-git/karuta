@@ -164,9 +164,11 @@ func (s *DeckStore) ListEditable(viewerID int64) ([]*model.Deck, error) {
 	var decks []*model.Deck
 	for rows.Next() {
 		d := &model.Deck{}
-		if err := rows.Scan(&d.ID, &d.OwnerID, &d.Name, &d.Description, &d.IsPublic, &d.ShareLevel, &d.EditLevel, &d.CreatedAt, &d.CardCount, &d.OwnerName); err != nil {
+		var liked int
+		if err := rows.Scan(&d.ID, &d.OwnerID, &d.Name, &d.Description, &d.IsPublic, &d.ShareLevel, &d.EditLevel, &d.CreatedAt, &d.CardCount, &d.OwnerName, &d.CoverPaths, &d.Likes, &liked); err != nil {
 			return nil, fmt.Errorf("scan deck: %w", err)
 		}
+		d.LikedByMe = liked != 0
 		decks = append(decks, d)
 	}
 	return decks, rows.Err()

@@ -170,6 +170,23 @@ func (h *RoomHub) Run() {
 			if ds != nil {
 				ds.Stop()
 			}
+			// 2026-09-21 修复：空房超时/中途放弃路径不经过结算（只有
+			// broadcastGameOver/endGame/强停会写 end），房间会永远卡在
+			// reading/paused——大厅一直显示进行中，重进也无法恢复。
+			// hub 终止时若对局仍在进行中，这里兜底落终局；正常路径已写
+			// end，重写幂等。
+			if sess != nil || ds != nil {
+				var st *store.Store
+				var roomID int64
+				if sess != nil {
+					st, roomID = sess.store, sess.room.ID
+				} else {
+					st, roomID = ds.store, ds.room.ID
+				}
+				if room, err := st.Rooms.GetByID(roomID); err == nil && (room.Status == "reading" || room.Status == "paused") {
+					_ = st.Rooms.UpdateStatus(roomID, "end")
+				}
+			}
 			h.mu.Lock()
 			for client := range h.clients {
 				close(client.send)
