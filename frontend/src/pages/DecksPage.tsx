@@ -241,12 +241,6 @@ export function DecksPage() {
         </div>
       </div>
 
-      {/* 加载态：卡组卡面骨架屏替代 PageSpinner（§7.1），网格与卡组列表一致 */}
-      {loading && (
-        <Skeleton variant="card" rows={6}
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4" />
-      )}
-
       {/* 错误态：错误文案 + 重试 */}
       {!loading && error && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
@@ -259,6 +253,11 @@ export function DecksPage() {
         </motion.div>
       )}
 
+      {/* 加载态：卡组卡面骨架屏替代 PageSpinner（§7.1），网格与卡组列表一致 */}
+      {loading && (
+        <Skeleton variant="card" rows={6}
+          className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4" />
+      )}
       {/* 空态（§7.2：我的牌组 / 协作·公共无结果，均带可用 CTA） */}
       {!loading && !error && decks.length === 0 && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
@@ -282,7 +281,7 @@ export function DecksPage() {
 
       {/* 牌组卡片网格 */}
       {!loading && !error && decks.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
           <AnimatePresence>
             {decks.map((deck, i) => (
               <motion.div key={deck.id}

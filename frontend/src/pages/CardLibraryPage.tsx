@@ -396,10 +396,8 @@ export function CardLibraryPage() {
       {/* 加载：3:4 牌面骨架网格（与 CardTile 同尺寸） */}
       {loading && (
         <Skeleton variant="card" rows={6}
-          className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-3" />
+          className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 xl:grid-cols-8 gap-3" />
       )}
-
-      {/* 空态 */}
       {!loading && !error && cards.length === 0 && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="rounded-2xl"
           style={{ background: 'linear-gradient(160deg, rgb(var(--accent-bg-end)/ 0.5), rgb(var(--accent-bg-mid)/ 0.8))', border: '1px dashed rgb(var(--accent-primary)/ 0.2)' }}>
@@ -429,7 +427,7 @@ export function CardLibraryPage() {
 
       {/* 牌面网格 */}
       {!loading && !error && cards.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-3">
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 xl:grid-cols-8 gap-3">
           <AnimatePresence>
             {cards.map((card, i) => (
               <motion.div key={card.id}
