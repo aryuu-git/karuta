@@ -377,8 +377,8 @@ export function DeckDetailPage() {
           deck ? (
             <>
               {/* 点赞（v8；任意可见牌组可赞） */}
-              <Button variant="ghost" size="sm" disabled={likeBusy} onClick={() => void handleToggleLike()}
-                icon={<Heart size={13} fill={(likeOverride?.liked ?? deck?.liked_by_me) ? 'currentColor' : 'none'} />}>
+              <Button variant="ghost" size="xs" disabled={likeBusy} onClick={() => void handleToggleLike()}
+                icon={<Heart size={12} fill={(likeOverride?.liked ?? deck?.liked_by_me) ? 'currentColor' : 'none'} />}>
                 {likeOverride?.likes ?? deck?.likes ?? 0}
               </Button>
               {isOwner && (
