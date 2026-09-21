@@ -113,7 +113,8 @@ Tailwind 内置 `pink-300` / `pink-500` 在 config 层**重映射**到语义变�
 | 组件 | API 摘要 | 说明 |
 | --- | --- | --- |
 | `Button` | `variant: gold\|outline\|ghost\|danger` × `size: sm\|md\|lg`，`loading` | 替换 `btn-gold/btn-outline` 逐个使用点 |
-| `Input` / `Textarea` / `Select` | label、error、hint 插槽 | 替换 `.input-dark` 散用 |
+| `Input` / `Textarea` / `Select` | label、error、hint 插槽；`size: sm\|md`（sm=筛选条紧凑档）；`fit` 收缩容器（内联使用） | 替换 `.input-dark` 散用；禁止裸 `<input>/<select>` |
+| `SearchInput` | 内置 lucide 搜索图标 + 可清除按钮；`onClear` 控制清除钮显隐；`className` 控制容器宽度 | 牌库/牌组/选牌弹窗搜索栏唯一实现，禁止手写 icon 叠加 |
 | `Dialog` | `open`、`onClose`、`title`、尺寸 | 替换手写 fixed 遮罩 |
 | `Panel` | `title`、`actions`、padding 变体 | 卡面容器统一 |
 | `Toast` | `useToast()` hook：`toast.success/error/info(text)` | 替换 RoomPage 内嵌 178 行 toast |

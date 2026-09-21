@@ -4,12 +4,12 @@ import { useQueryClient } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
 // 图标统一走 lucide-react（映射约定见 A3.1/A3.2）
 import {
-  Swords, Layers, Globe, Images, Search, Plus, Eye, X,
+  Swords, Layers, Globe, Images, Plus, Eye, X,
   Lock, Gamepad2, Pencil, Share2, FileText, AlertCircle, RefreshCw, Heart, Upload,
   type LucideIcon,
 } from 'lucide-react'
 import {
-  Button, Input, Textarea, Badge, Dialog, EmptyState, HeroHeader,
+  Button, Input, SearchInput, Textarea, Badge, Dialog, EmptyState, HeroHeader,
   PageContainer, Skeleton, useToast, type BadgeTone,
 } from '../components/ui'
 import { useMyDecks, useEditableDecks, usePublicDecks, queryKeys } from '../api/queries'
@@ -225,25 +225,18 @@ export function DecksPage() {
       {/* 搜索与筛选 */}
       <div className="mb-5">
         <div className="flex gap-2">
-          <div className="relative flex-1 max-w-sm">
-            <Input
-              type="text"
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              className="text-sm pl-9"
-              placeholder="搜索牌组名"
-            />
-            <Search size={14} aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 text-muted/40" />
-          </div>
+          <SearchInput
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            onClear={() => setSearchQuery('')}
+            placeholder="搜索牌组名"
+            className="flex-1 max-w-sm" />
           {tab === 'public' && (
-            <input
-              type="text"
+            <Input size="sm" fit className="w-28 shrink-0"
               value={filterOwner}
               onChange={e => setFilterOwner(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') setPubOwner(filterOwner) }}
-              className="text-xs px-3 py-2 rounded-lg bg-white/5 border border-white/5 text-white/70 w-28 placeholder:text-white/30 focus:border-gold/30 outline-none"
-              placeholder="创建人"
-            />
+              placeholder="创建人" />
           )}
         </div>
       </div>

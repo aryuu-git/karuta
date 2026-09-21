@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { Music, Globe } from 'lucide-react'
 import { api } from '../api/client'
 import type { Card } from '../api/types'
-import { Button, Input } from './ui'
+import { Button, Input, SearchInput } from './ui'
 
 type Tab = 'mine' | 'public'
 
@@ -128,7 +129,7 @@ export function CardPicker({ open, onClose, onSelect, excludeIds = [] }: CardPic
                     ? 'bg-gradient-to-r from-gold/20 to-gold-dark/10 text-gold shadow-sm'
                     : 'text-muted hover:text-body-text/70'
                 }`}>
-                🎵 我的牌库
+                <Music size={13} aria-hidden="true" /> 我的牌库
               </button>
               <button
                 onClick={() => setTab('public')}
@@ -137,24 +138,16 @@ export function CardPicker({ open, onClose, onSelect, excludeIds = [] }: CardPic
                     ? 'bg-gradient-to-r from-gold/20 to-gold-dark/10 text-gold shadow-sm'
                     : 'text-muted hover:text-body-text/70'
                 }`}>
-                🌐 公共牌库
+                <Globe size={13} aria-hidden="true" /> 公共牌库
               </button>
             </div>
             <div className="space-y-2 mb-3">
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <Input type="text" value={search}
-                    onChange={e => setSearch(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter') handleSearch() }}
-                    className="pl-8 text-caption"
-                    placeholder={tab === 'mine' ? '搜索我的牌…' : '以名寻牌，探索命运之声…'} />
-                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted/40 text-tiny">🔮</span>
-                </div>
-                {/* 动作语义按钮 → ui Button（outline 金描边） */}
-                <Button variant="outline" size="sm" onClick={handleSearch} className="shrink-0">
-                  搜索
-                </Button>
-              </div>
+              <SearchInput
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') handleSearch() }}
+                onClear={() => { setSearch(''); if (tab === 'public') loadPublicCards('', filterTag, filterOwner, 1) }}
+                placeholder={tab === 'mine' ? '搜索我的牌…' : '搜索歌牌名或作品名…'} />
               <div className="flex items-center gap-1.5 flex-wrap">
                 {['', ...allTags].map(t => (
                   <button key={t} onClick={() => setFilterTag(t)}
@@ -167,10 +160,10 @@ export function CardPicker({ open, onClose, onSelect, excludeIds = [] }: CardPic
                   </button>
                 ))}
                 {tab === 'public' && (
-                  <input type="text" value={filterOwner}
+                  <Input size="sm" fit className="w-24 shrink-0"
+                    value={filterOwner}
                     onChange={e => setFilterOwner(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter') handleSearch() }}
-                    className="text-tiny px-2.5 py-1 rounded-full bg-white/5 border border-white/5 text-body-text/70 w-24 placeholder:text-body-text/30 focus:border-gold/30 outline-none"
                     placeholder="创建人" />
                 )}
               </div>

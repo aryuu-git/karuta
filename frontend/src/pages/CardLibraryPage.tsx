@@ -4,10 +4,10 @@ import { useQueryClient } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   AlertCircle, ChevronLeft, ChevronRight, Download, Eye, Globe, Lock,
-  Pencil, Plus, RotateCcw, Search, Tag, Trash2, Upload, UserRound, X, Check,
+  Pencil, Plus, RotateCcw, Tag, Trash2, Upload, UserRound, X, Check,
 } from 'lucide-react'
 import {
-  Button, ConfirmDialog, Dialog, EmptyState, HeroHeader, Input, PageContainer, Skeleton, useToast,
+  Button, ConfirmDialog, Dialog, EmptyState, HeroHeader, Input, PageContainer, SearchInput, Select, Skeleton, useToast,
 } from '../components/ui'
 import { useMyCards, usePublicCards, useCardTags, useMyDecks, queryKeys } from '../api/queries'
 import { api } from '../api/client'
@@ -88,13 +88,14 @@ export function CardLibraryPage() {
   const page = tab === 'mine' ? minePage : publicPage
   const hasMore = cards.length >= PAGE_SIZE
 
-  /** 提交当前输入为已提交快照并重置页码（当前页签） */
-  const commit = () => {
+  /** 提交当前输入为已提交快照并重置页码（当前页签）；overrideSearch 供清除按钮直接传空值 */
+  const commit = (overrideSearch?: string) => {
+    const q = overrideSearch ?? search
     if (tab === 'mine') {
-      setMineQ({ search, tag: filterTag })
+      setMineQ({ search: q, tag: filterTag })
       setMinePage(1)
     } else {
-      setPublicQ({ search, tag: filterTag, owner: filterOwner })
+      setPublicQ({ search: q, tag: filterTag, owner: filterOwner })
       setPublicPage(1)
     }
   }
@@ -353,21 +354,19 @@ export function CardLibraryPage() {
       <div className="sticky top-14 z-sticky mb-5 pt-2 pb-3 space-y-2.5"
         style={{ background: 'linear-gradient(rgb(var(--color-ink) / 0.95) 80%, transparent)' }}>
         <div className="flex gap-2">
-          <div className="relative flex-1">
-            <Input
-              type="text" value={search}
-              onChange={e => setSearch(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') commit() }}
-              className="text-sm pl-9" placeholder="搜索歌牌名或作品名" />
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted/40" />
-          </div>
-          <Button onClick={commit}>搜索</Button>
-          <select value={sort} onChange={e => changeSort(e.target.value as SortKey)}
-            className="text-xs px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white/80 outline-none focus:border-gold/40">
+          <SearchInput
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') commit() }}
+            onClear={() => { setSearch(''); commit('') }}
+            placeholder="搜索歌牌名或作品名"
+            className="flex-1" />
+          <Select size="sm" fit className="w-28 shrink-0" value={sort} aria-label="排序方式"
+            onChange={e => changeSort(e.target.value as SortKey)}>
             {(Object.keys(SORT_LABEL) as SortKey[]).map(k => (
               <option key={k} value={k}>{SORT_LABEL[k]}</option>
             ))}
-          </select>
+          </Select>
         </div>
         <div className="flex items-center gap-1.5 flex-wrap">
           {chipTags.map(t => {
@@ -385,11 +384,10 @@ export function CardLibraryPage() {
         </div>
         {tab === 'public' && (
           <div className="flex items-center gap-2">
-            <span className="text-muted text-xs">创建人:</span>
-            <input type="text" value={filterOwner}
+            <span className="text-muted text-xs shrink-0">创建人:</span>
+            <Input size="sm" fit className="w-32" value={filterOwner}
               onChange={e => setFilterOwner(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') commit() }}
-              className="text-xs px-2.5 py-1 rounded-lg bg-white/5 border border-white/5 text-white/70 w-28 placeholder:text-white/30 focus:border-gold/30 outline-none"
               placeholder="输入用户名" />
           </div>
         )}
