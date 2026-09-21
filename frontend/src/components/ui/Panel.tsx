@@ -24,9 +24,7 @@ const paddingClasses = {
 
 export function Panel({ title, actions, accent = !!title, padding = 'md', className = '', children }: PanelProps) {
   return (
-    <section
-      className={`relative overflow-hidden rounded-xl border border-border bg-surface/60 shadow-panel ${className}`}
-    >
+    <section className={`relative overflow-hidden rounded-xl card-surface ${className}`}>
       {accent && (
         <div
           className="absolute top-0 left-0 w-full h-0.5 pointer-events-none"

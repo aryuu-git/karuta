@@ -25,6 +25,11 @@ export default {
           DEFAULT: 'rgb(var(--color-surface) / <alpha-value>)',
           elevated: 'rgb(var(--color-surface-elevated) / <alpha-value>)',
         },
+        // 歌牌米白和纸面（KarutaCard 牌理底色，跨主题恒定）
+        paper: {
+          DEFAULT: 'rgb(var(--color-card-paper) / <alpha-value>)',
+          deep: 'rgb(var(--color-card-paper-deep) / <alpha-value>)',
+        },
         border: 'rgb(var(--color-border) / <alpha-value>)',
         muted: 'rgb(var(--color-muted) / <alpha-value>)',
         'body-bg': 'rgb(var(--color-body-bg) / <alpha-value>)',

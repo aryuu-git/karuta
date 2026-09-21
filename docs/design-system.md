@@ -34,10 +34,15 @@
 | Token | 角色 | 值 |
 | --- | --- | --- |
 | `gold-foil` | **金粉**（真金，光晕/描金/徽记） | `212 167 106` #d4a76a |
+| `card-paper` / `card-paper-deep` | 歌牌米白和纸面/暗阶（KarutaCard 牌理底色） | `246 240 228` #f6f0e4 / `233 223 203` #e9dfcb |
 | `success` | 成功 | `74 222 128` #4ade80 |
 | `warning` | 警告 | `251 146 60` #fb923c |
 | `danger` | 危险/扣分 | `248 113 113` #f87171 |
 | `info` | 信息 | `96 165 250` #60a5fa |
+
+#### 背景氛围层（body 多层固定背景，自上而下）
+
+四角暗角 vignette → 金粉光晕（右上，alpha 0.09）→ 樱粉光晕（左下，alpha 0.10）→ 和纸颗粒（feTurbulence 内联 SVG，`--washi-grain`）→ 十字织纹（alpha 0.05/0.04）→ 深景三段渐变（`--accent-bg/-mid/-end`）。`background-attachment: fixed`；页面根容器一律用 `.washi-bg`（透明语义占位），不得自带底色遮挡氛围层。
 
 #### 内置色迁移策略
 
@@ -52,15 +57,14 @@ Tailwind 内置 `pink-300` / `pink-500` 在 config 层**重映射**到语义变�
 | display | `text-display` | 40/48 | serif 700 | 页面主标题、结算名次 |
 | title-xl | `text-title-xl` | 30/38 | serif 700 | 区块主标题 |
 | title | `text-title` | 20/28 | serif 500 | 卡片/面板标题 |
-| body-lg | `text-body-lg` | 17/26 | sans | 首要正文 |
-| body | `text-body` | 16/24 | sans | 默认正文 |
-| caption | `text-caption` | 14/20 | sans | 辅助说明 |
+| body-lg | `text-body-lg` | 17/26 | serif | 首要正文 |
+| body | `text-body` | 16/24 | serif | 默认正文 |
+| caption | `text-caption` | 14/20 | serif | 辅助说明 |
 | tiny | `text-tiny` | 12/16 | sans | 角标/时间戳 |
 
 中文渲染：`html` 开启 `text-wrap: balance`（标题）；正文 `font-synthesis-weight: none` 防止伪粗体糊字；字间距标题 `tracking-wide`。
 
-### 1.3 间距与圆角
-
+字体族：**正文默认 = `font-serif` 栈**（body 级 `'Noto Serif JP', 'Hiragino Mincho ProN', 'Yu Mincho', serif`，`font-synthesis: none` 防伪粗体），整体书卷气；数据密集 UI（表格/徽章/时间戳）可显式 `font-sans`（system-ui）。
 间距沿用 Tailwind 4px 网格。**区块间距语义**：页内区块 `gap-6`，卡片内 `gap-3`，表单字段 `gap-4`，页面左右安全边距 `px-4 md:px-6`。
 
 | Token | 值 | 用途 |

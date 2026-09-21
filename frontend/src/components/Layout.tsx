@@ -3,6 +3,7 @@ import { Link, useNavigate, Navigate, useLocation } from 'react-router-dom'
 import { Castle, Images, Layers, CircleUserRound, LogOut } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { Changelog } from './Changelog'
+import { PetalsLayer } from './ui/PetalsLayer'
 
 interface LayoutProps {
   children: ReactNode
@@ -39,8 +40,12 @@ export function Layout({ children }: LayoutProps) {
     navigate('/login')
   }
 
+  // 对战页不铺花瓣：战场信息密度优先，氛围克制
+  const isBattle = /^\/rooms\/\d+$/.test(location.pathname)
+
   return (
     <div className="min-h-screen washi-bg flex flex-col">
+      {!isBattle && <PetalsLayer />}
       {/* 顶部导航：毛玻璃 + 细金线底缘 */}
       <header
         className="sticky top-0 z-50 backdrop-blur-md bg-ink-deep/70"

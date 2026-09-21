@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { UserRound, Lock, Sparkles, LogIn, UserPlus, Ghost, KeyRound, LogOut } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { api } from '../api/client'
-import { Button, Input, PageSpinner } from '../components/ui'
+import { Button, Input, PageSpinner, Ornament } from '../components/ui'
 
 /** 认证三模式（登录 / 注册 / 访客），由 ?mode= 深链驱动，切换不换页 */
 type AuthMode = 'login' | 'register' | 'guest'
@@ -62,7 +62,7 @@ export function AuthPage() {
             🌸 二次元歌牌大乱斗
           </h1>
           <p className="text-muted text-sm">抢牌即决战，一瞬定胜负。</p>
-          <Ornament />
+          <Ornament className="mt-4" />
         </div>
 
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15, duration: 0.4 }}
@@ -286,13 +286,3 @@ function ErrorNote({ children }: { children: ReactNode }) {
   )
 }
 
-/** 纹样分隔：金粉菱形 + 发丝线（品牌区专用装饰） */
-export function Ornament() {
-  return (
-    <div className="mt-4 flex items-center justify-center gap-3" aria-hidden="true">
-      <span className="h-px w-16 bg-gradient-to-l from-gold-foil/50 to-transparent" />
-      <span className="w-1.5 h-1.5 rotate-45 bg-gold-foil/70 shadow-foil" />
-      <span className="h-px w-16 bg-gradient-to-r from-gold-foil/50 to-transparent" />
-    </div>
-  )
-}

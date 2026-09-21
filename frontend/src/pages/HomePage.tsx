@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { KeyRound, Swords, Crown, RefreshCw, Zap, Search, Star, Layers, Globe, Castle } from 'lucide-react'
 import { Layout } from '../components/Layout'
-import { Button, Input, Badge, EmptyState, type BadgeTone } from '../components/ui'
+import { Button, Input, Badge, EmptyState, SectionTitle, type BadgeTone } from '../components/ui'
 import { useAuth } from '../hooks/useAuth'
 import { api } from '../api/client'
 import type { Deck, RoomListItem } from '../api/types'
@@ -70,8 +70,7 @@ export function HomePage() {
 
         {/* 邀请码入场 + 创建房间 */}
         <div className="flex flex-col sm:flex-row gap-4 mb-8">
-          <div className="flex-1 rounded-2xl p-5 relative overflow-hidden"
-            style={{ background: 'linear-gradient(135deg, rgb(var(--accent-bg)/ 0.3) 0%, rgb(var(--accent-bg-mid)/ 0.7) 50%, rgb(var(--accent-bg-end)/ 0.3) 100%)', border: '1px solid rgb(var(--accent-primary)/ 0.15)' }}>
+          <div className="flex-1 card-surface p-5 relative overflow-hidden">
             <div className="absolute top-0 left-0 w-20 h-20 opacity-10 pointer-events-none"
               style={{ background: 'radial-gradient(circle, rgb(var(--glow-color)/ 0.8), transparent 70%)' }} />
             <h2 className="font-serif text-title text-gold font-bold mb-1 relative flex items-center gap-1.5">
@@ -100,8 +99,7 @@ export function HomePage() {
             )}
           </div>
 
-          <div className="sm:w-52 rounded-2xl p-5 flex flex-col items-center justify-center relative overflow-hidden"
-            style={{ background: 'linear-gradient(160deg, rgb(var(--accent-bg-end)/ 0.5), rgb(var(--accent-bg-mid)/ 0.8))', border: '1px solid rgb(var(--accent-primary)/ 0.12)' }}>
+          <div className="sm:w-52 card-surface p-5 flex flex-col items-center justify-center relative overflow-hidden">
             <div className="absolute bottom-0 right-0 w-16 h-16 opacity-10 pointer-events-none"
               style={{ background: 'radial-gradient(circle, rgb(var(--accent-primary)/ 0.8), transparent 70%)' }} />
             <Button onClick={() => navigate('/rooms/new')} className="w-full" icon={<Swords size={16} />}>
@@ -114,15 +112,15 @@ export function HomePage() {
         {/* 我的牌组（快速入口） */}
         {myDecks.length > 0 && (
           <div className="mb-6">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="font-serif text-sm text-gold/80 flex items-center gap-1.5">
-                <Layers size={14} />
-                我的战阵
-              </h2>
-              <button onClick={() => navigate('/decks')} className="text-muted/40 text-xs hover:text-gold transition-colors font-serif">
-                全部阵容 →
-              </button>
-            </div>
+            <SectionTitle
+              icon={<Layers size={14} />}
+              actions={
+                <button onClick={() => navigate('/decks')} className="text-muted/40 text-xs hover:text-gold transition-colors font-serif shrink-0">
+                  全部阵容 →
+                </button>
+              }>
+              我的战阵
+            </SectionTitle>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
               {myDecks.slice(0, 4).map(deck => (
                 <div key={deck.id}
@@ -154,8 +152,7 @@ export function HomePage() {
         </a>
 
         {/* 战场大厅 */}
-        <div className="rounded-2xl overflow-hidden mb-8"
-          style={{ background: 'linear-gradient(180deg, rgb(var(--accent-bg-end)/ 0.4) 0%, rgb(var(--accent-bg-mid)/ 0.7) 100%)', border: '1px solid rgb(var(--accent-primary)/ 0.12)' }}>
+        <div className="card-surface overflow-hidden mb-8">
           <div className="flex items-center justify-between px-5 py-3.5 relative"
             style={{ borderBottom: '1px solid rgb(var(--accent-primary)/ 0.08)' }}>
             <div className="flex items-center gap-2">
@@ -244,14 +241,9 @@ export function HomePage() {
             : publicDecks
           return (
             <div>
-              <div className="flex items-center gap-3 mb-3">
-                <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gold/20 to-transparent" />
-                <h2 className="font-serif text-sm text-gold shrink-0 flex items-center gap-1.5">
-                  <Globe size={14} />
-                  万阵共享 · 即刻出阵
-                </h2>
-                <div className="h-px flex-1 bg-gradient-to-r from-gold/20 via-transparent to-transparent" />
-              </div>
+              <SectionTitle icon={<Globe size={14} />}>
+                万阵共享 · 即刻出阵
+              </SectionTitle>
               <div className="relative mb-3">
                 <Input
                   type="text"
