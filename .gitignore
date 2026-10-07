@@ -5,9 +5,18 @@ data/
 *.db-shm
 *.db-wal
 
+# 发布包（本机 build-release.sh 产出，上传服务器用，不入库）
+release/
+karuta-*.tar.zst
+karuta-*.tar.zst.sha256
+# 源码导出包（git archive 产物）
+karuta-src-*.zip
+
 # 前端截图基线（视觉回归对比用，仅本地保留）
 frontend/baseline/
 frontend/public/ffmpeg/
+# 前端一次性分析产物（编译后的对照快照，仅本地保留）
+frontend/tmp/
 
 # npm 依赖
 frontend/node_modules/
