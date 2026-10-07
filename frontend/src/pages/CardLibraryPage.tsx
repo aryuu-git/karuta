@@ -4,11 +4,13 @@ import { useQueryClient } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   AlertCircle, ChevronLeft, ChevronRight, Download, Eye, Globe, Lock,
-  Pencil, Plus, RotateCcw, Tag, Trash2, Upload, UserRound, X, Check,
+  Pencil, Plus, RotateCcw, Tag, Trash2, Upload, UserRound, X, Check, Wand2,
 } from 'lucide-react'
 import {
-  Button, ConfirmDialog, Dialog, EmptyState, HeroHeader, Input, PageContainer, SearchInput, Select, Skeleton, useToast,
+  ActionBar, Button, ConfirmDialog, Dialog, EmptyState, FadeIn, HeroHeader, Input, ListPageShell, SearchInput, SegmentedTabs, Select, Skeleton, useToast,
+  type ButtonVariant,
 } from '../components/ui'
+import { PackPromptDialog } from '../components/PackPromptDialog'
 import { useMyCards, usePublicCards, useCardTags, useMyDecks, queryKeys } from '../api/queries'
 import { api } from '../api/client'
 import { useAuth } from '../hooks/useAuth'
@@ -20,7 +22,9 @@ import type { Card } from '../api/types'
 
 type Tab = 'mine' | 'public'
 type SortKey = 'latest' | 'name' | 'plays'
-const PAGE_SIZE = 60
+/** 每页条数（2026-10-05）：取卡片栅格各断点列数 3/4/6/8 的公倍数 24 的整数倍（48），
+ *  保证整页的每一排都排满，不再出现半排尾巴。上限受后端 size≤100 约束。 */
+const PAGE_SIZE = 48
 
 /** 已提交的查询快照（区别于输入框实时值，避免每敲一键发一请求） */
 interface CommittedQuery {
@@ -63,6 +67,7 @@ export function CardLibraryPage() {
   const [drawerId, setDrawerId] = useState<number | null>(null)
   const [deckPickerIds, setDeckPickerIds] = useState<number[] | null>(null)
   const [tagDialogOpen, setTagDialogOpen] = useState(false)
+  const [showPackPrompt, setShowPackPrompt] = useState(false) // AI 制作导入包提示词弹窗
   const [batchTagInput, setBatchTagInput] = useState('')
   // 库内试听（单 audio 元素 + 首音频 URL 缓存）
   const [playingId, setPlayingId] = useState<number | null>(null)
@@ -316,10 +321,11 @@ export function CardLibraryPage() {
   const chipTags = ['', ...new Set(['游戏', '动画', ...allPublicTags])]
 
   return (
-    <PageContainer size="xl">
-      <HeroHeader
+    <ListPageShell
+      hero={<HeroHeader
+        compact
         title="牌库"
-        subtitle={tab === 'mine' ? '我的歌牌收藏' : '所有人共享的歌牌'}
+        subtitle={tab === 'mine' ? '我创建的歌牌' : '所有人共享的歌牌'}
         actions={
           tab === 'mine' ? (
             <>
@@ -328,108 +334,108 @@ export function CardLibraryPage() {
                 icon={selectMode ? <Check size={12} /> : <Pencil size={12} />}>
                 {selectMode ? '退出多选' : '多选'}
               </Button>
+              <Button variant="ghost" size="sm" onClick={() => setShowPackPrompt(true)}
+                icon={<Wand2 size={16} />}>ai-native</Button>
               <Button variant="ghost" size="sm" disabled={packing}
                 onClick={() => importInputRef.current?.click()}
-                icon={<Upload size={13} />}>导入牌包</Button>
-              <Button size="sm" onClick={() => navigate(paths.cardNew())} icon={<Plus size={15} />}>新建歌牌</Button>
+                icon={<Upload size={16} />}>导入牌包</Button>
+              <Button size="sm" onClick={() => navigate(paths.cardNew())} icon={<Plus size={16} />}>新建歌牌</Button>
               <input ref={importInputRef} type="file" accept=".zip" className="hidden"
                 onChange={e => void handleImportFile(e.target.files?.[0] ?? null)} />
             </>
           ) : undefined
         }
-      />
-
-      {/* 页签 */}
-      <div className="flex gap-0.5 mb-4 bg-white/5 rounded-xl p-1 w-fit">
-        {([['mine', '我的收藏', UserRound], ['public', '万牌共享', Globe]] as const).map(([key, label, Icon]) => (
-          <button key={key} onClick={() => switchTab(key)}
-            className={`inline-flex items-center gap-1.5 px-5 py-2 text-sm font-medium rounded-lg transition-all ${
-              tab === key ? 'bg-gradient-to-r from-gold/20 to-pink-500/10 text-gold shadow-sm' : 'text-muted hover:text-white/70'}`}>
-            <Icon size={14} /> {label}
-          </button>
-        ))}
-      </div>
-
-      {/* 吸顶筛选条：搜索 + 排序 + 标签 chips + 公共库创建人 */}
-      <div className="sticky top-14 z-sticky mb-5 pt-2 pb-3 space-y-2.5"
-        style={{ background: 'linear-gradient(rgb(var(--color-ink) / 0.95) 80%, transparent)' }}>
-        <div className="flex gap-2">
-          <SearchInput
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') commit() }}
-            onClear={() => { setSearch(''); commit('') }}
-            placeholder="搜索歌牌名或作品名"
-            className="flex-1" />
-          <Select size="sm" fit className="w-28 shrink-0" value={sort} aria-label="排序方式"
-            onChange={v => changeSort(v as SortKey)}
-            options={(Object.keys(SORT_LABEL) as SortKey[]).map(k => ({ value: k, label: SORT_LABEL[k] }))} />
-        </div>
-        <div className="flex items-center gap-1.5 flex-wrap">
-          {chipTags.map(t => {
-            const count = t ? (tagCounts.get(t) || 0) : cards.length
-            return (
-              <button key={t} onClick={() => selectTag(t)}
-                className={`text-xs px-3 py-1.5 rounded-full transition-all ${
-                  filterTag === t
-                    ? 'bg-gradient-to-r from-gold/25 to-pink-500/15 text-gold border border-gold/40'
-                    : 'bg-white/5 text-white/40 border border-white/5 hover:border-pink-300/20 hover:text-pink-300/70'}`}>
-                {t || '全部'}{count > 0 ? ` (${count})` : ''}
-              </button>
-            )
-          })}
-        </div>
-        {tab === 'public' && (
-          <div className="flex items-center gap-2">
-            <span className="text-muted text-xs shrink-0">创建人:</span>
-            <Input size="sm" fit className="w-32" value={filterOwner}
-              onChange={e => setFilterOwner(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') commit() }}
-              placeholder="输入用户名" />
+      />}
+      stickyToolbar
+      toolbar={
+        <>
+          {/* 左簇：页签 + 标签 chips（+公共库创建人）；右簇：搜索 + 排序——双端对齐 */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <SegmentedTabs
+              variant="pill"
+              className="w-fit"
+              aria-label="牌库页签"
+              value={tab}
+              onChange={switchTab}
+              options={[
+                { value: 'mine' as Tab, label: '我的歌牌', icon: <UserRound size={16} /> },
+                { value: 'public' as Tab, label: '万牌共享', icon: <Globe size={16} /> },
+              ]}
+            />
+            <SegmentedTabs
+              variant="chip"
+              size="sm"
+              aria-label="标签筛选"
+              value={filterTag}
+              onChange={selectTag}
+              options={chipTags.map(t => {
+                const count = t ? (tagCounts.get(t) || 0) : cards.length
+                return { value: t, label: <>{t || '全部'}{count > 0 ? ` (${count})` : ''}</> }
+              })}
+            />
+            {tab === 'public' && (
+              <div className="flex items-center gap-2">
+                <span className="text-muted/70 text-xs shrink-0">创建人:</span>
+                <Input size="sm" fit className="w-32" value={filterOwner}
+                  onChange={e => setFilterOwner(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') commit() }}
+                  placeholder="输入用户名" />
+              </div>
+            )}
           </div>
-        )}
-      </div>
-
+          <div className="flex items-center gap-2 shrink-0">
+            <SearchInput
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') commit() }}
+              onClear={() => { setSearch(''); commit('') }}
+              placeholder="搜索歌牌名或作品名"
+              className="w-56 sm:w-64" />
+            <Select size="sm" fit className="w-28 shrink-0" value={sort} aria-label="排序方式"
+              onChange={v => changeSort(v as SortKey)}
+              options={(Object.keys(SORT_LABEL) as SortKey[]).map(k => ({ value: k, label: SORT_LABEL[k] }))} />
+          </div>
+        </>
+      }>
       {/* 加载：3:4 牌面骨架网格（与 CardTile 同尺寸） */}
       {loading && (
         <Skeleton variant="card" rows={6}
           className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 xl:grid-cols-8 gap-3" />
       )}
       {!loading && !error && cards.length === 0 && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="rounded-2xl"
-          style={{ background: 'linear-gradient(160deg, rgb(var(--accent-bg-end)/ 0.5), rgb(var(--accent-bg-mid)/ 0.8))', border: '1px dashed rgb(var(--accent-primary)/ 0.2)' }}>
+        <FadeIn className="rounded-2xl bg-panel-void border border-accent/15">
           {tab === 'mine' ? (
-            <EmptyState icon="🎴" title="牌库空空如也" description="新建第一张歌牌，配上声音"
-              action={<Button onClick={() => navigate(paths.cardNew())} icon={<Plus size={15} />}>新建歌牌</Button>} />
+            <EmptyState icon="🌸" title="牌库空空如也" description="新建第一张歌牌，配上声音"
+              action={<Button onClick={() => navigate(paths.cardNew())} icon={<Plus size={16} />}>新建歌牌</Button>} />
           ) : (
-            <EmptyState icon="🎴" title="没有找到匹配的歌牌" description="换个关键词或标签试试"
-              action={<Button variant="outline" onClick={clearFilters} icon={<X size={15} />}>清除筛选</Button>} />
+            <EmptyState icon="🔍" title="没有找到匹配的歌牌" description="换个关键词或标签试试"
+              action={<Button variant="outline" onClick={clearFilters} icon={<X size={16} />}>清除筛选</Button>} />
           )}
-        </motion.div>
+        </FadeIn>
       )}
 
       {/* 错误态 */}
       {!loading && error && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="rounded-2xl text-center py-14 px-6"
-          style={{ background: 'linear-gradient(160deg, rgb(var(--accent-bg-end)/ 0.5), rgb(var(--accent-bg-mid)/ 0.8))', border: '1px dashed rgba(192,57,43,0.35)' }}>
-          <div className="w-12 h-12 mx-auto mb-4 rounded-full flex items-center justify-center"
-            style={{ background: 'rgba(192,57,43,0.12)', border: '1px solid rgba(192,57,43,0.3)' }}>
-            <AlertCircle size={22} className="text-crimson" />
+        <FadeIn className="rounded-2xl text-center py-14 px-6 bg-panel-void border border-danger/30">
+          <div className="w-12 h-12 mx-auto mb-4 rounded-full flex items-center justify-center bg-danger/10 border border-danger/30">
+            <AlertCircle size={20} className="text-crimson" />
           </div>
-          <h3 className="font-serif text-title text-gold mb-2">加载失败</h3>
-          <p className="text-muted text-body max-w-sm mx-auto mb-5">{error}</p>
-          <Button variant="outline" onClick={() => activeQ.refetch()} icon={<RotateCcw size={14} />}>重试</Button>
-        </motion.div>
+          <h3 className="font-serif text-title text-gold-light mb-2">加载失败</h3>
+          <p className="text-muted text-body mb-5">{error}</p>
+          <Button variant="outline" onClick={() => activeQ.refetch()} icon={<RotateCcw size={16} />}>重试</Button>
+        </FadeIn>
       )}
 
-      {/* 牌面网格 */}
+      {/* 牌面网格（2026-10-05）：回到 CSS grid。grid 轨道是 minmax(0,1fr)，卡面内长文本
+          只会被 truncate，不会把格子撑宽、每排恒为 N 张（flex-wrap + basis 会因
+          min-width:auto 使某排少一张、末页出现缺位），页大小 48 已按 3/4/6/8 列取公倍数 */}
       {!loading && !error && cards.length > 0 && (
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 xl:grid-cols-8 gap-3">
           <AnimatePresence>
             {cards.map((card, i) => (
-              <motion.div key={card.id}
-                initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9 }}
-                transition={{ delay: Math.min(i * 0.01, 0.3) }}>
+              <motion.div key={card.id} exit={{ opacity: 0, scale: 0.9 }}>
+                {/* 入场走 FadeIn（设计系统 §1.5），motion 仅保留 AnimatePresence 退场 */}
+                <FadeIn delay={Math.min(i * 10, 300)} y={8}>
                 <CardTile
                   card={card}
                   showOwner={tab === 'public'}
@@ -448,6 +454,7 @@ export function CardLibraryPage() {
                   onTogglePlay={tab === 'mine' || tab === 'public' ? togglePreview : undefined}
                   onSelect={toggleCardSelect}
                 />
+                </FadeIn>
               </motion.div>
             ))}
           </AnimatePresence>
@@ -467,54 +474,44 @@ export function CardLibraryPage() {
         </div>
       )}
 
-      {/* 底部批量操作浮条（多选态） */}
-      <AnimatePresence>
-        {selectMode && tab === 'mine' && (
-          <motion.div
-            initial={{ y: 80, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 80, opacity: 0 }}
-            className="fixed bottom-4 left-1/2 -translate-x-1/2 z-float flex items-center gap-2 px-4 py-2.5 rounded-2xl shadow-2xl border border-gold/30 backdrop-blur"
-            style={{ background: 'rgb(var(--color-ink-deep) / 0.95)' }}>
-            <button onClick={() => {
-              if (selectedCards.size === cards.length) setSelectedCards(new Set())
-              else setSelectedCards(new Set(cards.map(c => c.id)))
-            }} className="text-xs text-gold/80 hover:text-gold transition-colors px-2">
-              {selectedCards.size === cards.length ? '取消全选' : '全选'}
-            </button>
-            <span className="text-muted text-xs font-serif border-l border-white/10 pl-2">
-              已选 <span className="text-gold font-bold">{selectedCards.size}</span>
-            </span>
-            <Button size="sm" variant="gold" disabled={selectedCards.size === 0}
-              icon={<Plus size={13} />} onClick={() => setDeckPickerIds([...selectedCards])}>加入牌组</Button>
-            <Button size="sm" variant="outline" disabled={selectedCards.size === 0 || packing}
-              icon={<Download size={13} />} onClick={() => void handleExport([...selectedCards])}>导出</Button>
-            {(['private', 'playable', 'editable'] as const).map(level => {
-              const LevelIcon = shareIcons[level]
-              return (
-                <button key={level} disabled={selectedCards.size === 0}
-                  onClick={() => handleBatchShare(level)}
-                  className="inline-flex items-center gap-1 text-[10px] px-2 py-1 rounded-lg font-medium transition-all disabled:opacity-30 hover:scale-105"
-                  style={{ background: `${shareColors[level]}0.12)`, border: `1px solid ${shareColors[level]}0.35)`, color: `${shareColors[level]}0.9)` }}>
-                  <LevelIcon size={10} />{shareLabels[level]}
-                </button>
-              )
-            })}
-            <button disabled={selectedCards.size === 0} onClick={() => setTagDialogOpen(true)}
-              className="inline-flex items-center gap-1 text-[10px] px-2 py-1 rounded-lg font-medium transition-all disabled:opacity-30 hover:scale-105 bg-gold/10 border border-gold/30 text-gold/90">
-              <Tag size={10} /> 加标签
-            </button>
-            <button onClick={() => setBatchConfirm(true)}
-              disabled={selectedCards.size === 0 || batchDeleting}
-              className="inline-flex items-center gap-1 text-[10px] px-2 py-1 rounded-lg font-medium transition-all disabled:opacity-30 hover:scale-105"
-              style={{ background: 'rgba(192,57,43,0.15)', border: '1px solid rgba(192,57,43,0.3)', color: 'rgba(192,57,43,0.9)' }}>
-              {batchDeleting ? '…' : (<><Trash2 size={10} /> 删除</>)}
-            </button>
-            <button onClick={() => { setSelectMode(false); setSelectedCards(new Set()) }}
-              className="text-[10px] px-2 py-1 rounded-lg text-muted hover:text-white transition-colors border border-white/10">
-              完成
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* 底部批量操作浮条（多选态）：ActionBar 统一吸底批量条，内部按钮走 Button size="xs" */}
+      {selectMode && tab === 'mine' && (
+        <ActionBar className="animate-slide-in-up">
+          <Button size="xs" variant="ghost" onClick={() => {
+            if (selectedCards.size === cards.length) setSelectedCards(new Set())
+            else setSelectedCards(new Set(cards.map(c => c.id)))
+          }}>
+            {selectedCards.size === cards.length ? '取消全选' : '全选'}
+          </Button>
+          <span className="text-muted text-xs font-serif border-l border-white/10 pl-2">
+            已选 <span className="text-gold font-bold">{selectedCards.size}</span>
+          </span>
+          <Button size="xs" variant="gold" disabled={selectedCards.size === 0}
+            icon={<Plus size={16} />} onClick={() => setDeckPickerIds([...selectedCards])}>加入牌组</Button>
+          <Button size="xs" variant="outline" disabled={selectedCards.size === 0 || packing}
+            icon={<Download size={16} />} onClick={() => void handleExport([...selectedCards])}>导出</Button>
+          {(['private', 'playable', 'editable'] as const).map(level => {
+            const LevelIcon = shareIcons[level]
+            return (
+              <Button key={level} size="xs" variant={shareVariant[level]} disabled={selectedCards.size === 0}
+                icon={<LevelIcon size={12} />} onClick={() => handleBatchShare(level)}>
+                {shareLabels[level]}
+              </Button>
+            )
+          })}
+          <Button size="xs" variant="outline" disabled={selectedCards.size === 0}
+            icon={<Tag size={12} />} onClick={() => setTagDialogOpen(true)}>加标签</Button>
+          <Button size="xs" variant="danger" disabled={selectedCards.size === 0 || batchDeleting}
+            icon={batchDeleting ? undefined : <Trash2 size={12} />} onClick={() => setBatchConfirm(true)}>
+            {batchDeleting ? '…' : '删除'}
+          </Button>
+          <Button size="xs" variant="ghost"
+            onClick={() => { setSelectMode(false); setSelectedCards(new Set()) }}>完成</Button>
+        </ActionBar>
+      )}
+
+      {/* AI 制作导入包提示词（2026-09-30）：格式规格即提示词，交给用户 AI 产出 .zip */}
+      <PackPromptDialog open={showPackPrompt} onClose={() => setShowPackPrompt(false)} />
 
       {/* 详情抽屉 */}
       <CardDrawer
@@ -584,7 +581,7 @@ export function CardLibraryPage() {
         onConfirm={handleBatchDelete}
         onCancel={() => setBatchConfirm(false)}
       />
-    </PageContainer>
+    </ListPageShell>
   )
 }
 
@@ -602,9 +599,9 @@ const shareIcons: Record<'private' | 'playable' | 'editable', typeof Lock> = {
   editable: Pencil,
 }
 
-/** 批量共享级别的着色前缀（rgba 前缀，渲染时拼接透明度） */
-const shareColors: Record<'private' | 'playable' | 'editable', string> = {
-  private: 'rgba(150,150,150,',
-  playable: 'rgba(74,144,217,',
-  editable: 'rgba(34,197,94,',
+/** 批量共享级别的按钮变体（原 rgba 着色收敛到 Button 语义变体：中性=ghost，授权=outline） */
+const shareVariant: Record<'private' | 'playable' | 'editable', ButtonVariant> = {
+  private: 'ghost',
+  playable: 'outline',
+  editable: 'outline',
 }

@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react'
 import { motion } from 'framer-motion'
-import { Play, Lock, Eye, Pencil, Check, Heart } from 'lucide-react'
+import { Play, Lock, Eye, Pencil, Heart } from 'lucide-react'
+import { Checkbox, IconButton } from './ui'
 import type { Card } from '../api/types'
 
 /** 无封面占位：按 card id 种子生成确定性渐变（与 Avatar 同思路），彻底消灭「—」 */
@@ -19,10 +20,11 @@ export function formatDuration(sec: number): string {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
 }
 
-const SHARE_TONE: Record<string, { icon: typeof Lock; label: string; color: string }> = {
-  private: { icon: Lock, label: '私有', color: 'rgb(150,150,150)' },
-  playable: { icon: Eye, label: '可使用', color: 'rgb(74,144,217)' },
-  editable: { icon: Pencil, label: '可编辑', color: 'rgb(34,197,94)' },
+// 共享级别角标：色彩走语义 token（原 rgb 字面量违反 design:lint R5）
+const SHARE_TONE: Record<string, { icon: typeof Lock; label: string; tone: string }> = {
+  private: { icon: Lock, label: '私有', tone: 'text-muted' },
+  playable: { icon: Eye, label: '可使用', tone: 'text-info' },
+  editable: { icon: Pencil, label: '可编辑', tone: 'text-success' },
 }
 
 /**
@@ -43,14 +45,14 @@ export function CardTile({ card, selectable, selected, playing, showOwner, onOpe
 }) {
   const share = SHARE_TONE[card.share_level ?? 'playable'] ?? SHARE_TONE.playable
   const ShareIcon = share.icon
+  const playIcon = playing ? <span className="text-sm font-bold">■</span> : <Play size={16} fill="currentColor" />
   const duration = formatDuration(card.audio_duration ?? 0)
   const initial = (card.display_text || card.series || '牌').trim().charAt(0)
 
   return (
     <motion.div
-      whileHover={{ y: -2 }}
-      className={`relative rounded-xl overflow-hidden cursor-pointer group aspect-[3/4] border transition-all
-        ${selected ? 'border-gold shadow-gold' : 'border-border hover:border-gold/50'}`}
+      className={`relative rounded-xl overflow-hidden cursor-pointer group aspect-[3/4] border transition-all duration-200 hover:-translate-y-1
+        ${selected ? 'border-gold shadow-gold hover:shadow-gold-lg' : 'border-border hover:shadow-lg'}`}
       style={card.cover_url ? undefined : cardPlaceholderStyle(card.id)}
       onClick={() => (selectable ? onSelect?.(card.id) : onOpen?.(card))}
     >
@@ -64,8 +66,7 @@ export function CardTile({ card, selectable, selected, playing, showOwner, onOpe
       )}
 
       {/* 底部渐变压名称 */}
-      <div className="absolute inset-x-0 bottom-0 p-2 pt-6"
-        style={{ background: 'linear-gradient(transparent, rgba(0,0,0,0.75))' }}>
+      <div className="absolute inset-x-0 bottom-0 p-2 pt-6 bg-gradient-to-t from-black/75 to-transparent">
         <p className="text-xs font-medium text-white truncate">{card.display_text || '未命名'}</p>
         {(showOwner || card.series) && (
           <p className="text-[10px] text-white/60 truncate">
@@ -76,33 +77,33 @@ export function CardTile({ card, selectable, selected, playing, showOwner, onOpe
 
       {/* 卡角徽标：音频数·时长 + 共享级别 */}
       <div className="absolute top-1.5 right-1.5 flex flex-col items-end gap-1">
-        <span className="text-[10px] px-1.5 py-0.5 rounded bg-black/50 text-white/85 backdrop-blur-sm tabular-nums">
+        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-black/50 text-white/85 backdrop-blur-sm tabular-nums">
           {card.audio_count ?? 0} 首{duration ? ` · ${duration}` : ''}
         </span>
-        <span className="flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-black/50 backdrop-blur-sm"
-          style={{ color: share.color }}>
-          <ShareIcon size={9} /> {share.label}
+        <span className={`flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full bg-black/50 backdrop-blur-sm ${share.tone}`}>
+          <ShareIcon size={12} /> {share.label}
         </span>
       </div>
 
-      {/* 多选态：左上勾选框 */}
+      {/* 多选态：左上勾选框（统一 Checkbox，group-hover 语义经 className 保留） */}
       {selectable && (
-        <div className={`absolute top-1.5 left-1.5 w-5 h-5 rounded border flex items-center justify-center transition-all
-          ${selected ? 'bg-gold border-gold' : 'bg-black/40 border-white/40 group-hover:border-gold/70'}`}>
-          {selected && <Check size={13} className="text-ink-deep" />}
-        </div>
+        <Checkbox
+          checked={selected ?? false}
+          size="sm"
+          aria-label="选择"
+          className={`absolute top-1.5 left-1.5 z-10 ${selected ? '' : 'group-hover:border-gold/70'}`}
+        />
       )}
 
       {/* hover 试听（有音频且非多选态） */}
       {onTogglePlay && !selectable && (card.audio_count ?? 0) > 0 && (
-        <button
+        <IconButton
+          icon={playIcon}
+          tone="gold"
           onClick={e => { e.stopPropagation(); onTogglePlay(card) }}
-          className={`absolute bottom-9 left-1.5 w-8 h-8 rounded-full flex items-center justify-center
-            bg-gold/90 text-ink-deep shadow-lg transition-all
-            ${playing ? 'opacity-100 scale-105' : 'opacity-0 group-hover:opacity-100'}`}
-          title={playing ? '停止试听' : '试听'}>
-          {playing ? <span className="text-sm font-bold">■</span> : <Play size={14} fill="currentColor" />}
-        </button>
+          className={`absolute bottom-9 left-1.5 shadow-lg ${playing ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+          aria-label={playing ? '停止试听' : '试听'}
+        />
       )}
 
       {/* 点赞（公共库社交；常显计数，点击切换） */}
@@ -110,7 +111,7 @@ export function CardTile({ card, selectable, selected, playing, showOwner, onOpe
         <button
           onClick={e => { e.stopPropagation(); onLike(card) }}
           className={`absolute bottom-9 right-1.5 h-7 px-1.5 rounded-full flex items-center gap-1 text-[10px]
-            shadow-lg transition-all bg-black/60 backdrop-blur-sm
+            shadow-lg transition-all bg-black/60 backdrop-blur-sm hover:scale-105 active:scale-95
             ${card.liked_by_me ? 'text-crimson' : 'text-white/70 hover:text-crimson'}`}
           title={card.liked_by_me ? '取消点赞' : '点赞'}>
           <Heart size={12} fill={card.liked_by_me ? 'currentColor' : 'none'} />

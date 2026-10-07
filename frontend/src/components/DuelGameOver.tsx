@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { paths } from '../routes/paths'
-import { Button } from './ui'
+import { Button, PanelSurface, AchievementUnlocked } from './ui'
 import { useRematch } from '../features/play/useRematch'
 import { subscribeUnlocks } from '../features/achievements/unlockBus'
 import type { AchievementUnlock } from '../api/types'
@@ -52,9 +52,10 @@ export function DuelGameOver({ data, currentUserId, roomId, isHost, deckId }: Du
         initial={{ scale: 0.85, opacity: 0, y: 30 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 0.2, ease: 'easeOut' }}
-        className="relative z-10 bg-ink-deep/95 border border-gold/30 rounded-2xl p-5 sm:p-6 max-w-2xl w-full mx-4 shadow-gold-lg overflow-y-auto"
-        style={{ maxHeight: '92vh', boxShadow: '0 0 60px rgb(var(--accent-primary)/ 0.2), 0 20px 40px rgba(0,0,0,0.6)' }}
+        className="relative z-10 max-w-2xl w-full mx-4"
       >
+        <PanelSurface variant="ink-deep" radius="2xl" className="shadow-modal max-h-[92vh] w-full flex flex-col">
+          <div className="overflow-y-auto p-5 sm:p-6">
         {/* 标题 */}
         <div className="text-center mb-5">
           <motion.h1
@@ -121,20 +122,9 @@ export function DuelGameOver({ data, currentUserId, roomId, isHost, deckId }: Du
         </div>
 
         {/* 本局成就（v7 增补） */}
-        {unlocks.length > 0 && (
-          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}
-            className="rounded-2xl p-4 mt-5 text-center"
-            style={{ background: 'rgb(var(--color-gold)/ 0.06)', border: '1px solid rgb(var(--color-gold)/ 0.3)' }}>
-            <p className="text-[10px] tracking-widest text-gold/80 mb-2">本局解锁成就</p>
-            <div className="flex flex-wrap justify-center gap-2">
-              {unlocks.map(u => (
-                <span key={u.key} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/20 border border-gold/30 text-xs text-gold">
-                  <span>{u.icon}</span> {u.title}
-                </span>
-              ))}
-            </div>
-          </motion.div>
-        )}
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}>
+          <AchievementUnlocked unlocks={unlocks} />
+        </motion.div>
 
         {/* 返回 / 再来一局 */}
         <div className="flex flex-col sm:flex-row gap-3 mt-6">
@@ -166,6 +156,8 @@ export function DuelGameOver({ data, currentUserId, roomId, isHost, deckId }: Du
             回大本营
           </Button>
         </div>
+          </div>
+        </PanelSurface>
       </motion.div>
     </motion.div>
   )

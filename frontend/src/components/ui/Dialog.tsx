@@ -62,11 +62,11 @@ export function Dialog({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 16, scale: 0.97 }}
             transition={{ duration: 0.25, ease: [0.34, 1.56, 0.64, 1] }}
-            className={`w-full ${sizeClasses[size]} rounded-xl border border-border bg-ink-deep shadow-card overflow-hidden`}
+            className={`w-full ${sizeClasses[size]} max-h-[calc(100dvh-2rem)] rounded-xl border border-border bg-ink-deep shadow-card overflow-hidden flex flex-col`}
             onClick={(e) => e.stopPropagation()}
           >
             {(title || closable) && (
-              <div className="flex items-center justify-between px-6 py-4 border-b border-border/50">
+              <div className="shrink-0 flex items-center justify-between px-6 py-4 border-b border-border/50">
                 <h3 className="font-serif text-title text-gold">{title}</h3>
                 {closable && (
                   <button
@@ -74,14 +74,14 @@ export function Dialog({
                     className="text-muted hover:text-crimson transition-colors duration-fast p-1 rounded focus-visible:shadow-gold"
                     aria-label="关闭"
                   >
-                    <X size={18} />
+                    <X size={20} />
                   </button>
                 )}
               </div>
             )}
-            <div className="px-6 py-5">{children}</div>
+            <div className="px-6 py-5 overflow-y-auto">{children}</div>
             {actions && (
-              <div className="flex justify-end gap-3 px-6 py-4 border-t border-border/50">
+              <div className="shrink-0 flex justify-end gap-3 px-6 py-4 border-t border-border/50">
                 {actions}
               </div>
             )}

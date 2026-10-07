@@ -8,7 +8,7 @@ import { Loader2 } from 'lucide-react'
  * disabled（半透明+禁点击）/ loading（图标旋转+锁定宽度）。
  * 视觉延续原 .btn-gold / .btn-outline 类。
  */
-export type ButtonVariant = 'gold' | 'outline' | 'ghost' | 'danger'
+export type ButtonVariant = 'gold' | 'outline' | 'ghost' | 'danger' | 'link'
 export type ButtonSize = 'xs' | 'sm' | 'md' | 'lg'
 export interface ButtonProps extends Omit<HTMLMotionProps<'button'>, 'children'> {
   /** 视觉变体：gold=主 CTA 樱粉渐变；outline=描边；ghost=幽灵；danger=危险动作 */
@@ -31,6 +31,8 @@ const variantClasses: Record<ButtonVariant, string> = {
     'text-muted bg-transparent hover:text-gold hover:bg-gold/5',
   danger:
     'border border-crimson/40 text-crimson bg-crimson/10 hover:bg-crimson/20 hover:border-crimson/60',
+  link:
+    'text-gold/70 hover:text-gold underline underline-offset-2 bg-transparent',
 }
 
 const sizeClasses: Record<ButtonSize, string> = {
@@ -60,10 +62,10 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       disabled={isDisabled}
       whileHover={isDisabled ? undefined : { scale: 1.02 }}
       whileTap={isDisabled ? undefined : { scale: 0.97 }}
-      className={`relative overflow-hidden rounded font-sans font-medium transition-all duration-fast ease-standard
+      className={`relative overflow-hidden rounded-lg font-sans font-medium transition-all duration-fast ease-standard
         focus-visible:outline-none focus-visible:shadow-gold
         disabled:opacity-50 disabled:pointer-events-none
-        ${variantClasses[variant]} ${sizeClasses[size]} ${className}`}
+        ${variantClasses[variant]} ${variant === 'link' ? '' : sizeClasses[size]} ${className}`}
       {...rest}
     >
       {/* 高光扫过层（gold 变体） */}

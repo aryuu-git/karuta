@@ -65,7 +65,7 @@ export function RoomBattleView({
   const stripCountdown = isDuelMode ? duel.duelRoundTimer : state.intervalCountdown
 
   return (
-    <div className="flex flex-col battle-viewport bg-ink-deep">
+    <div className="flex flex-col viewport-h bg-ink-deep">
 
       {/* 连接横幅（仅断线/恢复时出现） */}
       <ConnectionBanner connected={connected} retries={retries} />

@@ -1,4 +1,5 @@
 import { Lock, Eye, Pencil } from 'lucide-react'
+import { OptionCard } from '../../components/ui'
 import type { ShareLevel } from './useCardForm'
 
 interface ShareLevelPickerProps {
@@ -7,7 +8,7 @@ interface ShareLevelPickerProps {
   onChange: (value: ShareLevel) => void
 }
 
-/** 分享级别三选一：私有/可使用/可编辑 */
+/** 分享级别三选一：私有/可使用/可编辑（OptionCard 描金高亮单选卡） */
 export function ShareLevelPicker({ shareLevel, onChange }: ShareLevelPickerProps) {
   return (
     <div>
@@ -18,21 +19,17 @@ export function ShareLevelPicker({ shareLevel, onChange }: ShareLevelPickerProps
           { value: 'playable', label: '可使用', desc: '他人可用不可改', Icon: Eye },
           { value: 'editable', label: '可编辑', desc: '他人可编辑', Icon: Pencil },
         ] as const).map(opt => (
-          <button
+          <OptionCard
             key={opt.value}
-            type="button"
-            onClick={() => onChange(opt.value)}
-            className={`flex-1 p-2.5 rounded-lg text-center transition-all duration-200 border ${
-              shareLevel === opt.value
-                ? 'bg-gold/10 border-gold/40'
-                : 'bg-white/5 border-white/10'
-            }`}
-          >
-            <p className={`text-tiny font-medium ${shareLevel === opt.value ? 'text-gold' : 'text-body-text/50'}`}>
-              <opt.Icon className="mr-0.5 inline h-3 w-3" /> {opt.label}
-            </p>
-            <p className="text-tiny text-muted/50 mt-0.5">{opt.desc}</p>
-          </button>
+            className="flex-1"
+            selected={shareLevel === opt.value}
+            onSelect={() => onChange(opt.value)}
+            selection="none"
+            layout="column"
+            icon={<opt.Icon size={16} />}
+            title={opt.label}
+            desc={opt.desc}
+          />
         ))}
       </div>
     </div>

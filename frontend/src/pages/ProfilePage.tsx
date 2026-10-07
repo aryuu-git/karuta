@@ -5,12 +5,13 @@ import { motion } from 'framer-motion'
 // 图标统一走 lucide-react（映射约定见 A3.1–A3.4）
 import {
   Swords, Medal, Trophy, Star, Sparkles, Award, Ticket,
-  Plus, Check, Pencil, Camera, Zap, Shield, type LucideIcon,
+  Plus, Check, Pencil, Camera, Zap, Shield, ChevronRight,
 } from 'lucide-react'
 import {
-  Button, Dialog, EmptyState, HeroHeader, Input, PageContainer, Skeleton, useToast,
+  Button, Dialog, HeroHeader, Input, PageContainer, PanelSurface, Skeleton, StatCard, SiteFooter, useToast,
 } from '../components/ui'
-import { useMyStats, useMyAchievements, useMyGames, queryKeys } from '../api/queries'
+import { useMyStats, useMyAchievements, queryKeys } from '../api/queries'
+import { FadeIn } from '../components/ui/FadeIn'
 import { useAuth } from '../hooks/useAuth'
 import { api, HttpError } from '../api/client'
 import { paths } from '../routes/paths'
@@ -74,10 +75,10 @@ function AdminUserList() {
         <span className="text-xs text-muted/50">（游客 {users.filter(u => u.is_guest).length} / 正式 {users.filter(u => !u.is_guest).length}）</span>
       </div>
 
-      {/* 邀请码开关 */}
+      {/* 邀请码开关（小钮统一 Button size="xs"） */}
       <div className="flex items-center justify-between mb-3 px-3 py-2 rounded-lg bg-white/5">
         <span className="text-xs text-white/70">邀请码注册</span>
-        <button onClick={async () => {
+        <Button size="xs" variant={inviteRequired ? 'outline' : 'ghost'} onClick={async () => {
           try {
             const res = await api.auth.adminToggleInvite(!inviteRequired)
             setInviteRequired(res.invite_required)
@@ -85,10 +86,9 @@ function AdminUserList() {
           } catch {
             toast.fail('保存失败，请重试')
           }
-        }}
-          className={`px-3 py-1 rounded text-[10px] font-medium transition-all ${inviteRequired ? 'bg-green-500/15 text-green-400' : 'bg-white/10 text-muted'}`}>
+        }}>
           {inviteRequired ? '已开启（需邀请码）' : '未开启（开放注册）'}
-        </button>
+        </Button>
       </div>
 
       {/* 用户列表：加载/空/数据三态（加载用行骨架屏替代裸 Spinner） */}
@@ -102,23 +102,21 @@ function AdminUserList() {
           <div key={u.id} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 text-xs">
             <span className={`font-medium ${u.disabled ? 'text-muted line-through' : 'text-white/80'}`}>
               {u.username}
-              {u.is_admin && <Zap size={11} className="inline-block align-middle ml-1 text-orange-400" />}
+              {u.is_admin && <Zap size={12} className="inline-block align-middle ml-1 text-warning" />}
             </span>
             <span className="text-muted/50 flex-1 text-right truncate">
               {u.invited_by ? `← ${allUsers.get(u.invited_by) || '?'}` : ''}
             </span>
-            <button
+            <Button size="xs" variant={u.is_admin ? 'outline' : 'ghost'}
               disabled={busyId !== 0}
-              onClick={() => runUserAction(u.id, () => api.auth.adminSetAdmin(u.id, !u.is_admin))}
-              className={`px-1.5 py-0.5 rounded text-[9px] transition-all disabled:opacity-40 ${u.is_admin ? 'bg-orange-400/15 text-orange-400' : 'bg-white/5 text-muted/40'}`}>
+              onClick={() => runUserAction(u.id, () => api.auth.adminSetAdmin(u.id, !u.is_admin))}>
               {u.is_admin ? '管理员' : '设管理'}
-            </button>
-            <button
+            </Button>
+            <Button size="xs" variant={u.disabled ? 'outline' : 'danger'}
               disabled={busyId !== 0}
-              onClick={() => runUserAction(u.id, () => api.auth.adminToggleUser(u.id, !u.disabled))}
-              className={`px-1.5 py-0.5 rounded text-[9px] transition-all disabled:opacity-40 ${u.disabled ? 'bg-green-500/15 text-green-400' : 'bg-crimson/15 text-crimson/70'}`}>
+              onClick={() => runUserAction(u.id, () => api.auth.adminToggleUser(u.id, !u.disabled))}>
               {u.disabled ? '启用' : '禁用'}
-            </button>
+            </Button>
           </div>
         ))}
       </div>
@@ -127,56 +125,23 @@ function AdminUserList() {
   )
 }
 
-/** 统计卡：lucide 图标 + 大数值 + 说明文案（color 同时着色图标与数值）。 */
-function StatCard({ icon: Icon, label, value, sub, color = 'rgb(var(--color-gold))', delay = 0, compact = false }: {
-  icon: LucideIcon
-  label: string
-  value: string | number
-  sub?: string
-  color?: string
-  delay?: number
-  /** 紧凑档：统计横排使用 */
-  compact?: boolean
-}) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay, duration: 0.4 }}
-      className={`rounded-xl flex flex-col hover:shadow-lg hover:shadow-pink-500/5 transition-all ${compact ? 'p-3 gap-1' : 'p-5 gap-2'}`}
-      style={{ background: 'linear-gradient(160deg, rgb(var(--accent-bg-end)/ 0.4), rgb(var(--accent-bg-mid)/ 0.6))', border: '1px solid rgb(var(--accent-primary)/ 0.08)' }}
-    >
-      <Icon size={compact ? 16 : 22} strokeWidth={1.75} style={{ color }} className="shrink-0" />
-      <div>
-        <div className={`font-bold tabular-nums font-serif ${compact ? 'text-xl' : 'text-2xl'}`} style={{ color }}>
-          {value}
-        </div>
-        {sub && <div className="text-muted text-xs mt-0.5">{sub}</div>}
-      </div>
-      <div className="text-white/40 text-xs">{label}</div>
-    </motion.div>
-  )
-}
-
-/** 前三名占比环形图：SVG 描边动画展示前三比例。 */
+/** 前三名占比环形图：SVG 描边动画展示前三比例。
+ *  （2026-10-05）改为「小环 + 右侧文字」横排：原来 80px 环上叠两行字把整行撑到 164px 高。 */
 function Top3Ring({ rate, games, top3 }: { rate: number; games: number; top3: number }) {
   const pct = Math.round(rate * 100)
   const circumference = 2 * Math.PI * 38
   const strokeDash = circumference * rate
 
   return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.8 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ delay: 0.1, duration: 0.5, ease: 'backOut' }}
-      className="flex flex-col items-center gap-3"
+    <FadeIn y={8} delay={100}
+      className="flex items-center gap-2.5 min-w-0"
     >
-      <div className="relative w-20 h-20">
+      <div className="relative w-11 h-11 shrink-0">
         <svg viewBox="0 0 96 96" className="w-full h-full -rotate-90">
-          <circle cx="48" cy="48" r="38" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="8" />
+          <circle cx="48" cy="48" r="38" fill="none" className="stroke-white/5" strokeWidth="10" />
           <motion.circle
             cx="48" cy="48" r="38" fill="none"
-            stroke="url(#profileGrad)" strokeWidth="8"
+            stroke="url(#profileGrad)" strokeWidth="10"
             strokeLinecap="round"
             strokeDasharray={circumference}
             initial={{ strokeDashoffset: circumference }}
@@ -185,21 +150,21 @@ function Top3Ring({ rate, games, top3 }: { rate: number; games: number; top3: nu
           />
           <defs>
             <linearGradient id="profileGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#FFD700" />
-              <stop offset="50%" stopColor="rgb(var(--color-gold))" />
-              <stop offset="100%" stopColor="rgb(var(--color-gold-light))" />
+              <stop offset="0%" style={{ stopColor: 'rgb(var(--gold-foil))' }} />
+              <stop offset="50%" style={{ stopColor: 'rgb(var(--color-gold))' }} />
+              <stop offset="100%" style={{ stopColor: 'rgb(var(--color-gold-light))' }} />
             </linearGradient>
           </defs>
         </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-xl font-bold font-serif" style={{ color: 'rgb(var(--color-gold))' }}>{pct}%</span>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span className="text-[10px] font-bold font-serif text-gold">{pct}%</span>
         </div>
       </div>
-      <div className="text-center">
-        <p className="text-white/70 text-sm font-medium">前三名比例</p>
-        <p className="text-muted text-xs mt-0.5">{top3} 次 / {games} 场</p>
+      <div className="min-w-0">
+        <p className="text-tiny text-white/70 font-medium truncate">前三名比例</p>
+        <p className="text-[10px] text-muted mt-0.5 truncate">{top3} 次 / {games} 场</p>
       </div>
-    </motion.div>
+    </FadeIn>
   )
 }
 
@@ -222,20 +187,20 @@ function AchievementsSection() {
   const achievements = data.achievements
   const unlockedCount = achievements.filter(a => a.unlocked_at !== null).length
   return (
-    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}
-      className="rounded-2xl p-4 h-full min-h-0 flex flex-col"
-      style={{ background: 'linear-gradient(180deg, rgba(255,255,255,0.02) 0%, rgb(var(--accent-bg-mid)/ 0.6) 100%)', border: '1px solid rgb(var(--color-gold)/ 0.15)' }}>
+    <FadeIn y={12} delay={350}
+      className="rounded-2xl p-4 h-full min-h-0 flex flex-col bg-gradient-to-b from-white/[0.02] to-accent-bg-mid/60 border border-gold/15"
+    >
       <p className="text-muted text-xs mb-3 tracking-widest flex items-center gap-1.5 shrink-0">
         <Award size={12} />成就
         <span className="text-gold font-bold ml-1">{unlockedCount}/{achievements.length}</span>
       </p>
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 gap-x-6 flex-1 overflow-y-auto min-h-0 content-start pr-1">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-x-6 gap-y-5 content-start">
         {ACHIEVEMENT_CATEGORIES.map(cat => {
           const items = achievements.filter(a => a.category === cat.key)
           if (items.length === 0) return null
           return (
             <div key={cat.key}>
-              <p className="text-[10px] text-muted/80 tracking-widest mb-1.5">{cat.label}</p>
+              <p className="text-caption text-gold-light/90 font-serif font-medium mb-2">{cat.label}</p>
               <div className="grid grid-cols-2 gap-2">
                 {items.map(a => {
                   const unlocked = a.unlocked_at !== null
@@ -243,11 +208,9 @@ function AchievementsSection() {
                   const pct = a.target > 0 ? Math.min(100, Math.round((a.progress / a.target) * 100)) : 0
                   return (
                     <div key={a.key} title={lockedHidden ? '继续探索以解锁' : a.description}
-                      className="flex items-center gap-2 px-2.5 py-2 rounded-lg"
-                      style={{
-                        background: unlocked ? 'rgb(var(--color-gold)/ 0.08)' : 'rgba(255,255,255,0.02)',
-                        border: `1px solid ${unlocked ? 'rgb(var(--color-gold)/ 0.35)' : 'rgba(255,255,255,0.06)'}`,
-                      }}>
+                      className={`flex items-center gap-2 px-2.5 py-2 rounded-lg border ${
+                        unlocked ? 'bg-gold/[0.08] border-gold/[0.35]' : 'bg-white/[0.02] border-white/[0.06]'
+                      }`}>
                       <span className={`text-xl leading-none shrink-0 ${unlocked ? '' : 'grayscale opacity-40'}`}>
                         {lockedHidden ? '❓' : a.icon}
                       </span>
@@ -262,7 +225,7 @@ function AchievementsSection() {
                         ) : a.target > 1 && !a.hidden ? (
                           <>
                             <div className="h-1 rounded-full bg-white/10 mt-1 overflow-hidden">
-                              <div className="h-full rounded-full" style={{ width: `${pct}%`, background: 'rgb(var(--color-gold)/ 0.6)' }} />
+                              <div className="h-full rounded-full bg-gold/60" style={{ width: `${pct}%` }} />
                             </div>
                             <p className="text-[10px] text-muted/70 mt-0.5 tabular-nums">{a.progress}/{a.target}</p>
                           </>
@@ -276,36 +239,7 @@ function AchievementsSection() {
           )
         })}
       </div>
-    </motion.div>
-  )
-}
-
-/** 最近对局（v7 增补）：与个人统计同口径的历史流水（排除练习局、裁判行） */
-function RecentGamesSection() {
-  const { data, isLoading } = useMyGames({ page: 1, size: 10 })
-  if (isLoading || !data || data.length === 0) return null
-  const modeLabel: Record<string, string> = { auto: '自动', judge: '裁判', duel: '对阵' }
-  return (
-    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
-      className="rounded-2xl p-5"
-      style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
-      <p className="text-muted text-xs mb-3 tracking-widest flex items-center gap-1.5"><Swords size={12} />最近对局</p>
-      <div className="space-y-1.5">
-        {data.map(g => (
-          <div key={g.room_id} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 text-xs">
-            <span className="px-1.5 py-0.5 rounded bg-gold/10 text-gold/90 text-[10px] shrink-0">
-              {modeLabel[g.mode] ?? g.mode}
-            </span>
-            <span className="flex-1 truncate text-body-text/80">{g.deck_name || '—'}</span>
-            <span className={`shrink-0 font-bold ${g.rank === 1 ? 'text-gold' : 'text-muted'}`}>第 {g.rank} 名</span>
-            <span className="shrink-0 text-muted tabular-nums">{g.score} 分</span>
-            <span className="shrink-0 text-muted/70 text-[10px]">
-              {g.ended_at ? new Date(g.ended_at).toLocaleDateString() : ''}
-            </span>
-          </div>
-        ))}
-      </div>
-    </motion.div>
+    </FadeIn>
   )
 }
 
@@ -388,13 +322,13 @@ export function ProfilePage() {
     } catch { /* ignore */ }
   }
   return (
-    <PageContainer size="xl" padding="sm" className="lg:h-[calc(100vh-3.625rem)] lg:flex lg:flex-col lg:overflow-hidden">
-      {/* 用户信息头部（HeroHeader：icon=头像，title=昵称） */}
+    <PageContainer size="xl" padding="md">
+      {/* 用户信息头部（HeroHeader：icon=头像，title=昵称；compact 档压缩头图体量） */}
       <HeroHeader
+        compact
         icon={
           <div
-            className="w-16 h-16 rounded-full flex items-center justify-center shrink-0 text-2xl font-bold font-serif relative cursor-pointer group overflow-hidden"
-            style={{ background: 'linear-gradient(135deg, rgb(var(--accent-primary)/ 0.3), rgb(var(--accent-bg-end)/ 0.8))', border: '2px solid rgb(var(--accent-primary)/ 0.4)', color: 'rgb(var(--color-gold))', boxShadow: '0 0 20px rgb(var(--accent-primary)/ 0.2)' }}
+            className="w-16 h-16 rounded-full flex items-center justify-center shrink-0 text-2xl font-bold font-serif relative cursor-pointer group overflow-hidden bg-gradient-to-br from-accent/30 to-accent-bg-end/80 border-2 border-accent/40 text-gold shadow-gold"
             onClick={() => avatarInputRef.current?.click()}
             role="button"
             aria-label="更换头像"
@@ -405,7 +339,7 @@ export function ProfilePage() {
               user?.username?.charAt(0).toUpperCase()
             )}
             <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-              <Camera size={14} className="text-white" />
+              <Camera size={16} className="text-white" />
               <span className="text-white text-xs">换头像</span>
             </div>
           </div>
@@ -413,12 +347,19 @@ export function ProfilePage() {
         title={
           <span className="cursor-pointer group inline-flex items-center" onClick={startRename} role="button" aria-label="修改昵称">
             {user?.username}
-            <Pencil size={14} className="text-muted/0 group-hover:text-muted/50 ml-2 transition-colors" />
+            <Pencil size={16} className="text-muted/0 group-hover:text-muted/50 ml-2 transition-colors" />
           </span>
         }
         subtitle={stats?.total_games
           ? `已进行 ${stats.total_games} 场对局`
-          : '还没有对局记录'}
+          : (user?.created_at ? `${new Date(user.created_at).toLocaleDateString('zh-CN')} 加入` : '')}
+        actions={
+          user && !user.is_guest ? (
+            // 头图操作簇：只留修改密码（2026-10-05 移除「账号管理」小标题）；
+            // 生成邀请码随码列表留在下方（就近原则）
+            <Button size="sm" variant="outline" onClick={() => setPwDialog(true)}>修改密码</Button>
+          ) : undefined
+        }
       />
       <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
 
@@ -426,56 +367,91 @@ export function ProfilePage() {
         /* 战绩区骨架：用卡面骨架替代裸 Spinner（§7.1） */
         <Skeleton variant="card" rows={4} className="grid grid-cols-2 sm:grid-cols-3 gap-3" />
       ) : !stats || stats.total_games === 0 ? (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-          className="rounded-2xl"
-          style={{ background: 'linear-gradient(160deg, rgb(var(--accent-bg-end)/ 0.5), rgb(var(--accent-bg-mid)/ 0.8))', border: '1px dashed rgb(var(--accent-primary)/ 0.2)' }}>
-          <EmptyState
-            title="还没有对局记录"
-            description="完成一局后这里会显示统计"
-            action={<Button onClick={() => navigate(paths.home())} icon={<Swords size={14} />}>去开战</Button>}
-          />
-        </motion.div>
+        <>
+          {/* 统计空态降重（2026-09-30）：全宽巨盒 → 单行轻条，与首页 onboarding 条同材质同体量 */}
+          <PanelSurface variant="void-soft" radius="2xl"
+            className="mb-6 flex items-center justify-between gap-3 px-5 py-2.5">
+            <div className="flex items-center gap-2">
+              <Sparkles size={16} className="text-gold shrink-0" />
+              <span className="text-body text-body-text">还没有对局记录，完成一局后这里会显示统计</span>
+            </div>
+            <Button size="sm" onClick={() => navigate(paths.home())} icon={<Swords size={16} />}>去开战</Button>
+          </PanelSurface>
+        </>
       ) : (
         <>
-          {/* 核心数据横排：环形图 + 五项紧凑指标 */}
-          <div className="flex gap-3 items-stretch mb-4">
-            <div className="rounded-2xl px-5 flex items-center justify-center shrink-0"
-              style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
+          {/* 核心数据横排（2026-10-05）：六格等宽（环形图 + 五项指标）+ 第 7 格「最近对局」入口，
+              原来环形块 122px / 指标块 205px 一行里宽窄失衡；「最近对局」列表已删，
+              只留入口按钮落在这一行（Owner 裁定：列表看完整流水去对局记录页） */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3 mb-6">
+            <div className="rounded-2xl p-3 flex items-center justify-center bg-white/[0.02] border border-white/[0.06]">
               <Top3Ring rate={stats.top3_rate} games={stats.total_games} top3={stats.top3_games} />
             </div>
-            <div className="flex-1 grid grid-cols-2 sm:grid-cols-5 gap-3">
-              <StatCard compact icon={Swords} label="参与场数" value={stats.total_games} delay={0.1} />
-              <StatCard compact icon={Medal} label="第一名" value={stats.first_games} color="#FFD700" delay={0.15} />
-              <StatCard compact icon={Trophy} label="前三名" value={stats.top3_games} delay={0.2} />
-              <StatCard compact icon={Star} label="总得分" value={stats.total_score} color="rgb(var(--color-gold-light))" delay={0.25} />
-              <StatCard compact icon={Sparkles} label="最高分" value={stats.best_score} color="#4ade80" delay={0.3} />
-            </div>
+            <StatCard compact icon={Swords} label="参与场数" value={stats.total_games} delay={0.1} />
+            <StatCard compact icon={Medal} label="第一名" value={stats.first_games} tone="foil" delay={0.15} />
+            <StatCard compact icon={Trophy} label="前三名" value={stats.top3_games} delay={0.2} />
+            <StatCard compact icon={Star} label="总得分" value={stats.total_score} tone="gold-light" delay={0.25} />
+            <StatCard compact icon={Sparkles} label="最高分" value={stats.best_score} tone="success" delay={0.3} />
+            {/* 对局记录入口：与指标卡同栅格、同体量，数值行换成入口文案 */}
+            <FadeIn delay={350} y={12} className="h-full">
+              <button onClick={() => navigate(paths.games())}
+                className="w-full h-full rounded-2xl p-3 flex flex-col justify-center gap-1 text-left bg-white/[0.02] border border-white/[0.06] hover:border-gold/40 hover:bg-gold/5 transition-all">
+                <span className="flex items-center gap-1.5 text-tiny text-muted/70">
+                  <Swords size={12} className="text-gold shrink-0" />对局历史
+                </span>
+                <span className="font-serif font-bold text-title text-body-text flex items-center gap-1">
+                  最近对局<ChevronRight size={16} className="text-gold shrink-0" />
+                </span>
+              </button>
+            </FadeIn>
           </div>
         </>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 flex-1 lg:min-h-0 lg:overflow-hidden mt-4">
-        <div className="lg:col-span-2 min-h-0">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        <div className="lg:col-span-2">
           {/* 成就（32 项全量；不依赖对局统计，0 局用户也可见内容类成就） */}
           <AchievementsSection />
-
-          {/* 最近对局（v7 增补） */}
-          <RecentGamesSection />
         </div>
 
-        <div className="space-y-4 min-h-0 lg:overflow-y-auto lg:pr-1">
+        <div className="space-y-5">
 
-      {/* 账号安全：已登录改密（游客无密码体系，转正后可用） */}
-      {user && !user.is_guest && (
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }}
-          className="rounded-2xl p-5 flex items-center justify-between"
-          style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
-          <div>
-            <p className="text-muted text-xs tracking-widest flex items-center gap-1.5"><Shield size={12} />账号安全</p>
+      {/* 我的邀请码：生成按钮与码列表同面板（2026-09-30 调整：从头图迁回——
+          生成动作就近它生成的东西） */}
+      <FadeIn y={20} delay={500}>
+        <PanelSurface variant="void" radius="2xl"
+          title={
+            <span className="flex items-center gap-1.5">
+              <Ticket size={16} />我的邀请码
+            </span>
+          }
+          actions={
+            <Button size="sm" onClick={async () => {
+              const inv = await api.auth.generateInvite()
+              setInvites(prev => [{ ...inv, created_at: new Date().toISOString() }, ...prev])
+            }} icon={<Plus size={12} />}>生成邀请码</Button>
+          }>
+          <div className="p-5">
+            {invitesLoading ? (
+              <Skeleton variant="row" rows={2} className="space-y-2" />
+            ) : invites.length === 0 ? (
+              <p className="text-tiny text-muted/70">还没有邀请码，点击上方按钮生成</p>
+            ) : (
+              <div className="space-y-2 max-h-scroll-md overflow-y-auto">
+                {invites.map(inv => (
+                  <div key={inv.id} className="flex items-center justify-between px-3 py-2 rounded-lg bg-white/5">
+                    <code className="text-gold font-mono text-sm tracking-wider">{inv.code}</code>
+                    <span className={`text-[10px] ${inv.used_by ? 'text-muted/70' : 'text-success/70'}`}>
+                      {inv.used_by ? '已使用' : '未使用'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+            <p className="text-muted/70 text-[10px] mt-2">分享邀请码给朋友，他们注册时填写即可</p>
           </div>
-          <Button size="sm" variant="outline" onClick={() => setPwDialog(true)}>修改密码</Button>
-        </motion.div>
-      )}
+        </PanelSurface>
+      </FadeIn>
 
       {/* 改密弹窗 */}
       <Dialog open={pwDialog} title="修改密码" onClose={() => setPwDialog(false)}
@@ -492,49 +468,21 @@ export function ProfilePage() {
         </div>
       </Dialog>
 
-      {/* 邀请码 */}
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}
-        className="rounded-2xl p-5"
-        style={{ background: 'linear-gradient(180deg, rgb(var(--accent-bg-end)/ 0.5) 0%, rgb(var(--accent-bg-mid)/ 0.8) 100%)', border: '1px solid rgb(var(--accent-primary)/ 0.12)' }}>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="font-serif text-sm font-bold text-gold flex items-center gap-1.5"><Ticket size={13} />我的邀请码</h2>
-          <Button size="sm" onClick={async () => {
-            const inv = await api.auth.generateInvite()
-            setInvites(prev => [{ ...inv, created_at: new Date().toISOString() }, ...prev])
-          }} icon={<Plus size={12} />}>生成邀请码</Button>
-        </div>
-        {invitesLoading ? (
-          <Skeleton variant="row" rows={2} className="space-y-2" />
-        ) : invites.length === 0 ? (
-          <p className="text-muted text-xs">还没有邀请码，点击上方按钮生成</p>
-        ) : (
-          <div className="space-y-2 max-h-scroll-md overflow-y-auto">
-            {invites.map(inv => (
-              <div key={inv.id} className="flex items-center justify-between px-3 py-2 rounded-lg bg-white/5">
-                <code className="text-gold font-mono text-sm tracking-wider">{inv.code}</code>
-                <span className={`text-[10px] ${inv.used_by ? 'text-muted/50' : 'text-green-400/70'}`}>
-                  {inv.used_by ? '已使用' : '未使用'}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-        <p className="text-muted/40 text-[10px] mt-2">分享邀请码给朋友，他们注册时填写即可</p>
-      </motion.div>
-
       {/* 管理员面板（aryuu only） */}
       {user?.is_admin && (
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}
-          className="rounded-2xl p-5"
-          style={{ background: 'linear-gradient(180deg, rgba(255,100,50,0.05) 0%, rgb(var(--accent-bg-mid)/ 0.8) 100%)', border: '1px solid rgba(255,100,50,0.2)' }}>
-          <h2 className="font-serif text-sm font-bold text-orange-300 mb-1 flex items-center gap-1.5"><Shield size={13} />管理员面板</h2>
+        <FadeIn y={20} delay={600}
+          className="rounded-2xl p-5 bg-gradient-to-b from-warning/5 to-accent-bg-mid/80 border border-warning/20">
+          <h2 className="font-serif text-sm font-bold text-warning mb-1 flex items-center gap-1.5"><Shield size={16} />管理员面板</h2>
           <p className="text-muted text-[10px] mb-3">关闭邀请码时允许公开注册；开启后仅接受未使用的邀请码。</p>
           <AdminUserList />
-        </motion.div>
+        </FadeIn>
       )}
 
         </div>
       </div>
+
+      {/* 开源仓库页脚（2026-09-30 位置评审：顶栏图标钮迁至内容页底注） */}
+      <SiteFooter />
 
       {/* 改名弹窗 */}
       <Dialog
@@ -545,7 +493,7 @@ export function ProfilePage() {
         actions={
           <>
             <Button variant="outline" onClick={() => setEditingName(false)}>取消</Button>
-            <Button onClick={saveName} disabled={!newName.trim()} icon={<Check size={14} strokeWidth={3} />}>保存</Button>
+            <Button onClick={saveName} disabled={!newName.trim()} icon={<Check size={16} strokeWidth={3} />}>保存</Button>
           </>
         }
       >

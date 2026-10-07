@@ -33,6 +33,12 @@ async function fetchBlob(url: string): Promise<Blob | null> {
   }
 }
 
+/** 占位封面底色：canvas 无法消费 CSS 类，运行时从设计 token 解析（var 引用，禁止字面量色值） */
+function placeholderFill(): string {
+  const css = getComputedStyle(document.documentElement)
+  return `rgb(${css.getPropertyValue('--color-ink-deep').trim()})`
+}
+
 /** 1×1 深色占位 PNG（后端封面必填；无封面卡导出后重导入兜底）——cardPack/deckPack 共用 */
 export async function placeholderCover(): Promise<Blob> {
   const canvas = document.createElement('canvas')
@@ -40,7 +46,7 @@ export async function placeholderCover(): Promise<Blob> {
   canvas.height = 3
   const ctx = canvas.getContext('2d')
   if (ctx) {
-    ctx.fillStyle = '#1a1420'
+    ctx.fillStyle = placeholderFill()
     ctx.fillRect(0, 0, 2, 3)
   }
   // canvas.toBlob 为回调式 API，且本项目 lib=ES2020 无 Promise.withResolvers——

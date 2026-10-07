@@ -1,11 +1,12 @@
 import { useState, useEffect, type FormEvent } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Sparkles } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { api, HttpError } from '../api/client'
 import { paths } from '../routes/paths'
 import { Button, Input, CenteredShell, useToast } from '../components/ui'
+import { FadeIn } from '../components/ui/FadeIn'
+import { BrandGlow } from '../components/ui/BrandGlow'
 
 export function GuestPage() {
   const { user, guestLogin, logout } = useAuth()
@@ -98,14 +99,17 @@ export function GuestPage() {
 
   return (
     <CenteredShell>
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="w-full max-w-sm rounded-2xl p-8 text-center border border-gold/15"
-          style={{ background: 'linear-gradient(180deg, rgb(var(--accent-bg-end)/ 0.6) 0%, rgb(var(--accent-bg-mid)/ 0.9) 100%)' }}
-        >
-          <h1 className="font-serif text-2xl text-gold font-bold mb-2">🌸 歌牌 Karuta</h1>
-          <p className="text-muted text-caption mb-6">游客模式 · 输入邀请码加入对局</p>
+        {/* 游客卡片容器（max-w-md 随 logo 容器放宽）；z-10 建堆叠上下文，BrandGlow 垫底 */}
+        <FadeIn y={20} className="relative z-10 w-full max-w-md rounded-2xl p-8 text-center border border-gold/15 bg-gradient-to-b from-accent-bg-end/60 to-accent-bg-mid/90">
+          {/* Logo：图标独占一行 + 标题 nowrap 单行；品牌光晕 BrandGlow 单点垫底 */}
+          <div className="relative">
+            <BrandGlow className="left-1/2 top-1/2 w-80 h-80 -translate-x-1/2 -translate-y-1/2" />
+            <h1 className="font-serif text-title-xl text-gold font-bold whitespace-nowrap mb-2">
+              <span className="block text-3xl leading-none mb-1.5" aria-hidden="true">🌸</span>
+              歌牌 Karuta
+            </h1>
+            <p className="text-muted text-caption mb-6">游客模式 · 输入邀请码加入对局</p>
+          </div>
 
           {step === 'name' ? (
             <form onSubmit={handleSetName} className="space-y-4">
@@ -115,38 +119,34 @@ export function GuestPage() {
               <Button type="submit" loading={loading} className="w-full">
                 确定昵称
               </Button>
-              <p className="text-muted/40 text-[10px]">
-                已有账号？<Link to={paths.login()} className="text-gold/60 hover:text-gold">去登录</Link>
+              <p className="text-muted/70 text-[10px]">
+                已有账号？<Button variant="link" onClick={() => navigate(paths.login())}>去登录</Button>
               </p>
             </form>
           ) : (
             <form onSubmit={handleJoin} className="space-y-4">
-              <p className="text-body-text/60 text-caption mb-2">你好，<span className="text-gold">{user?.username}</span>！</p>
+              <p className="text-body-text/70 text-caption mb-2">你好，<span className="text-gold">{user?.username}</span>！</p>
               <Input type="text" value={code} onChange={e => setCode(e.target.value.toUpperCase())}
-                className="text-center text-lg tracking-[0.3em] font-mono" placeholder="输入邀请码" autoFocus
+                className="code-input text-center text-lg tracking-[0.15em] font-mono" placeholder="输入邀请码" autoFocus
                 maxLength={6} />
               {error && <p className="text-crimson text-caption">{error}</p>}
               <Button type="submit" loading={loading} className="w-full">
                 加入对局
               </Button>
-              <button type="button" onClick={() => { logout(); setStep('name') }}
-                className="text-muted/50 text-[10px] hover:text-muted transition-colors w-full">
+              <Button variant="link" onClick={() => { logout(); setStep('name') }} className="w-full">
                 退出当前账号
-              </button>
+              </Button>
             </form>
           )}
-        </motion.div>
+        </FadeIn>
 
-        {/* 转正入口（v7 增补）：仅已登录游客可见 */}
+        {/* 转正入口（v7 增补）：仅已登录游客可见（渐变走 gradient 类 + 白噪点 token 透明度语法） */}
         {user?.is_guest && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
-            className="w-full max-w-sm rounded-2xl p-6 mt-4 text-left border border-white/10"
-            style={{ background: 'linear-gradient(180deg, rgba(255,255,255,0.02) 0%, rgb(var(--accent-bg-mid)/ 0.6) 100%)' }}>
+          <FadeIn delay={150} y={20} className="w-full max-w-md rounded-2xl p-6 mt-4 text-left border border-white/10 bg-gradient-to-b from-white/[0.02] to-accent-bg-mid/60">
             <p className="text-gold text-caption font-serif mb-1 flex items-center gap-1.5">
               <Sparkles size={12} /> 升级为正式账号
             </p>
-            <p className="text-muted/50 text-[10px] mb-3">
+            <p className="text-muted/70 text-[10px] mb-3">
               保留全部战绩、成就与牌库；换个昵称设置密码即可（原游客昵称与恢复码作废）
             </p>
             <form onSubmit={handleUpgrade} className="space-y-3">
@@ -157,7 +157,7 @@ export function GuestPage() {
               {upgradeError && <p className="text-crimson text-caption">{upgradeError}</p>}
               <Button type="submit" loading={upgrading} variant="outline" className="w-full">立即升级</Button>
             </form>
-          </motion.div>
+          </FadeIn>
         )}
     </CenteredShell>
   )

@@ -68,7 +68,7 @@ export function JoinRoomPage() {
     return (
       <div className="min-h-screen washi-bg">
       <PageContainer size="sm">
-        <HeroHeader icon={<KeyRound size={18} />} title="加入房间" onBack={() => navigate(-1)} />
+        <HeroHeader icon={<KeyRound size={20} />} title="加入房间" onBack={() => navigate(-1)} />
         <EmptyState
           icon="🗝️"
           title="先登录再加入"
@@ -95,7 +95,7 @@ export function JoinRoomPage() {
     <div className="min-h-screen washi-bg">
     <PageContainer size="sm">
       <HeroHeader
-        icon={<KeyRound size={18} />}
+        icon={<KeyRound size={20} />}
         title="加入房间"
         onBack={() => navigate(-1)}
       />
@@ -103,7 +103,7 @@ export function JoinRoomPage() {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-surface border border-border rounded-xl p-8"
+        className="bg-surface border border-border rounded-2xl p-8"
       >
         <div className="text-center mb-8">
           <div className="text-5xl mb-3">🗝️</div>
@@ -120,8 +120,7 @@ export function JoinRoomPage() {
               setError(null)
             }}
             onKeyDown={handleKeyDown}
-            className="text-center font-serif font-bold tracking-[0.3em]"
-            style={{ fontSize: '2rem', letterSpacing: '0.3em' }}
+            className="text-center font-serif font-bold tracking-[0.3em] text-title-xl"
             placeholder="XXXXXX"
             maxLength={10}
             autoCapitalize="characters"
@@ -137,7 +136,7 @@ export function JoinRoomPage() {
               animate={{ opacity: 1, y: 0 }}
               className="text-crimson text-sm bg-crimson/10 border border-crimson/30 rounded-lg px-3 py-2.5 flex items-center justify-center gap-1.5"
             >
-              <AlertCircle size={14} className="shrink-0" />
+              <AlertCircle size={16} className="shrink-0" />
               {error}
             </motion.p>
           )}

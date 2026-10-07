@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Check, X } from 'lucide-react'
+import { X } from 'lucide-react'
 import { Button, Dialog, Select } from '../../components/ui'
 import type { Deck } from '../../api/types'
 import type { RoomConfig } from './roomConfig'
 import { PRESETS, loadCustomPresets, removeCustomPreset, type CustomPreset } from './presets'
+import { deckDisambiguator, duplicatedDeckNames } from './deckLabel'
 
 export type { RoomPreset } from './presets'
 
@@ -62,23 +63,46 @@ export function PresetPicker({ open, decks, defaultDeckId, lastConfig, onSelect,
   }
 
   const [selectedKey, setSelectedKey] = useState<string>(() => (lastConfig ? 'last' : PRESETS[0].key))
-  const [deckId, setDeckId] = useState<number | null>(() => defaultDeckId ?? decks[0]?.id ?? null)
+  const [pickedDeckId, setPickedDeckId] = useState<number | null>(() => defaultDeckId ?? decks[0]?.id ?? null)
   const deckLocked = defaultDeckId !== undefined
+  // 生效牌组：锁定态以 prop 为准。组件常驻挂载，出阵点击后 defaultDeckId 才从
+  // undefined 变为实际 id，惰性 useState 初始值不跟随——曾致「请选择」+按钮永久禁用。
+  const deckId = defaultDeckId ?? pickedDeckId
 
-  // 牌组异步加载后回填默认选中（组件常驻挂载，初始 decks 可能为空）
+  // 牌组异步加载后回填默认选中（常驻挂载下初始 decks 可能为空；仅非锁定态需要）
   useEffect(() => {
-    if (deckId === null && !deckLocked && decks.length > 0) {
-      setDeckId(decks[0].id)
+    if (!deckLocked && pickedDeckId === null && decks.length > 0) {
+      setPickedDeckId(decks[0].id)
     }
-  }, [decks, deckId, deckLocked])
+  }, [decks, pickedDeckId, deckLocked])
 
   const selectedConfig = rows.find(r => r.key === selectedKey)?.config ?? PRESETS[0].config
   const canSubmit = deckId !== null
 
-  const deckOptions = decks.map(d => ({ value: String(d.id), label: `${d.name}（${d.card_count}张）` }))
+  // 同名牌组追加创建日期，避免下拉里两行同名无从区分
+  const duplicatedNames = duplicatedDeckNames(decks)
+  const deckOptions = decks.map(d => ({
+    value: String(d.id),
+    label: `${d.name}（${d.card_count}张${deckDisambiguator(d, duplicatedNames)}）`,
+  }))
 
   return (
-    <Dialog open={open} onClose={onClose} title="快速开局" size="md">
+    <Dialog
+      open={open}
+      onClose={onClose}
+      title="快速开局"
+      size="md"
+      actions={
+        <>
+          <Button variant="ghost" size="sm" disabled={!canSubmit || loading} onClick={() => onCustomize(selectedConfig, deckId as number)}>
+            查看完整配置
+          </Button>
+          <Button size="sm" disabled={!canSubmit} loading={loading} onClick={() => onSelect(selectedConfig, deckId as number)}>
+            开辟战场
+          </Button>
+        </>
+      }
+    >
       <div className="flex flex-col gap-4">
         {/* 预设单选列表 */}
         <div className="flex flex-col gap-1.5">
@@ -111,7 +135,6 @@ export function PresetPicker({ open, decks, defaultDeckId, lastConfig, onSelect,
                     <X size={12} />
                   </span>
                 )}
-                {active && <Check size={14} className="text-gold shrink-0" />}
               </button>
             )
           })}
@@ -126,19 +149,10 @@ export function PresetPicker({ open, decks, defaultDeckId, lastConfig, onSelect,
             value={deckId !== null ? String(deckId) : ''}
             disabled={deckLocked}
             options={deckOptions}
-            onChange={v => setDeckId(parseInt(v, 10))}
+            onChange={v => setPickedDeckId(parseInt(v, 10))}
             hint={deckLocked ? '已锁定该牌组' : undefined}
           />
         )}
-      </div>
-
-      <div className="flex items-center justify-end gap-2 mt-2">
-        <Button variant="ghost" size="sm" disabled={!canSubmit || loading} onClick={() => onCustomize(selectedConfig, deckId as number)}>
-          查看完整配置
-        </Button>
-        <Button size="sm" disabled={!canSubmit} loading={loading} onClick={() => onSelect(selectedConfig, deckId as number)}>
-          开辟战场
-        </Button>
       </div>
     </Dialog>
   )

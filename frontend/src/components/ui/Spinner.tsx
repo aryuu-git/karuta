@@ -18,7 +18,7 @@ export function Spinner({ size = 24, className = '' }: { size?: number; classNam
 export function PageSpinner({ text = '正在加载…' }: { text?: string }) {
   return (
     <div className="min-h-[60vh] flex flex-col items-center justify-center gap-3">
-      <Spinner size={32} />
+      <Spinner size={20} />
       <p className="text-muted text-caption font-serif">{text}</p>
     </div>
   )

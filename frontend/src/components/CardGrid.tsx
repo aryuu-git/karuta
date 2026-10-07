@@ -75,7 +75,7 @@ export function CardGrid({ cards, cardRemaining, discardPile = [], onGrab }: Car
                     )}
                     <div className="absolute inset-0 bg-black/30" />
                     <div className="absolute bottom-0 left-0 right-0 px-0.5 py-0.5 text-center bg-black/60">
-                      <span className="text-body-text/70 leading-none" style={{ fontSize: '0.5rem' }}>
+                      <span className="text-body-text/70 leading-none text-[10px]">
                         {item.winner === '无人' ? '逃' : item.winner.slice(0, 2)}
                       </span>
                     </div>

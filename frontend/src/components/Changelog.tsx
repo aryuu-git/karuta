@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { Button } from './ui'
+import { Button, ModalSurface } from './ui'
 
 const CURRENT_VERSION = '4.0.0'
 const STORAGE_KEY = 'karuta_changelog_seen'
@@ -214,80 +213,54 @@ export function Changelog() {
   }
 
   return (
-    <AnimatePresence>
-      {visible && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 z-modal flex items-center justify-center px-4 bg-black/75 backdrop-blur"
-          onClick={handleClose}
-        >
-          <motion.div
-            initial={{ scale: 0.88, opacity: 0, y: 24 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0.92, opacity: 0, y: 16 }}
-            transition={{ duration: 0.4, ease: 'backOut' }}
-            className="w-full max-w-md max-h-[80vh] flex flex-col rounded-2xl overflow-hidden border border-gold/20"
-            style={{ background: 'linear-gradient(160deg, rgb(var(--color-ink)) 0%, rgb(var(--color-ink-deep)) 100%)', boxShadow: '0 0 60px rgb(var(--accent-primary)/ 0.15), 0 24px 48px rgba(0,0,0,0.6)' }}
-            onClick={e => e.stopPropagation()}
-          >
-            {/* 头部 */}
-            <div className="px-6 pt-6 pb-4 border-b border-gold/10 shrink-0">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-xl">🌸</span>
-                    <h2 className="font-serif text-lg font-bold text-gold">更新日志</h2>
-                    <span className="text-tiny px-2 py-0.5 rounded-full font-mono bg-gold/15 text-gold border border-gold/25">
-                      v{CURRENT_VERSION}
-                    </span>
-                  </div>
-                  <p className="text-muted text-tiny">看看更新了什么</p>
-                </div>
-                <button onClick={handleClose}
-                  className="text-muted hover:text-body-text transition-colors text-lg leading-none shrink-0 mt-0.5">
-                  ✕
-                </button>
-              </div>
-            </div>
+    <ModalSurface
+      open={visible}
+      onClose={handleClose}
+      title="更新日志"
+      actions={
+        <span className="text-tiny px-2 py-0.5 rounded-full font-mono bg-gold/15 text-gold border border-gold/25">
+          v{CURRENT_VERSION}
+        </span>
+      }
+      size="md"
+      className="max-h-[80vh]"
+    >
+      {/* 副标题 */}
+      <p className="text-muted text-tiny mb-4">看看更新了什么</p>
 
-            {/* 内容滚动区 */}
-            <div className="overflow-y-auto flex-1 px-6 py-4 space-y-5">
-              {CHANGELOG.map((log, li) => (
-                <div key={log.version}>
-                  <div className="flex items-center gap-2 mb-3">
-                    <span className={`text-tiny font-mono px-2 py-0.5 rounded border ${li === 0 ? 'bg-gold/15 text-gold border-gold/20' : 'bg-body-text/5 text-body-text/30 border-body-text/10'}`}>
-                      v{log.version}
-                    </span>
-                    <span className={`font-medium text-caption ${li === 0 ? 'text-body-text/90' : 'text-body-text/40'}`}>
-                      {log.title}
-                    </span>
-                  </div>
-                  <div className="space-y-1.5 pl-1">
-                    {log.items.map((item, i) => (
-                      <div key={i} className="flex items-start gap-2">
-                        <span className="text-caption shrink-0 mt-0.5">{item.emoji}</span>
-                        <span className={`text-tiny leading-relaxed ${li === 0 ? 'text-body-text/75' : 'text-body-text/35'}`}>
-                          {item.text}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
+      {/* 内容滚动区 */}
+      <div className="space-y-5">
+        {CHANGELOG.map((log, li) => (
+          <div key={log.version}>
+            <div className="flex items-center gap-2 mb-3">
+              <span className={`text-tiny font-mono px-2 py-0.5 rounded border ${li === 0 ? 'bg-gold/15 text-gold border-gold/20' : 'bg-body-text/5 text-body-text/30 border-body-text/10'}`}>
+                v{log.version}
+              </span>
+              <span className={`font-medium text-caption ${li === 0 ? 'text-body-text/90' : 'text-body-text/40'}`}>
+                {log.title}
+              </span>
+            </div>
+            <div className="space-y-1.5 pl-1">
+              {log.items.map((item, i) => (
+                <div key={i} className="flex items-start gap-2">
+                  <span className="text-caption shrink-0 mt-0.5">{item.emoji}</span>
+                  <span className={`text-tiny leading-relaxed ${li === 0 ? 'text-body-text/75' : 'text-body-text/35'}`}>
+                    {item.text}
+                  </span>
                 </div>
               ))}
             </div>
+          </div>
+        ))}
+      </div>
 
-            {/* 底部按钮 */}
-            <div className="px-6 pb-5 pt-3 border-t border-gold/10 shrink-0">
-              <Button variant="gold" size="lg" className="w-full" onClick={handleClose}>
-                知道了
-              </Button>
-              <p className="text-muted/40 text-tiny text-center mt-2">本次更新不再弹出</p>
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+      {/* 底部按钮 */}
+      <div className="pt-3 mt-3 border-t border-gold/10">
+        <Button variant="gold" size="lg" className="w-full" onClick={handleClose}>
+          知道了
+        </Button>
+        <p className="text-muted/40 text-tiny text-center mt-2">本次更新不再弹出</p>
+      </div>
+    </ModalSurface>
   )
 }

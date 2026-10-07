@@ -15,18 +15,26 @@ export interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 
   size?: 'sm' | 'md'
   /** 容器宽度：默认占满（w-full），fit 时收缩为内容宽（筛选条内联使用） */
   fit?: boolean
+  /** boxed=标准输入框（默认）；bare=行内可编辑文本（透明下划线，嵌入列表行） */
+  variant?: 'boxed' | 'bare'
 }
 
 const densityClasses = { sm: 'px-3 h-9 text-xs', md: 'px-4 py-3' } as const
 
 const fieldClasses =
-  'w-full rounded bg-ink-deep border border-border text-white placeholder-muted/60 ' +
+  'w-full rounded-lg bg-ink-deep border border-border text-white placeholder-muted/60 ' +
   'outline-none transition-all duration-fast ' +
   'focus:border-gold focus:shadow-[0_0_0_1px_rgb(var(--gold-foil)/0.3)] ' +
   'disabled:opacity-50 disabled:pointer-events-none'
 
+/** 行内可编辑文本：无盒模型，hover/focus 露出下划线 */
+const bareFieldClasses =
+  'w-full bg-transparent border-b border-transparent hover:border-border ' +
+  'focus:border-gold focus:text-body-text/80 outline-none transition-all ' +
+  'disabled:opacity-50 disabled:pointer-events-none'
+
 export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
-  { label, error, hint, size = 'md', fit = false, className = '', id, ...rest },
+  { label, error, hint, size = 'md', fit = false, variant = 'boxed', className = '', id, ...rest },
   ref,
 ) {
   // 无显式 id 时用 label 文本关联（可访问性兜底由调用方决定）
@@ -40,7 +48,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
       <input
         ref={ref}
         id={id}
-        className={`${fieldClasses} ${densityClasses[size]} ${error ? 'border-crimson/60' : ''} ${className}`}
+        className={`${variant === 'bare' ? bareFieldClasses : `${fieldClasses} ${densityClasses[size]}`} ${error ? 'border-crimson/60' : ''} ${className}`}
         aria-invalid={!!error}
         {...rest}
       />

@@ -1,4 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion'
+import { Scrim } from './ui'
 
 interface EggEvent {
   id: number
@@ -20,13 +21,15 @@ export function EggAnimation({ event }: EggAnimationProps) {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-overlay flex items-center justify-center pointer-events-none bg-black/30">
+          className="fixed inset-0 z-overlay flex items-center justify-center pointer-events-none">
+          {/* 统一提示遮罩（tone=hint 浅墨不吃点击）；内容置于其上 */}
+          <Scrim tone="hint" />
           <motion.div
             initial={{ scale: 0, rotate: -180, y: -200 }}
             animate={{ scale: [0, 1.4, 1], rotate: [0, 20, -10, 0], y: 0 }}
             exit={{ scale: 0, opacity: 0, y: 100 }}
             transition={{ duration: 0.6, ease: 'backOut' }}
-            className="flex flex-col items-center gap-4"
+            className="relative z-modal flex flex-col items-center gap-4"
           >
             {/* 鸡蛋 emoji 大图 */}
             <motion.div

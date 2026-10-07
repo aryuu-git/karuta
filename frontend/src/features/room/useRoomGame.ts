@@ -282,6 +282,9 @@ export function useRoomGame(roomId: number, user: User | null) {
         break
 
       case 'room_closed':
+        // 已在结算页本端不再被踢回：跳到结算/对局结束后房主仍应看得到结算
+        // （2026-10-05 修复：房间没落终局前，解散事件会把结算页顶掉）
+        if (s.status === 'end') break
         toast.show('战场解散，即将返回', 'info', 3000)
         setTimeout(() => navigate(paths.home()), 2000)
         break
@@ -601,7 +604,19 @@ export function useRoomGame(roomId: number, user: User | null) {
   /** 旁观者身份本地同步（WaitingLobby 已完成 API 调用后回调） */
   const setSpectator = useCallback((value: boolean) => dispatch({ type: 'set_spectator', value }), [])
 
-  const debugEnd = useCallback((results: GameResult[]) => dispatch({ type: 'debug_end', results }), [])
+  /**
+   * 「跳到结算」= 结束本局并看结算（2026-10-05 修复）：
+   * 此前只 dispatch 本地 mock，服务端房间卡在 reading——一直挂在大厅「进行中」、
+   * 会话继续计时并写 game_records、牌组被 HasActiveRoom 判为「使用中」。
+   * 现在同时落服务端终局：房主走解散、非房主的管理员走强制结束（都会写 status=end）；
+   * 本端保留 mock 结算画面（room_closed 不会再把它顶掉）。
+   */
+  const debugEnd = useCallback((results: GameResult[]) => {
+    dispatch({ type: 'debug_end', results })
+    const isHost = stateRef.current.roomState?.room.host_id === user?.id
+    const end = isHost ? api.rooms.close(roomId) : api.rooms.forceEnd(roomId)
+    void end.catch(() => null)
+  }, [roomId, user?.id])
 
   return {
     state,

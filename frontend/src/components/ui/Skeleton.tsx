@@ -1,12 +1,6 @@
-import type { CSSProperties, ReactElement } from 'react'
+import type { ReactElement } from 'react'
 
-/** 骨架块基础样式：surface 底 + 白5 高光横向扫过（复用全局 shimmer keyframes，纯 CSS，禁 framer） */
-const blockStyle: CSSProperties = {
-  background:
-    'linear-gradient(90deg, rgb(var(--color-surface)) 0%, rgb(255 255 255 / 0.05) 50%, rgb(var(--color-surface)) 100%)',
-  backgroundSize: '200% 100%',
-  animation: 'shimmer 1.6s linear infinite',
-}
+/** 骨架块基础样式在 index.css 的 .skeleton-block（surface 底 + 白5 高光扫过，复用全局 shimmer keyframes，禁 framer） */
 
 export interface SkeletonProps {
   /** 骨架条目数量（行/卡片数），列表页按 §7.1 取 3–6 */
@@ -21,10 +15,10 @@ export interface SkeletonProps {
 function RowItem(): ReactElement {
   return (
     <div className="flex items-center gap-3">
-      <div className="w-10 h-10 rounded-full shrink-0" style={blockStyle} />
+      <div className="skeleton-block w-10 h-10 rounded-full shrink-0" />
       <div className="flex-1 space-y-2">
-        <div className="h-3 rounded w-3/4" style={blockStyle} />
-        <div className="h-3 rounded w-1/2" style={blockStyle} />
+        <div className="skeleton-block h-3 rounded w-3/4" />
+        <div className="skeleton-block h-3 rounded w-1/2" />
       </div>
     </div>
   )
@@ -34,10 +28,10 @@ function RowItem(): ReactElement {
 function CardItem(): ReactElement {
   return (
     <div className="rounded-xl overflow-hidden">
-      <div className="w-full" style={{ ...blockStyle, aspectRatio: '3/4' }} />
+      <div className="skeleton-block w-full" style={{ aspectRatio: '3/4' }} />
       <div className="p-2 space-y-2">
-        <div className="h-3 rounded w-3/4" style={blockStyle} />
-        <div className="h-3 rounded w-1/2" style={blockStyle} />
+        <div className="skeleton-block h-3 rounded w-3/4" />
+        <div className="skeleton-block h-3 rounded w-1/2" />
       </div>
     </div>
   )

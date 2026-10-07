@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { X, Play, Pause, Layers, Copy, Pencil, Trash2, Plus, Heart, Download } from 'lucide-react'
 import { api } from '../api/client'
 import type { Card, CardAudio } from '../api/types'
-import { Button } from './ui'
+import { Button, IconButton, ProgressBar, Scrim } from './ui'
 import { cardPlaceholderStyle, formatDuration } from './CardTile'
 import { Waveform } from './Waveform'
 import { extractPeaks } from '../utils/waveform'
@@ -103,9 +103,8 @@ export function CardDrawer({ cardId, onClose, onEdit, onDelete, onClone, onAddTo
     <AnimatePresence>
       {cardId !== null && (
         <>
-          <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-overlay bg-black/50" onClick={onClose} />
+          {/* 统一覆盖遮罩（tone=overlay），点击关闭 */}
+          <Scrim tone="overlay" onClick={onClose} />
           <motion.aside
             initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
             transition={{ type: 'spring', stiffness: 320, damping: 32 }}
@@ -124,12 +123,14 @@ export function CardDrawer({ cardId, onClose, onEdit, onDelete, onClone, onAddTo
                           {(card.display_text || card.series || '牌').trim().charAt(0)}
                         </span>
                       </div>}
-                  <button onClick={onClose}
-                    className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70">
-                    <X size={16} />
-                  </button>
-                  <div className="absolute inset-x-0 bottom-0 p-4 pt-10"
-                    style={{ background: 'linear-gradient(transparent, rgba(0,0,0,0.8))' }}>
+                  <IconButton
+                    icon={<X size={16} />}
+                    onClick={onClose}
+                    tone="neutral"
+                    aria-label="关闭"
+                    className="absolute top-3 right-3"
+                  />
+                  <div className="absolute inset-x-0 bottom-0 p-4 pt-10 bg-gradient-to-t from-black/80 to-transparent">
                     <h2 className="font-serif text-lg font-bold text-white">{card.display_text || '未命名'}</h2>
                     {card.series && <p className="text-xs text-white/70">{card.series}</p>}
                   </div>
@@ -142,10 +143,12 @@ export function CardDrawer({ cardId, onClose, onEdit, onDelete, onClone, onAddTo
                     <div className="space-y-1.5">
                       {audios.map(a => (
                         <div key={a.id} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5">
-                          <button onClick={() => togglePlay(a)}
-                            className="w-7 h-7 shrink-0 rounded-full bg-gold/90 text-ink-deep flex items-center justify-center">
-                            {playingId === a.id ? <Pause size={13} /> : <Play size={13} fill="currentColor" />}
-                          </button>
+                          <IconButton
+                            icon={playingId === a.id ? <Pause size={16} /> : <Play size={16} fill="currentColor" />}
+                            onClick={() => togglePlay(a)}
+                            tone="gold"
+                            aria-label={playingId === a.id ? '暂停' : '播放'}
+                          />
                           <div className="flex-1 min-w-0">
                             <p className="text-xs text-body-text/90 truncate">{a.hint_text || `音频 ${a.id}`}</p>
                             {/* 波形（解码成功时）；失败回退细进度条 */}
@@ -154,9 +157,7 @@ export function CardDrawer({ cardId, onClose, onEdit, onDelete, onClone, onAddTo
                                 <Waveform peaks={peaksMap.get(a.id) ?? null} progress={playingId === a.id ? progress : 0} />
                               </div>
                             ) : playingId === a.id ? (
-                              <div className="h-0.5 mt-1 rounded bg-white/10 overflow-hidden">
-                                <div className="h-full bg-gold" style={{ width: `${progress * 100}%` }} />
-                              </div>
+                              <ProgressBar value={progress * 100} tone="gold" className="mt-1" />
                             ) : null}
                           </div>
                           <span className="text-[10px] text-muted tabular-nums">{formatDuration(a.duration_sec ?? 0)}</span>
@@ -169,7 +170,7 @@ export function CardDrawer({ cardId, onClose, onEdit, onDelete, onClone, onAddTo
                   {audios.some(a => a.hint_text) && (
                     <section>
                       <p className="text-muted text-xs tracking-widest mb-1">播放提示</p>
-                      <p className="text-xs text-body-text/80 font-serif italic">
+                      <p className="text-xs text-body-text/80 font-serif">
                         「{audios.find(a => a.hint_text)?.hint_text}」
                       </p>
                     </section>
@@ -180,7 +181,7 @@ export function CardDrawer({ cardId, onClose, onEdit, onDelete, onClone, onAddTo
                     {card.tags && card.tags.split(',').filter(Boolean).map(t => (
                       <span key={t} className="px-2 py-0.5 rounded-full bg-gold/10 border border-gold/20 text-gold/90">{t.trim()}</span>
                     ))}
-                    <span className="flex items-center gap-1 text-muted"><Layers size={10} />被 {deckRefs} 个牌组使用</span>
+                    <span className="flex items-center gap-1 text-muted"><Layers size={12} />被 {deckRefs} 个牌组使用</span>
                     <button onClick={() => void toggleLike()} disabled={likeBusy}
                       className={`ml-auto flex items-center gap-1 px-2.5 py-1 rounded-full border transition-all disabled:opacity-50 ${
                         card.liked_by_me
@@ -193,11 +194,11 @@ export function CardDrawer({ cardId, onClose, onEdit, onDelete, onClone, onAddTo
 
                   {/* 操作组 */}
                   <section className="flex flex-wrap gap-2 pt-2 border-t border-gold/10">
-                    {onAddToDeck && <Button size="sm" variant="outline" icon={<Plus size={13} />} onClick={() => onAddToDeck(card)}>加入牌组</Button>}
-                    {onExport && <Button size="sm" variant="outline" icon={<Download size={13} />} onClick={() => onExport(card)}>导出</Button>}
-                    {onEdit && <Button size="sm" variant="outline" icon={<Pencil size={13} />} onClick={() => onEdit(card)}>编辑</Button>}
-                    {onClone && <Button size="sm" variant="ghost" icon={<Copy size={13} />} onClick={() => onClone(card)}>复制</Button>}
-                    {onDelete && <Button size="sm" variant="danger" icon={<Trash2 size={13} />} onClick={() => onDelete(card)}>删除</Button>}
+                    {onAddToDeck && <Button size="sm" variant="outline" icon={<Plus size={16} />} onClick={() => onAddToDeck(card)}>加入牌组</Button>}
+                    {onExport && <Button size="sm" variant="outline" icon={<Download size={16} />} onClick={() => onExport(card)}>导出</Button>}
+                    {onEdit && <Button size="sm" variant="outline" icon={<Pencil size={16} />} onClick={() => onEdit(card)}>编辑</Button>}
+                    {onClone && <Button size="sm" variant="ghost" icon={<Copy size={16} />} onClick={() => onClone(card)}>复制</Button>}
+                    {onDelete && <Button size="sm" variant="danger" icon={<Trash2 size={16} />} onClick={() => onDelete(card)}>删除</Button>}
                   </section>
                 </div>
               </div>

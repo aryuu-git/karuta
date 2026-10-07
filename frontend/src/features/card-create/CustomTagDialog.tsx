@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { Button, Input } from '../../components/ui'
+import { Button, Input, ModalSurface } from '../../components/ui'
 import { Plus } from 'lucide-react'
 
 interface CustomTagDialogProps {
@@ -26,37 +25,26 @@ export function CustomTagDialog({ open, onConfirm, onCancel }: CustomTagDialogPr
   }
 
   return (
-    <AnimatePresence>
-      {open && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-          className="fixed inset-0 z-modal flex items-center justify-center px-4 bg-black/75 backdrop-blur-sm"
-          onClick={onCancel}>
-          <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.9, opacity: 0 }}
-            className="w-full max-w-xs rounded-2xl p-5 bg-ink border border-gold/20"
-            onClick={e => e.stopPropagation()}>
-            <h3 className="font-serif text-gold text-base mb-1">✦ 自定义标签</h3>
-            <p className="text-gold/40 text-tiny mb-4 font-serif">为歌牌赋予独特属性吧～</p>
-            <Input
-              type="text"
-              value={value}
-              onChange={e => setValue(e.target.value)}
-              onKeyDown={e => {
-                if (e.key === 'Enter' && value.trim()) confirm()
-              }}
-              className="text-sm mb-4"
-              placeholder="输入标签名…"
-              autoFocus
-            />
-            <div className="flex gap-2">
-              <Button variant="outline" className="flex-1" onClick={onCancel}>取消</Button>
-              <Button onClick={confirm} disabled={!value.trim()}>
-                <Plus className="mr-0.5 inline h-3 w-3" /> 添加
-              </Button>
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+    <ModalSurface open={open} onClose={onCancel} title="自定义标签" size="sm">
+      {/* 副标题 */}
+      <p className="text-gold/40 text-tiny mb-4 font-serif">为歌牌赋予独特属性吧～</p>
+      <Input
+        type="text"
+        value={value}
+        onChange={e => setValue(e.target.value)}
+        onKeyDown={e => {
+          if (e.key === 'Enter' && value.trim()) confirm()
+        }}
+        className="text-sm mb-4"
+        placeholder="输入标签名…"
+        autoFocus
+      />
+      <div className="flex gap-2">
+        <Button variant="outline" className="flex-1" onClick={onCancel}>取消</Button>
+        <Button onClick={confirm} disabled={!value.trim()}>
+          <Plus className="mr-0.5 inline h-3 w-3" /> 添加
+        </Button>
+      </div>
+    </ModalSurface>
   )
 }

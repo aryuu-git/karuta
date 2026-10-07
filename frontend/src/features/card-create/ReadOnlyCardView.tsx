@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import type { Card, CardAudio } from '../../api/types'
 import { Tv, Play, Pause } from 'lucide-react'
-import { PageContainer, HeroHeader, Button } from '../../components/ui'
+import { PageContainer, HeroHeader, Button, PanelSurface, Badge } from '../../components/ui'
 import { paths } from '../../routes/paths'
 
 interface ReadOnlyCardViewProps {
@@ -22,7 +22,7 @@ export function ReadOnlyCardView({ card, coverPreview, audios, playingAudioId, o
         onBack={() => navigate(paths.cards())}
       />
 
-      <div className="rounded-2xl p-6 bg-surface/50 border border-gold/10">
+      <PanelSurface variant="void-soft" radius="2xl" className="p-6">
         <div className="flex gap-5">
           {coverPreview && (
             <img src={coverPreview} alt="" className="w-24 rounded-lg object-cover shrink-0" style={{ aspectRatio: '3/4' }} />
@@ -33,7 +33,7 @@ export function ReadOnlyCardView({ card, coverPreview, audios, playingAudioId, o
             {card.tags && (
               <div className="flex gap-1 flex-wrap">
                 {card.tags.split(',').filter(Boolean).map(t => (
-                  <span key={t} className="text-tiny px-2 py-0.5 rounded-full bg-gold/10 text-gold/60 border border-gold/20">{t.trim()}</span>
+                  <Badge key={t} tone="gold">{t.trim()}</Badge>
                 ))}
               </div>
             )}
@@ -55,7 +55,7 @@ export function ReadOnlyCardView({ card, coverPreview, audios, playingAudioId, o
             </div>
           </div>
         )}
-      </div>
+      </PanelSurface>
     </PageContainer>
   )
 }

@@ -49,16 +49,11 @@ export function AchievementPopup({ queue, dismiss }: {
               dismiss()
               navigate(paths.profile())
             }}
-            className="pointer-events-auto relative w-64 rounded-xl px-4 py-3 text-right border border-gold-foil/60 shadow-lg"
-            style={{
-              background: 'linear-gradient(160deg, rgb(var(--color-ink-deep)), rgb(var(--accent-bg-mid)))',
-              boxShadow: '0 0 24px rgb(var(--gold-foil)/ 0.25), 0 8px 24px rgba(0,0,0,0.45)',
-            }}
+            className="pointer-events-auto relative w-64 rounded-xl px-4 py-3 text-right border border-gold-foil/60 shadow-foil bg-gradient-to-b from-ink-deep to-accent-bg-mid"
           >
-            <div className="absolute top-0 left-0 w-full h-0.5 rounded-t-xl"
-              style={{ background: 'linear-gradient(90deg, transparent, rgb(var(--gold-foil)), transparent)' }} />
+            <div className="absolute top-0 left-0 w-full h-0.5 rounded-t-xl bg-gradient-to-r from-transparent via-gold-foil to-transparent" />
             <p className="text-[10px] tracking-widest text-gold-foil/80 flex items-center justify-end gap-1">
-              <Award size={11} /> 成就解锁
+              <Award size={12} /> 成就解锁
             </p>
             <div className="flex items-center justify-end gap-2 mt-1">
               <div>

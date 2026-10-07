@@ -7,7 +7,7 @@ import { paths } from './paths'
 function AuthBootLoading() {
   return (
     <CenteredShell className="flex-col gap-3">
-      <Spinner size={32} />
+      <Spinner size={20} />
       <p className="text-gold font-serif text-lg">加载中…</p>
     </CenteredShell>
   )

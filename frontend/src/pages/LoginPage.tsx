@@ -1,10 +1,11 @@
 import { useState, type FormEvent } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { UserRound, Lock } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { paths } from '../routes/paths'
 import { Button, Input, CenteredShell } from '../components/ui'
+import { FadeIn } from '../components/ui/FadeIn'
+import { BrandGlow } from '../components/ui/BrandGlow'
 
 /**
  * 深链回跳目标（修复 #3）：RequireAuth 守卫与 JoinRoomPage 通过 state.from
@@ -46,54 +47,33 @@ export function LoginPage() {
 
   return (
     <CenteredShell>
-      <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden="true">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full opacity-10 blur-3xl"
-          style={{ background: 'radial-gradient(circle, rgb(var(--color-gold)), transparent)' }} />
-        <div className="absolute bottom-1/4 right-1/4 w-64 h-64 rounded-full opacity-8 blur-2xl"
-          style={{ background: 'radial-gradient(circle, rgb(var(--color-gold-light)), transparent)' }} />
-      </div>
-
-      <motion.div
-        initial={{ opacity: 0, y: 24 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="relative z-10 w-full max-w-sm"
-      >
-        {/* Logo */}
-        <div className="text-center mb-6">
-          <motion.h1
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.1, duration: 0.5 }}
-            className="font-serif text-5xl font-bold text-gold-shimmer mb-2"
-            style={{ textShadow: '0 0 40px rgb(var(--accent-primary)/ 0.4)' }}
-          >
-            🌸 二次元歌牌大乱斗
-          </motion.h1>
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.3 }}
-            className="text-muted text-sm"
-          >
+      <FadeIn y={24} className="relative z-10 w-full max-w-md">
+        {/* Logo：图标独占一行 + 标题 nowrap 单行；品牌光晕 BrandGlow 单点垫底 */}
+        <div className="relative text-center mb-6">
+          <BrandGlow className="left-1/2 top-1/2 w-96 h-96 -translate-x-1/2 -translate-y-1/2" />
+          <FadeIn delay={100} y={0}>
+            <h1
+              className="font-serif text-display font-bold text-gold-shimmer whitespace-nowrap mb-2"
+              style={{ textShadow: '0 0 40px rgb(var(--accent-primary)/ 0.4)' }}
+            >
+              <span className="block text-4xl leading-none mb-2" aria-hidden="true">🌸</span>
+              二次元歌牌大乱斗
+            </h1>
+          </FadeIn>
+          <FadeIn delay={300} y={0} className="text-muted text-sm">
             和风歌牌，指尖对决
-          </motion.p>
+          </FadeIn>
           <div className="mt-4 h-px bg-gradient-to-r from-transparent via-gold/30 to-transparent" />
         </div>
 
-        {/* Card */}
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2, duration: 0.4 }}
-          className="rounded-2xl p-8 relative overflow-hidden border border-gold/15"
-          style={{ background: 'linear-gradient(160deg, rgb(var(--accent-bg-end)/ 0.8), rgb(var(--accent-bg-mid)/ 0.95))', boxShadow: '0 0 60px rgb(var(--accent-primary)/ 0.1), 0 20px 40px rgba(0,0,0,0.5)' }}
-        >
-          <div className="absolute top-0 left-0 w-full h-0.5" style={{ background: 'linear-gradient(90deg, transparent, rgb(var(--glow-color)/ 0.4), rgb(var(--accent-primary)/ 0.4), transparent)' }} />
-          <h2 className="text-gold font-serif font-bold text-lg mb-1 text-center">
+        {/* Card（投影走 shadow-modal token，替代手写 boxShadow 字面量） */}
+        <FadeIn delay={200} y={16} className="rounded-2xl p-8 relative overflow-hidden border border-gold/15 bg-gradient-to-b from-accent-bg-end/80 to-accent-bg-mid/95 shadow-modal">
+          {/* 描金顶线：token accent-line */}
+          <div className="absolute top-0 left-0 w-full h-0.5 bg-accent-line" />
+          <h2 className="text-gold-light font-serif font-bold text-lg mb-1 text-center">
             欢迎回来
           </h2>
-          <p className="text-gold/50 text-caption text-center mb-6 font-serif italic">登录后继续对局</p>
+          <p className="text-gold/70 text-caption text-center mb-6">登录后继续对局</p>
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <Input
@@ -117,13 +97,9 @@ export function LoginPage() {
             />
 
             {error && (
-              <motion.p
-                initial={{ opacity: 0, y: -4 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="text-crimson text-sm text-center bg-crimson/10 border border-crimson/30 rounded-lg px-3 py-2.5"
-              >
+              <FadeIn y={-4} className="text-crimson text-sm text-center bg-crimson/10 border border-crimson/30 rounded-lg px-3 py-2.5">
                 {error}
-              </motion.p>
+              </FadeIn>
             )}
 
             <Button
@@ -135,24 +111,19 @@ export function LoginPage() {
               进入战场
             </Button>
           </form>
-        </motion.div>
+        </FadeIn>
 
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.5 }}
-          className="text-center mt-5 text-muted text-caption"
-        >
+        <FadeIn delay={500} y={0} className="text-center mt-5 text-muted text-caption">
           还没有账号？{' '}
-          <Link to={paths.register()} className="text-gold hover:text-gold-light transition-colors underline underline-offset-2">
+          <Button variant="link" onClick={() => navigate(paths.register())}>
             注册
-          </Link>
+          </Button>
           {' · '}
-          <Link to={paths.guest()} className="text-muted hover:text-body-text/70 transition-colors underline underline-offset-2">
+          <Button variant="link" onClick={() => navigate(paths.guest())}>
             游客进入
-          </Link>
-        </motion.p>
-      </motion.div>
+          </Button>
+        </FadeIn>
+      </FadeIn>
     </CenteredShell>
   )
 }

@@ -15,6 +15,7 @@ const GuestPage = lazy(() => import('./pages/GuestPage').then(m => ({ default: m
 // 登录页（有导航壳）
 const HomePage = lazy(() => import('./pages/HomePage').then(m => ({ default: m.HomePage })))
 const ProfilePage = lazy(() => import('./pages/ProfilePage').then(m => ({ default: m.ProfilePage })))
+const GamesPage = lazy(() => import('./pages/GamesPage').then(m => ({ default: m.GamesPage })))
 const DecksPage = lazy(() => import('./pages/DecksPage').then(m => ({ default: m.DecksPage })))
 const DeckDetailPage = lazy(() => import('./pages/DeckDetailPage').then(m => ({ default: m.DeckDetailPage })))
 const CardLibraryPage = lazy(() => import('./pages/CardLibraryPage').then(m => ({ default: m.CardLibraryPage })))
@@ -52,6 +53,7 @@ export default function App() {
               <Route element={<RequireMember />}>
                 <Route path={paths.home()} element={<HomePage />} />
                 <Route path={paths.profile()} element={<ProfilePage />} />
+                <Route path={paths.games()} element={<GamesPage />} />
                 <Route path={paths.decks()} element={<DecksPage />} />
                 <Route path={routePatterns.deck} element={<DeckDetailPage />} />
                 <Route path={paths.cards()} element={<CardLibraryPage />} />

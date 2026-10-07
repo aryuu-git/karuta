@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Music, Globe } from 'lucide-react'
 import { api } from '../api/client'
 import type { Card } from '../api/types'
-import { Button, Input, SearchInput } from './ui'
+import { Button, Input, SearchInput, SegmentedTabs, Scrim } from './ui'
 
 type Tab = 'mine' | 'public'
 
@@ -100,47 +100,38 @@ export function CardPicker({ open, onClose, onSelect, excludeIds = [] }: CardPic
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-modal flex items-center justify-center px-4 bg-black/75"
-        onClick={onClose}>
+        className="fixed inset-0 z-modal flex items-center justify-center px-4"
+      >
+        {/* 统一遮罩（tone=modal），点击关闭 */}
+        <Scrim tone="modal" onClick={onClose} />
         <motion.div
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.9, opacity: 0 }}
-          className="bg-ink-deep border border-border rounded-xl w-full max-w-2xl max-h-[80vh] flex flex-col"
+          className="relative z-modal bg-ink-deep border border-border rounded-xl w-full max-w-2xl max-h-[80vh] flex flex-col"
           onClick={e => e.stopPropagation()}>
 
-          {/* Header with gradient */}
-          {/* 渐变背景与径向 glow 保留 inline（无法用类表达） */}
-          <div className="p-5 shrink-0 relative overflow-hidden border-b border-gold/10"
-            style={{ background: 'linear-gradient(135deg, rgb(var(--accent-bg)/ 0.4) 0%, rgb(var(--accent-bg-mid)/ 0.8) 50%, rgb(var(--accent-bg-end)/ 0.4) 100%)' }}>
-            <div className="absolute top-0 right-0 w-20 h-20 opacity-10 pointer-events-none"
-              style={{ background: 'radial-gradient(circle, rgb(var(--glow-color)/ 0.8), transparent 70%)' }} />
-            <h3 className="font-serif text-gold text-lg font-bold mb-1 relative">🎴 选择歌牌</h3>
-            <p className="text-gold/50 text-tiny font-serif italic relative">从牌库中选择要加入的牌</p>
+          {/* 头部渐变区：panel-hero token 底纹 */}
+          <div className="p-5 shrink-0 relative overflow-hidden border-b border-gold/10 bg-panel-hero">
+            <h3 className="font-serif text-gold-light text-lg font-bold mb-1 relative">🎴 选择歌牌</h3>
+            <p className="text-gold/70 text-tiny relative">从牌库中选择要加入的牌</p>
           </div>
 
           {/* Tabs + Search */}
           <div className="px-5 pt-3 shrink-0">
-            <div className="flex gap-0.5 mb-3 bg-white/5 rounded-xl p-1 w-fit">
-              <button
-                onClick={() => setTab('mine')}
-                className={`px-4 py-1.5 text-tiny font-medium rounded-lg transition-all ${
-                  tab === 'mine'
-                    ? 'bg-gradient-to-r from-gold/20 to-gold-dark/10 text-gold shadow-sm'
-                    : 'text-muted hover:text-body-text/70'
-                }`}>
-                <Music size={13} aria-hidden="true" /> 我的牌库
-              </button>
-              <button
-                onClick={() => setTab('public')}
-                className={`px-4 py-1.5 text-tiny font-medium rounded-lg transition-all ${
-                  tab === 'public'
-                    ? 'bg-gradient-to-r from-gold/20 to-gold-dark/10 text-gold shadow-sm'
-                    : 'text-muted hover:text-body-text/70'
-                }`}>
-                <Globe size={13} aria-hidden="true" /> 公共牌库
-              </button>
-            </div>
+            {/* 来源页签：容器分段器 bar */}
+            <SegmentedTabs
+              variant="bar"
+              size="md"
+              className="mb-3"
+              aria-label="牌库来源"
+              value={tab}
+              onChange={setTab}
+              options={[
+                { value: 'mine' as Tab, label: '我的牌库', icon: <Music size={16} aria-hidden="true" /> },
+                { value: 'public' as Tab, label: '公共牌库', icon: <Globe size={16} aria-hidden="true" /> },
+              ]}
+            />
             <div className="space-y-2 mb-3">
               <SearchInput
                 value={search}
@@ -149,16 +140,26 @@ export function CardPicker({ open, onClose, onSelect, excludeIds = [] }: CardPic
                 onClear={() => { setSearch(''); if (tab === 'public') loadPublicCards('', filterTag, filterOwner, 1) }}
                 placeholder={tab === 'mine' ? '搜索我的牌…' : '搜索歌牌名或作品名…'} />
               <div className="flex items-center gap-1.5 flex-wrap">
-                {['', ...allTags].map(t => (
-                  <button key={t} onClick={() => setFilterTag(t)}
-                    className={`text-tiny px-3 py-1 rounded-full transition-all ${
-                      filterTag === t
-                        ? 'bg-gradient-to-r from-gold/25 to-gold-dark/15 text-gold border border-gold/40'
-                        : 'bg-white/5 text-body-text/40 border border-white/5 hover:border-gold/20'
-                    }`}>
-                    {t ? t : '全部'}
-                  </button>
-                ))}
+                {/* 标签筛选片：SegmentedTabs chip（label 含当前列表计数，0 不显示） */}
+                {(() => {
+                  const tagCounts = new Map<string, number>()
+                  cards.forEach(c => {
+                    if (c.tags) c.tags.split(',').forEach(t => { const tag = t.trim(); if (tag) tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1) })
+                  })
+                  return (
+                    <SegmentedTabs
+                      variant="chip"
+                      size="sm"
+                      aria-label="标签筛选"
+                      value={filterTag}
+                      onChange={setFilterTag}
+                      options={['', ...allTags].map(t => {
+                        const count = t ? (tagCounts.get(t) || 0) : cards.length
+                        return { value: t, label: <>{t ? t : '全部'}{count > 0 ? ` (${count})` : ''}</> }
+                      })}
+                    />
+                  )
+                })()}
                 {tab === 'public' && (
                   <Input size="sm" fit className="w-24 shrink-0"
                     value={filterOwner}
@@ -173,13 +174,13 @@ export function CardPicker({ open, onClose, onSelect, excludeIds = [] }: CardPic
           {/* Card list */}
           <div className="flex-1 overflow-y-auto px-5 py-2">
             {loading && (
-              <div className="text-gold/50 text-tiny animate-pulse text-center py-8 font-serif">加载中…</div>
+              <div className="text-gold/70 text-tiny animate-pulse text-center py-8 font-serif">加载中…</div>
             )}
             {!loading && cards.length === 0 && (
               <div className="text-center py-8">
                 <div className="text-3xl mb-2">🌸</div>
-                <p className="text-gold text-caption font-serif mb-1">没有可选的牌</p>
-                <p className="text-gold/40 text-tiny font-serif">换个关键词试试</p>
+                <p className="text-gold-light/90 text-caption font-serif mb-1">没有可选的牌</p>
+                <p className="text-gold/70 text-tiny font-serif">换个关键词试试</p>
               </div>
             )}
             {!loading && cards.length > 0 && (
@@ -190,21 +191,17 @@ export function CardPicker({ open, onClose, onSelect, excludeIds = [] }: CardPic
                   return (
                     <div key={card.id}
                       onClick={() => toggleCard(card.id)}
-                      className={`relative rounded-lg overflow-hidden cursor-pointer transition-all group ${
-                        isExcluded ? 'opacity-40 cursor-not-allowed' : 'hover:scale-105'
+                      className={`relative rounded-lg overflow-hidden cursor-pointer transition-all group ${isChecked ? 'border-2 border-gold/60 shadow-gold' : isExcluded ? 'border border-white/5' : 'border border-gold/15'} ${
+                        isExcluded ? 'opacity-40 cursor-not-allowed' : 'hover:-translate-y-1 hover:shadow-lg'
                       }`}
-                      style={{
-                        aspectRatio: '3/4',
-                        border: isChecked ? '2px solid rgb(var(--color-gold)/ 0.6)' : isExcluded ? '1px solid rgba(255,255,255,0.05)' : '1px solid rgb(var(--color-gold)/ 0.12)',
-                        boxShadow: isChecked ? '0 0 10px rgb(var(--glow-color)/ 0.3)' : 'none',
-                      }}
+                      style={{ aspectRatio: '3/4' }}
                       title={`${card.display_text}${card.series ? ' · ' + card.series : ''}${card.owner_name ? ' by ' + card.owner_name : ''}`}
                     >
                       {card.cover_url ? (
                         <img src={card.cover_url} alt="" className="w-full h-full object-cover" loading="lazy" />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center" style={{ background: 'rgb(var(--color-ink-deep))' }}>
-                          <span className="text-gold/15 font-serif text-lg">♪</span>
+                        <div className="w-full h-full flex items-center justify-center bg-ink-deep">
+                          <span className="text-gold/70 font-serif text-lg">♪</span>
                         </div>
                       )}
                       {/* 选中标记 */}
@@ -220,11 +217,11 @@ export function CardPicker({ open, onClose, onSelect, excludeIds = [] }: CardPic
                       )}
                       {/* 底部名称 */}
                       <div className="absolute bottom-0 left-0 right-0 px-1 py-0.5 bg-black/75">
-                        <p className="text-body-text/80 text-[9px] truncate leading-tight">{card.display_text || '?'}</p>
+                        <p className="text-body-text/80 text-[10px] truncate leading-tight">{card.display_text || '?'}</p>
                       </div>
                       {/* 音频数 */}
                       {(card.audio_count ?? 1) > 1 && (
-                        <div className="absolute top-0.5 left-0.5 px-1 py-0.5 rounded text-[8px] font-bold bg-black/70 text-gold">
+                        <div className="absolute top-0.5 left-0.5 px-1 py-0.5 rounded text-[10px] font-bold bg-black/70 text-gold">
                           ♪{card.audio_count}
                         </div>
                       )}
@@ -256,7 +253,7 @@ export function CardPicker({ open, onClose, onSelect, excludeIds = [] }: CardPic
 
           {/* Footer */}
           <div className="p-4 shrink-0 flex items-center justify-between border-t border-gold/10">
-            <span className="text-gold/40 text-tiny font-serif">
+            <span className="text-gold/70 text-tiny font-serif">
               {selected.size > 0 ? `已选 ${selected.size} 张` : `共 ${cards.length} 张`}
             </span>
             <div className="flex gap-3">

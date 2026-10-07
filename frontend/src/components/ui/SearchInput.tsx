@@ -16,7 +16,7 @@ export interface SearchInputProps
 }
 
 const fieldClasses =
-  'w-full h-9 pl-10 pr-9 rounded bg-ink-deep border border-border text-sm text-white ' +
+  'w-full h-9 pl-10 pr-9 rounded-lg bg-ink-deep border border-border text-sm text-white ' +
   'placeholder-muted/60 outline-none transition-all duration-fast ' +
   'hover:border-border focus:border-gold focus:shadow-[0_0_0_1px_rgb(var(--gold-foil)/0.3)] ' +
   'disabled:opacity-50 disabled:pointer-events-none'
@@ -29,7 +29,7 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(functi
   return (
     <div className={`relative ${className}`}>
       <Search
-        size={15}
+        size={16}
         aria-hidden="true"
         className="absolute left-3 top-1/2 -translate-y-1/2 text-muted/50 pointer-events-none"
       />
@@ -48,7 +48,7 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(functi
           aria-label="清除搜索"
           className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded text-muted/60 hover:text-white hover:bg-white/5 active:scale-90 transition-all duration-fast"
         >
-          <X size={14} />
+          <X size={16} />
         </button>
       )}
     </div>

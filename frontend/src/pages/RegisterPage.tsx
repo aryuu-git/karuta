@@ -1,11 +1,12 @@
 import { useState, useEffect, type FormEvent } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
 import { UserRound, Lock, Sparkles } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { api } from '../api/client'
 import { paths } from '../routes/paths'
 import { Input, Button, CenteredShell } from '../components/ui'
+import { FadeIn } from '../components/ui/FadeIn'
+import { BrandGlow } from '../components/ui/BrandGlow'
 import { postAuthDestination } from './LoginPage'
 
 
@@ -18,7 +19,8 @@ export function RegisterPage() {
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [secretCode, setSecretCode] = useState('')
-	const [inviteRequired, setInviteRequired] = useState(true)
+	// null=开关状态未知（框不渲染）；fetch 失败 fail-closed 置 true（要码）。
+	const [inviteRequired, setInviteRequired] = useState<boolean | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
@@ -47,7 +49,7 @@ export function RegisterPage() {
       return
     }
 
-    if (!secretCode.trim()) {
+    if (inviteRequired === true && !secretCode.trim()) {
       setError('请输入邀请码')
       return
     }
@@ -75,47 +77,35 @@ export function RegisterPage() {
 
   return (
     <CenteredShell>
-      <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden="true">
-        <div className="absolute top-1/3 right-1/3 w-80 h-80 rounded-full opacity-10 blur-3xl"
-          style={{ background: 'radial-gradient(circle, rgb(var(--color-gold)), transparent)' }} />
-        <div className="absolute bottom-1/3 left-1/4 w-56 h-56 rounded-full opacity-8 blur-2xl"
-          style={{ background: 'radial-gradient(circle, rgb(var(--color-gold-light)), transparent)' }} />
-      </div>
-
-      <motion.div
-        initial={{ opacity: 0, y: 24 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="relative z-10 w-full max-w-sm"
-      >
-        <div className="text-center mb-8">
-          <Link to={paths.login()}>
-            <h1 className="font-serif text-5xl font-bold text-gold-shimmer mb-1 hover:opacity-80 transition-opacity"
-              style={{ textShadow: '0 0 40px rgb(var(--accent-primary)/ 0.4)' }}>
-              🌸 二次元歌牌大乱斗
-            </h1>
-          </Link>
-          <p className="text-muted text-caption mt-1">和朋友一起抢牌对战</p>
+      <FadeIn y={24} className="relative z-10 w-full max-w-md">
+        {/* Logo：图标独占一行 + 标题 nowrap 单行；品牌光晕 BrandGlow 单点垫底 */}
+        <div className="relative text-center mb-8">
+          <BrandGlow className="left-1/2 top-1/2 w-96 h-96 -translate-x-1/2 -translate-y-1/2" />
+          <FadeIn delay={100} y={0}>
+            <Link to={paths.login()} className="inline-block hover:opacity-80 transition-opacity">
+              <h1 className="font-serif text-display font-bold text-gold-shimmer whitespace-nowrap mb-1"
+                style={{ textShadow: '0 0 40px rgb(var(--accent-primary)/ 0.4)' }}>
+                <span className="block text-4xl leading-none mb-2" aria-hidden="true">🌸</span>
+                二次元歌牌大乱斗
+              </h1>
+            </Link>
+          </FadeIn>
+          <FadeIn delay={300} y={0} className="text-muted text-caption mt-1">和朋友一起抢牌对战</FadeIn>
           <div className="mt-3 h-px bg-gradient-to-r from-transparent via-gold/30 to-transparent" />
         </div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.15, duration: 0.4 }}
-          className="rounded-2xl p-8 relative overflow-hidden border border-gold/15"
-          style={{ background: 'linear-gradient(160deg, rgb(var(--accent-bg-end)/ 0.8), rgb(var(--accent-bg-mid)/ 0.95))', boxShadow: '0 0 60px rgb(var(--accent-primary)/ 0.1), 0 20px 40px rgba(0,0,0,0.5)' }}
-        >
-          <div className="absolute top-0 left-0 w-full h-0.5" style={{ background: 'linear-gradient(90deg, transparent, rgb(var(--accent-primary)/ 0.4), rgb(var(--glow-color)/ 0.4), transparent)' }} />
-          <h2 className="text-gold font-serif font-bold text-lg mb-1 text-center">
+        <FadeIn delay={150} y={16} className="rounded-2xl p-8 relative overflow-hidden border border-gold/15 bg-gradient-to-b from-accent-bg-end/80 to-accent-bg-mid/95 shadow-modal">
+          {/* 描金顶线：token accent-line */}
+          <div className="absolute top-0 left-0 w-full h-0.5 bg-accent-line" />
+          <h2 className="text-gold-light font-serif font-bold text-lg mb-1 text-center">
             加入
           </h2>
-          <p className="text-gold/50 text-caption text-center mb-6 font-serif italic">注册账号即可开玩</p>
+          <p className="text-gold/70 text-caption text-center mb-6">注册账号即可开玩</p>
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             {/* 用户名 */}
             <Input
-              label={<><UserRound size={12} className="inline-block mr-1 -mt-0.5 text-muted/70" />昵称 <span className="text-muted/50">（2-20字符）</span></>}
+              label={<><UserRound size={12} className="inline-block mr-1 -mt-0.5 text-muted/70" />昵称 <span className="text-muted/70">（2-20字符）</span></>}
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
@@ -127,7 +117,7 @@ export function RegisterPage() {
 
             {/* 密码 */}
             <Input
-              label={<><Lock size={12} className="inline-block mr-1 -mt-0.5 text-muted/70" />密码 <span className="text-muted/50">（至少6位）</span></>}
+              label={<><Lock size={12} className="inline-block mr-1 -mt-0.5 text-muted/70" />密码 <span className="text-muted/70">（至少6位）</span></>}
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -147,26 +137,24 @@ export function RegisterPage() {
               required
             />
 
-            {/* 邀请码：框常驻（Owner 决策 2026-09-21 恢复旧交互）。关态服务端校验固定默认码 33989，开态校验一次性码。 */}
-            <Input
-              label={<><Sparkles size={12} className="inline-block mr-1 -mt-0.5 text-gold-dark" />邀请码 {!inviteRequired && <span className="text-muted/40 ml-1">（默认 33989）</span>}</>}
-              type="text"
-              value={secretCode}
-              onChange={(e) => setSecretCode(e.target.value)}
-              className="tracking-[0.3em] text-center"
-              placeholder="输入邀请码"
-              autoComplete="off"
-              required
-            />
+            {/* 邀请码：仅开态渲染（Owner 决策 2026-09-30 拆除关态固定码剧场）；开态校验数据库一次性码 */}
+            {inviteRequired === true && (
+              <Input
+                label={<><Sparkles size={12} className="inline-block mr-1 -mt-0.5 text-gold-dark" />邀请码</>}
+                type="text"
+                value={secretCode}
+                onChange={(e) => setSecretCode(e.target.value)}
+                className="code-input tracking-[0.15em] text-center"
+                placeholder="输入邀请码"
+                autoComplete="off"
+                required
+              />
+            )}
 
             {error && (
-              <motion.p
-                initial={{ opacity: 0, y: -4 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="text-crimson text-sm text-center bg-crimson/10 border border-crimson/30 rounded-lg px-3 py-2.5"
-              >
+              <FadeIn y={-4} className="text-crimson text-sm text-center bg-crimson/10 border border-crimson/30 rounded-lg px-3 py-2.5">
                 {error}
-              </motion.p>
+              </FadeIn>
             )}
 
             <Button
@@ -178,20 +166,15 @@ export function RegisterPage() {
               注册并进入
             </Button>
           </form>
-        </motion.div>
+        </FadeIn>
 
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.5 }}
-          className="text-center mt-5 text-muted text-caption"
-        >
+        <FadeIn delay={500} y={0} className="text-center mt-5 text-muted text-caption">
           已有账号？{' '}
-          <Link to={paths.login()} className="text-gold hover:text-gold-light transition-colors underline underline-offset-2">
+          <Button variant="link" onClick={() => navigate(paths.login())}>
             去登录
-          </Link>
-        </motion.p>
-      </motion.div>
+          </Button>
+        </FadeIn>
+      </FadeIn>
     </CenteredShell>
   )
 }

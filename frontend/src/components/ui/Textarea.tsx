@@ -10,7 +10,7 @@ export interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElemen
 }
 
 const fieldClasses =
-  'w-full px-4 py-3 rounded bg-ink-deep border border-border text-white placeholder-muted/60 ' +
+  'w-full px-4 py-3 rounded-lg bg-ink-deep border border-border text-white placeholder-muted/60 ' +
   'outline-none transition-all duration-fast resize-y min-h-24 ' +
   'focus:border-gold focus:shadow-[0_0_0_1px_rgb(var(--gold-foil)/0.3)] ' +
   'disabled:opacity-50 disabled:pointer-events-none'

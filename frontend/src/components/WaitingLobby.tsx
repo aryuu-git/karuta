@@ -2,10 +2,9 @@ import { useState, useEffect, useRef, type RefObject } from 'react'
 import { motion } from 'framer-motion'
 import type { Room, RoomPlayer } from '../api/types'
 import { api } from '../api/client'
-import { Avatar } from './Avatar'
+import { Avatar, Button, ProgressBar } from './ui'
 import { Crown, Eye, EyeOff, X } from 'lucide-react'
 import { useLocation } from 'react-router-dom'
-import { Button } from './ui'
 import { InvitePanel } from '../features/play/InvitePanel'
 interface DuelSeats {
   seat1: { user_id: number; username: string } | null
@@ -63,14 +62,15 @@ function useAmbientParticles(canvasRef: RefObject<HTMLCanvasElement>) {
       })
     }
 
-    const accentRgb = getComputedStyle(document.documentElement).getPropertyValue('--accent-primary').trim() || '232,164,184'
+    // 统一为「R G B」空格三元组（变量可能存逗号格式），配色走现代 space/slash 语法，杜绝透明色函数字面量
+    const accentRgb = (getComputedStyle(document.documentElement).getPropertyValue('--accent-primary').trim() || '232,164,184').replace(/,/g, ' ')
 
     const draw = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height)
       particles.forEach((p) => {
         ctx.beginPath()
         ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2)
-        ctx.fillStyle = `rgba(${accentRgb},${p.opacity})`
+        ctx.fillStyle = `rgb(${accentRgb} / ${p.opacity})`
         ctx.fill()
 
         p.x += p.vx
@@ -171,7 +171,7 @@ export function WaitingLobby({ room, players, currentUserId, onRoleChange, onKic
         {/* 房间模式信息 */}
         {room.mask_enabled && (
           <div className="flex items-center gap-2 px-4 py-2 rounded-lg border border-gold/20 bg-gold/5">
-            <EyeOff size={14} className="text-gold" aria-hidden="true" />
+            <EyeOff size={16} className="text-gold" aria-hidden="true" />
             <span className="text-caption text-body-text/80">
               模糊牌面：{room.mask_difficulty === 'easy' ? '简单' : room.mask_difficulty === 'hard' ? '困难' : '普通'}难度
             </span>
@@ -201,10 +201,7 @@ export function WaitingLobby({ room, players, currentUserId, onRoleChange, onKic
                     </span>
                     {seat ? (
                       <>
-                        <div className="w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold border-2 border-gold/40 text-gold"
-                          style={{
-                            background: 'linear-gradient(135deg, rgb(var(--accent-primary)/ 0.2), rgb(var(--accent-primary)/ 0.05))',
-                          }}>
+                        <div className="w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold border-2 border-gold/40 text-gold bg-gradient-to-br from-accent/20 to-accent/5">
                           {seat.username.charAt(0).toUpperCase()}
                         </div>
                         <span className="text-caption text-gold font-serif truncate max-w-full">
@@ -232,7 +229,7 @@ export function WaitingLobby({ room, players, currentUserId, onRoleChange, onKic
                           whileHover={{ scale: 1.05 }}
                           whileTap={{ scale: 0.95 }}
                           onClick={() => onClaimSeat?.(seatNum)}
-                          className="text-tiny px-3 py-1 rounded-lg transition-all bg-gold/10 border border-gold/30 text-gold">
+                          className="text-tiny px-3 py-1 rounded-lg transition-all bg-gold/10 border border-gold/30 text-gold hover:scale-105 active:scale-95">
                           入座
                         </motion.button>
                       </>
@@ -275,10 +272,10 @@ export function WaitingLobby({ room, players, currentUserId, onRoleChange, onKic
                 >
                   {player.username}
                   {player.user_id === room.host_id && (
-                    <Crown size={11} className="inline-block align-[-1px] ml-1 text-crimson" aria-hidden="true" />
+                    <Crown size={12} className="inline-block align-[-1px] ml-1 text-crimson" aria-hidden="true" />
                   )}
                   {player.role === 'spectator' && (
-                    <span className="text-tiny ml-1 text-info/70 inline-flex items-center gap-0.5 align-middle"><Eye size={10} aria-hidden="true" />旁观</span>
+                    <span className="text-tiny ml-1 text-info/70 inline-flex items-center gap-0.5 align-middle"><Eye size={12} aria-hidden="true" />旁观</span>
                   )}
                 </span>
                 {onKick && currentUserId === room.host_id && player.user_id !== currentUserId && (
@@ -304,15 +301,7 @@ export function WaitingLobby({ room, players, currentUserId, onRoleChange, onKic
               )}
               <span className="text-muted">{preloadProgress.loaded} / {preloadProgress.total}</span>
             </div>
-            <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
-              <motion.div
-                className="h-full rounded-full"
-                style={{ background: 'linear-gradient(90deg, rgb(var(--color-gold)), rgb(var(--color-gold-dark)))' }}
-                initial={{ width: 0 }}
-                animate={{ width: `${preloadPercent}%` }}
-                transition={{ duration: 0.3, ease: 'easeOut' }}
-              />
-            </div>
+            <ProgressBar value={preloadPercent} tone="gold" className="w-full" />
           </div>
         )}
 
@@ -330,7 +319,7 @@ export function WaitingLobby({ room, players, currentUserId, onRoleChange, onKic
               whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
               onClick={toggleSpectate}
               disabled={togglingRole}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-caption transition-all disabled:opacity-50 border ${isSpectator ? 'bg-info/15 border-info/50 text-info' : 'bg-body-text/5 border-body-text/10 text-body-text/50'}`}>
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-caption transition-all disabled:opacity-50 border ${isSpectator ? 'bg-info/15 border-info/50 text-info' : 'bg-body-text/5 border-body-text/10 text-body-text/50'}`}>
               {isSpectator ? '旁观中（点击参与游戏）' : '参与游戏（点击切换旁观）'}
             </motion.button>
           </div>
@@ -353,7 +342,7 @@ export function WaitingLobby({ room, players, currentUserId, onRoleChange, onKic
             <p className="text-gold/50 text-caption font-serif tracking-widest animate-pulse mb-1">
               等待房主开始游戏
             </p>
-            <p className="text-gold/30 text-tiny font-serif italic">房主正在准备中</p>
+            <p className="text-gold/30 text-tiny">房主正在准备中</p>
           </div>
         )}
       </div>

@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { Trophy } from 'lucide-react'
 import type { RoomPlayer } from '../api/types'
-import { Avatar } from './Avatar'
+import { Avatar } from './ui'
 import { Button } from './ui'
 
 interface ScoreBoardProps {
@@ -28,13 +28,13 @@ export function ScoreBoard({ players, currentUserId, hostId, remainingCount, tot
   const progressPct = totalCount > 0 ? ((totalCount - remainingCount) / totalCount) * 100 : 0
 
   return (
-    <div className="flex flex-col h-full w-52 shrink-0 border-l border-gold/10" style={{ background: 'linear-gradient(180deg, rgb(var(--accent-bg-mid)/ 0.98) 0%, rgb(var(--accent-bg-end)/ 0.95) 100%)' }}>
+    <div className="flex flex-col h-full w-52 shrink-0 border-l border-gold/10 bg-gradient-to-b from-accent-bg-mid/98 to-accent-bg-end/95">
 
       {/* Header */}
       <div className="px-4 pt-4 pb-3 border-b border-gold/10">
         <div className="flex items-center gap-2 mb-3">
-          <Trophy size={14} className="text-gold-dark" aria-hidden="true" />
-          <span className="font-serif text-gold text-caption font-medium tracking-widest">实时战况</span>
+          <Trophy size={16} className="text-gold-dark" aria-hidden="true" />
+          <span className="font-serif text-gold-light/90 text-caption font-medium tracking-widest">实时战况</span>
         </div>
 
         {/* 进度环形 */}
@@ -89,8 +89,7 @@ export function ScoreBoard({ players, currentUserId, hostId, remainingCount, tot
 
                 {/* 我的高亮条 */}
                 {isMe && (
-                  <div className="absolute left-0 top-0 bottom-0 w-0.5 rounded-l"
-                    style={{ background: 'linear-gradient(180deg, rgb(var(--color-gold)), rgb(var(--color-gold-light)))' }} />
+                  <div className="absolute left-0 top-0 bottom-0 w-0.5 rounded-l bg-gradient-to-b from-gold to-gold-light" />
                 )}
 
                 <div className="flex items-center gap-2 px-3 py-2.5">
@@ -118,7 +117,7 @@ export function ScoreBoard({ players, currentUserId, hostId, remainingCount, tot
                   ) : (
                   <motion.div key={`score-${player.user_id}-${player.score}`}
                     initial={{ scale: 1.6, color: 'rgb(var(--color-gold-light))' }}
-                    animate={{ scale: 1, color: isMe ? 'rgb(var(--color-gold))' : 'rgba(255,255,255,0.5)' }}
+                    animate={{ scale: 1, color: isMe ? 'rgb(var(--color-gold))' : 'rgb(255 255 255 / 0.5)' }}
                     transition={{ duration: 0.4, ease: 'backOut' }}
                     className="text-caption font-bold tabular-nums shrink-0">
                     {player.score}
@@ -142,7 +141,7 @@ export function ScoreBoard({ players, currentUserId, hostId, remainingCount, tot
       {/* 底部装饰 */}
       <div className="px-4 py-3 border-t border-gold/10">
         <div className="text-center">
-          <span className="text-gold/30 text-tiny font-serif italic">🌸 对局进行中</span>
+          <span className="text-gold/30 text-tiny">🌸 对局进行中</span>
         </div>
       </div>
     </div>

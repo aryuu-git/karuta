@@ -37,7 +37,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
   render() {
     if (this.state.error) {
-      const btnClass = 'px-6 py-2.5 rounded font-sans font-medium text-caption transition-all duration-fast border border-gold/50 text-gold hover:bg-gold/10'
+      const btnClass = 'px-6 py-2.5 rounded-lg font-sans font-medium text-caption transition-all duration-fast border border-gold/50 text-gold hover:bg-gold/10'
       return (
         <CenteredShell className="flex-col gap-4 text-center">
           <div className="text-5xl" aria-hidden="true">😣</div>

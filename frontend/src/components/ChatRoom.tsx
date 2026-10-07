@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, type KeyboardEvent } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { MessageCircle } from 'lucide-react'
 import type { RoomPlayer } from '../api/types'
-import { Button } from './ui'
+import { Badge, Button, Input, Menu, type MenuItem } from './ui'
 
 interface ChatMessage {
   id: number
@@ -64,6 +64,21 @@ export function ChatRoom({ messages, players, currentUserId, isSpectator, onSend
   // 可以被丢蛋的目标（非自己）
   const targets = players.filter(p => p.user_id !== currentUserId && p.online)
 
+  // 丢蛋菜单条目：经 item.render 保留原「🎯 用户名」胶囊按钮样式，点击丢蛋后收起菜单
+  const eggItems: MenuItem[] = targets.length === 0
+    ? [{ key: 'empty', render: () => <span className="text-muted text-tiny">暂无可丢的目标</span> }]
+    : targets.map(p => ({
+        key: String(p.user_id),
+        render: (close: () => void) => (
+          <button
+            type="button"
+            onClick={() => { onEgg(p.user_id); close() }}
+            className="text-tiny px-2.5 py-1 rounded-full transition-all hover:scale-105 bg-warning/10 border border-warning/25 text-warning/90">
+            🎯 {p.username}
+          </button>
+        ),
+      }))
+
   return (
     <>
       {/* 浮动按钮 — 定位由 fabClassName 控制，移动端战场由调用方上移避让计分条 */}
@@ -80,37 +95,25 @@ export function ChatRoom({ messages, players, currentUserId, isSpectator, onSend
             >
               {/* 头部 */}
               <div className="flex items-center justify-between px-4 py-2.5 border-b border-gold/10">
-                <span className="text-gold/80 text-caption font-serif flex items-center gap-1"><MessageCircle size={12} aria-hidden="true" />聊天</span>
-                <Button variant="ghost" size="sm" onClick={() => setShowEggMenu(v => !v)}
-                  className="bg-warning/10 border border-warning/30 text-warning/90 hover:bg-warning/20 hover:text-warning/90">
-                  🥚 丢鸡蛋
-                </Button>
+                <span className="text-gold-light/90 text-caption font-serif flex items-center gap-1"><MessageCircle size={12} aria-hidden="true" />聊天</span>
+                <Menu
+                  open={showEggMenu}
+                  onOpenChange={setShowEggMenu}
+                  align="end"
+                  trigger={
+                    <Button variant="ghost" size="sm"
+                      className="bg-warning/10 border border-warning/30 text-warning/90 hover:bg-warning/20 hover:text-warning/90">
+                      🥚 丢鸡蛋
+                    </Button>
+                  }
+                  items={eggItems}
+                />
               </div>
-
-              {/* 丢蛋目标菜单 */}
-              <AnimatePresence>
-                {showEggMenu && (
-                  <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }}
-                    className="overflow-hidden border-b border-gold/10">
-                    <div className="px-3 py-2 flex flex-wrap gap-1.5">
-                      {targets.length === 0 ? (
-                        <span className="text-muted text-tiny">暂无可丢的目标</span>
-                      ) : targets.map(p => (
-                        <button key={p.user_id}
-                          onClick={() => { onEgg(p.user_id); setShowEggMenu(false) }}
-                          className="text-tiny px-2.5 py-1 rounded-full transition-all hover:scale-105 bg-warning/10 border border-warning/25 text-warning/90">
-                          🎯 {p.username}
-                        </button>
-                      ))}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
 
               {/* 消息列表 */}
               <div className="flex-1 overflow-y-auto px-3 py-2 space-y-1.5">
                 {messages.length === 0 && (
-                  <p className="text-gold/30 text-tiny text-center mt-8 font-serif italic">还没有消息，来说点什么吧</p>
+                  <p className="text-muted text-tiny text-center mt-8">还没有消息，来说点什么吧</p>
                 )}
                 {messages.map(msg => (
                   <div key={msg.id} className={`flex gap-1.5 ${msg.user_id === currentUserId ? 'flex-row-reverse' : ''}`}>
@@ -126,7 +129,7 @@ export function ChatRoom({ messages, players, currentUserId, isSpectator, onSend
                           {msg.user_id !== currentUserId && msg.username}
                           {msg.role === 'spectator' && <span className="ml-1 text-muted/40">👁</span>}
                         </span>
-						<div className={`px-3 py-1.5 text-tiny leading-relaxed break-words ${msg.user_id === currentUserId ? 'bg-gold/20 text-gold-light rounded-[16px_4px_16px_16px]' : 'bg-body-text/5 text-body-text/80 rounded-[4px_16px_16px_16px]'}`}>
+						<div className={`px-3 py-1.5 text-tiny leading-relaxed break-words ${msg.user_id === currentUserId ? 'bg-gold/20 text-gold-light rounded-2xl' : 'bg-body-text/5 text-body-text/80 rounded-2xl'}`}>
                           {msg.text}
                         </div>
                       </div>
@@ -138,16 +141,17 @@ export function ChatRoom({ messages, players, currentUserId, isSpectator, onSend
 
               {/* 输入框 */}
               <div className="px-3 py-2.5 border-t border-gold/10 flex gap-2">
-                <input
+                <Input
+                  type="text"
+                  size="sm"
                   value={input}
                   onChange={e => setInput(e.target.value)}
                   onKeyDown={handleKey}
-                  className="flex-1 text-tiny rounded-xl px-3 py-2 outline-none bg-body-text/5 border border-body-text/10 text-body-text/85"
                   placeholder={isSpectator ? '旁观者也可以发言' : '说点什么…（回车发送）'}
                   maxLength={100}
                 />
                 <Button onClick={handleSend} disabled={!input.trim()}
-                  variant="outline" size="sm">
+                  variant="outline" size="sm" className="shrink-0">
                   发
                 </Button>
               </div>
@@ -164,8 +168,8 @@ export function ChatRoom({ messages, players, currentUserId, isSpectator, onSend
           {!open && <span className="text-tiny font-medium text-gold">聊天</span>}
           {unread > 0 && !open && (
             <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}
-              className="absolute -top-1.5 -right-1.5 min-w-5 h-5 px-1 rounded-full flex items-center justify-center text-tiny font-bold bg-danger text-white">
-              {unread > 9 ? '9+' : unread}
+              className="absolute -top-1.5 -right-1.5">
+              <Badge tone="crimson" className="min-w-5 h-5 justify-center">{unread > 9 ? '9+' : unread}</Badge>
             </motion.div>
           )}
         </motion.button>

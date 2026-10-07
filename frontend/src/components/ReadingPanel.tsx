@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { ProgressBar, type ProgressBarTone } from './ui'
 
 interface ReadingPanelProps {
   hintText: string | null
@@ -105,15 +106,11 @@ export function ReadingPanel({ hintText, audioUrl, startRatio, intervalSec: _int
 
   useEffect(() => { setProgress(0) }, [audioUrl])
 
-  const urgency = progress > 85 ? 'urgent' : progress > 65 ? 'warning' : 'normal'
-  const barColor = urgency === 'urgent'
-    ? 'linear-gradient(90deg, rgb(var(--color-danger)), rgb(var(--color-danger)/ 0.8))'
-    : urgency === 'warning'
-    ? 'linear-gradient(90deg, rgb(var(--color-warning)), rgb(var(--color-gold-light)))'
-    : 'linear-gradient(90deg, rgb(var(--color-gold)), rgb(var(--color-gold-light)), rgb(var(--color-gold)))'
+  // 读牌进度三态原样回归：常态 0-65 金 / 吃紧 65-85 橙 / 紧急 85-100 红（ProgressBar danger 档）
+  const barTone: ProgressBarTone = progress > 85 ? 'danger' : progress > 65 ? 'warning' : 'gold'
 
   return (
-    <div className="relative border-b border-border/60" style={{ background: 'linear-gradient(180deg, rgb(var(--accent-bg-mid)/ 0.98) 0%, rgb(var(--accent-bg-end)/ 0.95) 100%)' }}>
+    <div className="relative border-b border-border/60 bg-gradient-to-b from-accent-bg-mid/98 to-accent-bg-end/95">
       <audio ref={audioRef} onError={() => setAudioError(true)} preload="auto" style={{ display: 'none' }} />
 
       {/* 最后一张牌提示横幅 */}
@@ -122,8 +119,7 @@ export function ReadingPanel({ hintText, audioUrl, startRatio, intervalSec: _int
           <motion.div
             initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.4 }}
-            className="absolute top-0 left-0 right-0 z-10 flex items-center justify-center gap-2 py-1.5"
-            style={{ background: 'linear-gradient(90deg, rgb(var(--color-danger)/ 0.6), rgb(var(--color-danger)/ 0.4), rgb(var(--color-danger)/ 0.6))', borderBottom: '1px solid rgb(var(--color-danger)/ 0.4)' }}
+            className="absolute top-0 left-0 right-0 z-10 flex items-center justify-center gap-2 py-1.5 bg-gradient-to-r from-danger/60 via-danger/40 to-danger/60 border-b border-danger/40"
           >
             <motion.span animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 0.6, repeat: Infinity }}>🔥</motion.span>
             <span className="text-body-text text-tiny font-medium tracking-widest">
@@ -199,18 +195,8 @@ export function ReadingPanel({ hintText, audioUrl, startRatio, intervalSec: _int
                   className="text-gold text-xl shrink-0">♪</motion.div>
               </div>
 
-              {/* 进度条 */}
-              <div className="mt-3 h-1.5 bg-white/5 rounded-full overflow-hidden">
-                <motion.div className="h-full rounded-full relative overflow-hidden"
-                  style={{ width: `${progress}%`, background: barColor }}
-                  transition={{ duration: 0.05, ease: 'linear' }}>
-                  {/* 光晕扫描效果 */}
-                  <motion.div className="absolute inset-0 bg-white/30"
-                    animate={{ x: ['-100%', '200%'] }}
-                    transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
-                    style={{ width: '40%' }} />
-                </motion.div>
-              </div>
+              {/* 进度条：统一 ProgressBar（tone 承接三态配色，shimmer 承接光扫） */}
+              <ProgressBar className="mt-3" value={progress} tone={barTone} shimmer />
             </motion.div>
           ) : (
             <motion.div key="idle" initial={{ opacity: 0 }} animate={{ opacity: 1 }}
@@ -247,7 +233,7 @@ export function ReadingPanel({ hintText, audioUrl, startRatio, intervalSec: _int
       </div>
 
       {/* 底部装饰线 */}
-      <div className="h-px" style={{ background: 'linear-gradient(90deg, transparent, rgb(var(--accent-primary)/ 0.4), transparent)' }} />
+      <div className="h-px bg-accent-line" />
     </div>
   )
 }

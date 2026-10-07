@@ -68,6 +68,25 @@ describe('PresetPicker 牌组锁定与空态', () => {
     expect((screen.getByRole('combobox') as HTMLSelectElement).disabled).toBe(true)
   })
 
+  it('常驻挂载后出阵（prop 过渡）：锁定牌组回填选中，按钮可用', () => {
+    // 真实挂载序列：DecksPage/DeckDetailPage 常驻挂载 PresetPicker，defaultDeckId
+    // 在出阵点击后才从 undefined 变为实际 id——惰性 useState 不回填曾使按钮永久禁用。
+    const onSelect = vi.fn()
+    const base = { open: false, decks: [] as Deck[], lastConfig: null, onSelect, onCustomize: noop, onClose: noop }
+    const { rerender } = render(<PresetPicker {...base} />)
+    rerender(<PresetPicker {...base} open decks={[deck]} defaultDeckId={deck.id} />)
+
+    const select = screen.getByRole('combobox')
+    expect((select as HTMLButtonElement).disabled).toBe(true)
+    // 触发器展示锁定牌组（而非占位「请选择」）
+    expect(select.textContent).toContain('主力牌组')
+    expect(select.textContent).not.toContain('请选择')
+    const btn = screen.getByRole('button', { name: /开辟战场/ }) as HTMLButtonElement
+    expect(btn.disabled).toBe(false)
+    fireEvent.click(btn)
+    expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ mode: 'auto' }), deck.id)
+  })
+
   it('未锁定：Select 可用', () => {
     render(
       <PresetPicker open decks={[deck]} lastConfig={null}

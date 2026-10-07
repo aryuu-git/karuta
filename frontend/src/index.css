@@ -1,6 +1,8 @@
-/* 字体本地打包：Noto Serif JP 400/500/700（unicode-range 分片按需加载）。
-   原 Google Fonts CDN 在国内不可达，改由 /fonts/ 同源分发（见决策日志 D5-A4）。 */
-@import url('/fonts/noto-serif-jp.css');
+/* 字体本地打包：思源宋体 Noto Serif SC 400/500/700（unicode-range 分片按需加载）。
+   2026-09-30 字体换血：旧 Noto Serif JP 包文件字重装错（实为 ExtraLight，CDP 名字表实证），
+   且简体字掉 SimSun 混排；SC 为 Source Han Serif 同源设计语言，覆盖简体/假名/拉丁全量。
+   原 Google Fonts CDN 在国内不可达，包源 @fontsource/noto-serif-sc（见决策日志 D5-A4）。 */
+@import url('/fonts/noto-serif-sc.css');
 
 /* ============================================================
    设计 token（RGB 三元组格式）
@@ -12,18 +14,18 @@
    ============================================================ */
 
 :root {
-  --color-ink: 68 32 56;            /* 主背景 / 重文字 #442038 */
-  --color-ink-deep: 56 24 48;       /* 深背景 / 输入框底 #381830 */
+  --color-ink: 51 22 42;            /* 主背景 / 重文字 #33162A（2026-09-30 明度分层，面板/背景 1.19→1.56） */
+  --color-ink-deep: 38 15 31;       /* 深背景 / 输入框底 #260F1F */
   --color-gold: 248 176 200;        /* 主强调·樱花粉 #f8b0c8（历史名，实为粉） */
   --color-gold-light: 253 216 232;  /* 强调亮阶 #fdd8e8 */
   --color-gold-dark: 240 144 176;   /* 强调暗阶 #f090b0 */
   --color-crimson: 248 112 144;     /* 对抗/警示红粉 #f87090 */
   --color-crimson-light: 255 152 176;
-  --color-surface: 85 42 64;        /* 卡面/面板底 #552a40 */
-  --color-surface-elevated: 102 48 74;
-  --color-border: 136 72 104;
+  --color-surface: 95 48 73;        /* 卡面/面板底 #5F3049 */
+  --color-surface-elevated: 116 58 88; /* 浮层面板 #743A58 */
+  --color-border: 160 92 128;       /* 描边 #A05C80 */
   --color-muted: 232 192 212;       /* 次级文字 #e8c0d4 */
-  --color-body-bg: 68 32 56;
+  --color-body-bg: 51 22 42;
   --color-body-text: 254 248 250;
   --gold-foil: 212 167 106;         /* 金粉（真金）#d4a76a */
   --color-success: 74 222 128;      /* 状态色 */
@@ -46,17 +48,27 @@
 @tailwind components;
 @tailwind utilities;
 
-/* 对局视口（重构 L3）：战场全高 = 视口 - 吸顶导航。
+/* 视口高（重构 L3 泛化）：全高内容页共用 = 视口 - 吸顶导航
+   （对局战场、首页 PlayHub、战绩页同一契约）。
    dvh 让移动端浏览器地址栏收展时高度实时跟随（vh 会把底部内容顶出屏幕），
    老浏览器 @supports 回退 vh。头部高度契约见 --header-h。 */
 @layer utilities {
-  .battle-viewport {
+  .viewport-h {
     height: calc(100vh - var(--header-h));
   }
   @supports (height: 100dvh) {
-    .battle-viewport {
+    .viewport-h {
       height: calc(100dvh - var(--header-h));
     }
+  }
+}
+
+/* 骨架块 shimmer 底（Skeleton 消费；surface 底 + 白5 高光横向扫过） */
+@layer components {
+  .skeleton-block {
+    background: linear-gradient(90deg, rgb(var(--color-surface)) 0%, rgb(255 255 255 / 0.05) 50%, rgb(var(--color-surface)) 100%);
+    background-size: 200% 100%;
+    animation: shimmer 1.6s linear infinite;
   }
 }
 
@@ -126,27 +138,38 @@
     outline: none;
     box-shadow: 0 0 0 2px rgb(var(--color-gold) / 0.6);
   }
+
+  /* Chrome 自动填充会把输入框刷成浅色（白底黑字），强制沿用深色主题
+     （2026-09-30 验收发现：登录页已存凭据字段破功）。 */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus {
+    -webkit-text-fill-color: rgb(var(--color-body-text));
+    -webkit-box-shadow: 0 0 0 1000px rgb(var(--color-ink-deep)) inset;
+    /* Chrome autofill 涂层压过 background-color/inset 阴影，只有同名
+       background-image 能盖住它（2026-09-30 实测）。 */
+    background-image: linear-gradient(rgb(var(--color-ink-deep)), rgb(var(--color-ink-deep)));
+    caret-color: rgb(var(--color-body-text));
+    transition: background-color 9999s ease-out;
+  }
+
+  /* 码位输入：值保持字距 tracking（码感），占位文案回归常规 sans（2026-09-30 字体收敛） */
+  .code-input::placeholder {
+    letter-spacing: normal;
+    font-weight: normal;
+    font-family: system-ui, sans-serif;
+  }
 }
 
 @layer components {
 
-  /* 和纸质感：细密十字纹理，随主题基色变化 */
+  /* 和纸质感：feTurbulence 纤维噪声（data-URI 自包含，无外部资源）。
+     对比度 ~3%：放大看是纸纤维颗粒，缩远看近乎纯色——
+     替换原横竖条纹（条纹渲染成电视雪花，2026-09-30 优化）。 */
   .washi-bg {
     background-color: rgb(var(--color-body-bg));
-    background-image: repeating-linear-gradient(
-        0deg,
-        transparent,
-        transparent 2px,
-        rgb(var(--accent-primary) / 0.03) 2px,
-        rgb(var(--accent-primary) / 0.03) 4px
-      ),
-      repeating-linear-gradient(
-        90deg,
-        transparent,
-        transparent 2px,
-        rgb(var(--accent-primary) / 0.02) 2px,
-        rgb(var(--accent-primary) / 0.02) 4px
-      );
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.03 0'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-size: 240px 240px;
   }
 
   /* 金粉流光标题 */
@@ -189,9 +212,36 @@
   animation: slideInUp 0.4s ease-out forwards;
 }
 
+/* 入场原语（FadeIn 消费）：CSS keyframes 走墙钟而非 rAF——后台标签页/
+   低帧率下也会走完，绝不卡在 opacity:0 初始态（2026-09-30 实测回归）。
+   both 填充：延迟期占初态、结束后停在终态；reduced-motion 直接跳过。 */
+.fade-in {
+  animation: fadeUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(var(--fade-y, 16px)); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fade-in { animation: none; }
+}
+
 /* Toast 入场：自顶部滑入（ToastProvider 不引 framer-motion，保首屏包体） */
 .animate-toast-in {
   animation: toastIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* 锚定菜单入场（Menu 消费）：无退出动画、关闭即卸载（2026-09-30，
+   可见性不拴动画——杜绝退出动画卡死导致的「框不消失」） */
+.animate-menu-in {
+  animation: menuIn 0.12s ease-out both;
+}
+
+@keyframes menuIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: none; }
 }
 
 @keyframes toastIn {

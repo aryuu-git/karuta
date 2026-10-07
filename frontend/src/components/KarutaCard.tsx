@@ -33,7 +33,7 @@ function buildMaskCSS(mask: CardMask): React.CSSProperties {
           clipPath = `inset(0 0 ${(1 - ratio) * 100}% 0)`
       }
       return {
-        background: 'rgba(0,0,0,0.92)',
+        background: 'rgb(0 0 0 / 0.92)',
         clipPath,
       }
     }
@@ -57,7 +57,7 @@ function buildMaskCSS(mask: CardMask): React.CSSProperties {
           polygon = `polygon(0 0, ${ratio * 100}% 0, 0 ${ratio * 100}%)`
       }
       return {
-        background: 'rgba(0,0,0,0.92)',
+        background: 'rgb(0 0 0 / 0.92)',
         clipPath: polygon,
       }
     }
@@ -71,14 +71,14 @@ function buildMaskCSS(mask: CardMask): React.CSSProperties {
       return {
         backdropFilter: `blur(${(mask.intensity ?? 10) / 3}px)`,
         WebkitBackdropFilter: `blur(${(mask.intensity ?? 10) / 3}px)`,
-        background: 'rgba(0,0,0,0.15)',
+        background: 'rgb(0 0 0 / 0.15)',
       }
     case 'stripe': {
       const angle = mask.angle ?? 45
       const width = mask.width ?? 0.08
       const pct = width * 100
       return {
-        background: `repeating-linear-gradient(${angle}deg, transparent, transparent ${pct}%, rgba(0,0,0,0.85) ${pct}%, rgba(0,0,0,0.85) ${pct * 2}%)`,
+        background: `repeating-linear-gradient(${angle}deg, transparent, transparent ${pct}%, rgb(0 0 0 / 0.85) ${pct}%, rgb(0 0 0 / 0.85) ${pct * 2}%)`,
       }
     }
     case 'spotlight': {
@@ -86,7 +86,7 @@ function buildMaskCSS(mask: CardMask): React.CSSProperties {
       const cy = (mask.cy ?? 0.5) * 100
       const radius = (mask.radius ?? 0.2) * 100
       return {
-        background: 'rgba(0,0,0,0.92)',
+        background: 'rgb(0 0 0 / 0.92)',
         maskImage: `radial-gradient(circle at ${cx}% ${cy}%, transparent ${radius}%, black ${radius + 2}%)`,
         WebkitMaskImage: `radial-gradient(circle at ${cx}% ${cy}%, transparent ${radius}%, black ${radius + 2}%)`,
       }
@@ -119,34 +119,26 @@ export function KarutaCard({ card, isExhausted, remaining, audioCount, claimedBy
       className="relative overflow-visible select-none cursor-pointer"
       style={{ width: '100%', aspectRatio: '3/4' }}>
 
-      {/* 堆叠底层（仅多音频牌显示） */}
+      {/* 堆叠底层（仅多音频牌显示）；阴影归 shadow-panel token */}
       {showStack && left >= 3 && (
-        <div className="absolute rounded-lg"
+        <div className="absolute rounded-lg shadow-panel bg-gradient-to-b from-surface to-ink"
           style={{
             inset: 0,
             transform: 'translate(4px, 4px)',
-            background: 'linear-gradient(160deg, rgb(var(--color-surface)) 0%, rgb(var(--color-ink)) 100%)',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
             opacity: 0.5,
           }} />
       )}
       {showStack && left >= 2 && (
-        <div className="absolute rounded-lg"
+        <div className="absolute rounded-lg shadow-panel bg-surface"
           style={{
             inset: 0,
             transform: 'translate(2px, 2px)',
-            background: 'linear-gradient(160deg, rgb(var(--color-surface)) 0%, rgb(var(--color-surface)) 100%)',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
             opacity: 0.7,
           }} />
       )}
 
-      {/* 主卡面 */}
-      <div className="absolute inset-0 rounded-lg overflow-hidden"
-        style={{
-          background: 'linear-gradient(160deg, rgb(var(--color-surface)) 0%, rgb(var(--color-surface)) 50%, rgb(var(--color-ink)) 100%)',
-          boxShadow: '0 4px 16px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.04)',
-        }}>
+      {/* 主卡面；阴影归 shadow-card token（原 4px 16px + inset 高光，差异见交付说明） */}
+      <div className="absolute inset-0 rounded-lg overflow-hidden shadow-card bg-gradient-to-b from-surface via-surface to-ink">
 
         {/* 封面图 */}
         {card.cover_url && (
@@ -167,8 +159,7 @@ export function KarutaCard({ card, isExhausted, remaining, audioCount, claimedBy
 
         {/* 堆叠角标 */}
         {showStack && (
-          <div className="absolute top-1 right-1 px-1.5 py-0.5 rounded text-tiny font-bold bg-black/70 text-gold border border-gold-foil/40"
-            style={{ fontSize: '0.65rem' }}>
+          <div className="absolute top-1 right-1 px-1.5 py-0.5 rounded-lg text-[10px] font-bold bg-black/70 text-gold border border-gold-foil/40">
             ×{left}
           </div>
         )}
@@ -177,8 +168,7 @@ export function KarutaCard({ card, isExhausted, remaining, audioCount, claimedBy
         {isExhausted && (
           <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-ink-deep/30">
             {claimedBy && claimedBy !== '无人' && (
-              <span className="text-gold/50 font-serif text-center px-2 leading-tight"
-                style={{ fontSize: 'clamp(0.5rem, 1.2vw, 0.7rem)' }}>
+              <span className="text-gold/50 font-serif text-center px-2 leading-tight text-[10px]">
                 {claimedBy}
               </span>
             )}

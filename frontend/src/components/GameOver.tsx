@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type RefObject } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { paths } from '../routes/paths'
-import { Button } from './ui'
+import { Button, PanelSurface, AchievementUnlocked } from './ui'
 import { useRematch } from '../features/play/useRematch'
 import { subscribeUnlocks } from '../features/achievements/unlockBus'
 import type { AchievementUnlock } from '../api/types'
@@ -78,7 +78,14 @@ interface Particle {
   rotationSpeed: number
 }
 
-const SAKURA_COLORS = ['#ffb7c5', '#ff8fab', '#ffc8d3', '#ff6b88', '#ffe4e8']
+/** 樱花花瓣色板 token 变量（金系三档 + 红粉两档）；canvas 无法消费 CSS 类，运行时解析变量值 */
+const SAKURA_TOKEN_VARS = ['--color-gold', '--color-gold-dark', '--color-gold-light', '--color-crimson', '--color-crimson-light']
+
+/** 从设计 token 解析花瓣色（var 引用，禁止字面量色值） */
+function resolveSakuraColors(): string[] {
+  const css = getComputedStyle(document.documentElement)
+  return SAKURA_TOKEN_VARS.map(v => `rgb(${css.getPropertyValue(v).trim()})`)
+}
 
 function useParticles(canvasRef: RefObject<HTMLCanvasElement>) {
   useEffect(() => {
@@ -89,6 +96,7 @@ function useParticles(canvasRef: RefObject<HTMLCanvasElement>) {
 
     let animId: number
     const particles: Particle[] = []
+    const sakuraColors = resolveSakuraColors()
 
     const resize = () => {
       canvas.width = window.innerWidth
@@ -106,7 +114,7 @@ function useParticles(canvasRef: RefObject<HTMLCanvasElement>) {
         vy: Math.random() * 1.5 + 0.5,
         size: Math.random() * 8 + 4,
         opacity: Math.random() * 0.7 + 0.3,
-        color: SAKURA_COLORS[Math.floor(Math.random() * SAKURA_COLORS.length)],
+        color: sakuraColors[Math.floor(Math.random() * sakuraColors.length)],
         rotation: Math.random() * Math.PI * 2,
         rotationSpeed: (Math.random() - 0.5) * 0.05,
       })
@@ -202,12 +210,10 @@ export function GameOver({ results, currentUserId, lastCardWinnerId, roomId, isH
         initial={{ scale: 0.85, opacity: 0, y: 30 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 0.2, ease: 'easeOut' }}
-        className="relative z-10 bg-ink-deep/95 border border-gold/30 rounded-2xl p-6 sm:p-8 max-w-lg w-full mx-4 shadow-gold-lg overflow-y-auto"
-        style={{
-          maxHeight: '90vh',
-          boxShadow: '0 0 60px rgb(var(--accent-primary)/ 0.2), 0 20px 40px rgba(0,0,0,0.6)',
-        }}
+        className="relative z-10 max-w-lg w-full mx-4"
       >
+        <PanelSurface variant="ink-deep" radius="2xl" className="shadow-modal max-h-[90vh] w-full flex flex-col">
+          <div className="overflow-y-auto p-6 sm:p-8">
         {/* Title */}
         <div className="text-center mb-8">
           <motion.h1
@@ -221,7 +227,7 @@ export function GameOver({ results, currentUserId, lastCardWinnerId, roomId, isH
           </motion.h1>
           <motion.p
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }}
-            className="text-gold/50 text-caption mb-3 font-serif italic">
+            className="text-gold/50 text-caption mb-3">
             对局战果一览 ✧
           </motion.p>
           <div className="h-px bg-gradient-to-r from-transparent via-gold/50 to-transparent" />
@@ -315,9 +321,8 @@ export function GameOver({ results, currentUserId, lastCardWinnerId, roomId, isH
                       </div>
                     )}
                     {(card.display_text || card.hint_text) && (
-                      <div className="absolute bottom-0 left-0 right-0 px-1 py-0.5 text-center"
-                        style={{ background: 'linear-gradient(to top, rgb(var(--accent-bg-mid)/ 0.95), transparent)' }}>
-                        <p className="text-body-text/70 leading-tight" style={{ fontSize: '0.45rem' }}>
+                      <div className="absolute bottom-0 left-0 right-0 px-1 py-0.5 text-center bg-gradient-to-t from-accent-bg-mid/95 to-transparent">
+                        <p className="text-body-text/70 leading-tight text-[10px]">
                           {card.display_text !== '—' ? card.display_text : card.hint_text}
                         </p>
                       </div>
@@ -330,20 +335,9 @@ export function GameOver({ results, currentUserId, lastCardWinnerId, roomId, isH
         })()}
 
         {/* 本局成就（v7 增补）：仪式层集中展示结算推送的新解锁 */}
-        {unlocks.length > 0 && (
-          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.8 }}
-            className="rounded-2xl p-4 mb-1 text-center"
-            style={{ background: 'rgb(var(--color-gold)/ 0.06)', border: '1px solid rgb(var(--color-gold)/ 0.3)' }}>
-            <p className="text-[10px] tracking-widest text-gold/80 mb-2">本局解锁成就</p>
-            <div className="flex flex-wrap justify-center gap-2">
-              {unlocks.map(u => (
-                <span key={u.key} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/20 border border-gold/30 text-xs text-gold">
-                  <span>{u.icon}</span> {u.title}
-                </span>
-              ))}
-            </div>
-          </motion.div>
-        )}
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.8 }}>
+          <AchievementUnlocked unlocks={unlocks} />
+        </motion.div>
 
         {/* Buttons */}
         <motion.div
@@ -377,6 +371,8 @@ export function GameOver({ results, currentUserId, lastCardWinnerId, roomId, isH
             回大本营
           </Button>
         </motion.div>
+          </div>
+        </PanelSurface>
       </motion.div>
     </motion.div>
   )

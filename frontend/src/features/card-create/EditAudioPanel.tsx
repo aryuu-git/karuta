@@ -1,6 +1,6 @@
 import { useState, useRef, type Dispatch, type SetStateAction } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Button, Input, ConfirmDialog } from '../../components/ui'
+import { Button, IconButton, Input, ConfirmDialog } from '../../components/ui'
 import { api } from '../../api/client'
 import type { CardAudio } from '../../api/types'
 import { UploadZone, isAudioFile } from './UploadZone'
@@ -142,20 +142,24 @@ export function EditAudioPanel({ cardId, audios, onAudiosChange, playingAudioId,
                 exit={{ opacity: 0, x: 12 }}
                 transition={{ delay: i * 0.02 }}
                 className="flex items-center gap-3 bg-surface border border-border rounded-lg p-3 group hover:border-gold/20 transition-colors">
-                <button onClick={() => onTogglePlay(audio)}
-                  className="text-gold/60 hover:text-gold text-caption px-2 py-1 rounded hover:bg-gold/10 transition-all shrink-0"
-                  title={playingAudioId === audio.id ? '暂停' : '播放'}>
-                  {playingAudioId === audio.id ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
-                </button>
+                <IconButton
+                  tone="gold"
+                  shape="circle"
+                  size="sm"
+                  className="shrink-0"
+                  onClick={() => onTogglePlay(audio)}
+                  aria-label={playingAudioId === audio.id ? '暂停' : '播放'}
+                  icon={playingAudioId === audio.id ? <Pause size={16} /> : <Play size={16} />}
+                />
                 <div className="flex-1 min-w-0">
                   <p className="text-body-text/80 text-caption truncate">
                     音频 #{audio.sort_order + 1}
                   </p>
-                  <input
-                    type="text"
+                  <Input
+                    variant="bare"
                     defaultValue={audio.hint_text || ''}
                     placeholder="输入提示文字（如歌名/上句）…"
-                    className="text-muted text-tiny mt-0.5 bg-transparent border-b border-transparent hover:border-border focus:border-gold focus:text-body-text/80 outline-none w-full transition-all"
+                    className="text-muted text-tiny mt-0.5"
                     onBlur={async (e) => {
                       const newHint = e.target.value.trim()
                       if (newHint !== (audio.hint_text || '')) {
@@ -168,12 +172,13 @@ export function EditAudioPanel({ cardId, audios, onAudiosChange, playingAudioId,
                     onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
                   />
                 </div>
-                <button onClick={() => setDeleteAudioId(audio.id)}
+                <Button type="button" variant="danger" size="xs"
+                  onClick={() => setDeleteAudioId(audio.id)}
                   disabled={audios.length <= 1}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity text-muted hover:text-crimson text-tiny px-2 py-1 rounded hover:bg-crimson/10 disabled:opacity-30 disabled:cursor-not-allowed"
+                  className="opacity-0 group-hover:opacity-100 transition-opacity"
                   title={audios.length <= 1 ? '至少保留 1 条音频' : '删除'}>
                   删除
-                </button>
+                </Button>
               </motion.div>
             ))}
           </AnimatePresence>
@@ -210,11 +215,11 @@ export function EditAudioPanel({ cardId, audios, onAudiosChange, playingAudioId,
                       <span className="flex-1 min-w-0 truncate text-muted">♪ {p.file.name}</span>
                       <span className={`${PENDING_STATE_CLASS[p.status]} shrink-0`}>{PENDING_STATE_TEXT[p.status]}</span>
                       {p.status === 'failed' && (
-                        <button type="button" disabled={addingAudio}
+                        <Button type="button" variant="link" size="xs" disabled={addingAudio}
                           onClick={() => void retryOne(i)}
-                          className="text-gold hover:text-gold/80 shrink-0 disabled:opacity-40">
+                          className="shrink-0">
                           重试
-                        </button>
+                        </Button>
                       )}
                     </div>
                   ))}

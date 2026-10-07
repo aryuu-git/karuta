@@ -7,7 +7,7 @@ import {
   type ReactNode,
 } from 'react'
 import { createElement } from 'react'
-import { api } from '../api/client'
+import { api, HttpError } from '../api/client'
 import type { User } from '../api/types'
 import { AUTH_TOKEN_KEY } from '../config'
 
@@ -49,22 +49,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false)
       return
     }
-    api.auth
-      .me()
-      .then((u) => {
+    let cancelled = false
+
+    // 仅鉴权失效（401/403）才销毁会话。网络抖动/5xx/429 属瞬时故障，旧实现
+    // catch 一刀切 removeItem，一次失败即永久踢出登录（「每次都得重登」的根因）；
+    // 现在保留 token 并退避重试一次，仍失败则本次按未登录渲染，下次进入自动再恢复。
+    const restore = async (attempt: number): Promise<void> => {
+      try {
+        const u = await api.auth.me()
+        if (cancelled) return
         setUser(u)
         setToken(storedToken)
-		if (u.is_guest && !localStorage.getItem(guestRecoveryKey(u.username))) {
-			void api.auth.issueGuestRecovery().then(({ guest_recovery_token }) => {
-				localStorage.setItem(guestRecoveryKey(u.username), guest_recovery_token)
-			}).catch(() => undefined)
-		}
-      })
-      .catch(() => {
-        localStorage.removeItem(TOKEN_KEY)
-        setToken(null)
-      })
-      .finally(() => setLoading(false))
+        if (u.is_guest && !localStorage.getItem(guestRecoveryKey(u.username))) {
+          void api.auth.issueGuestRecovery().then(({ guest_recovery_token }) => {
+            localStorage.setItem(guestRecoveryKey(u.username), guest_recovery_token)
+          }).catch(() => undefined)
+        }
+      } catch (err) {
+        const status = err instanceof HttpError ? err.status : 0
+        if (status === 401 || status === 403) {
+          localStorage.removeItem(TOKEN_KEY)
+          setToken(null)
+          return
+        }
+        if (attempt < 1 && !cancelled) {
+          const { promise, resolve } = Promise.withResolvers<void>()
+          setTimeout(resolve, 600)
+          await promise
+          return restore(attempt + 1)
+        }
+      }
+    }
+
+    void restore(0).finally(() => {
+      if (!cancelled) setLoading(false)
+    })
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   const login = useCallback(async (username: string, password: string) => {

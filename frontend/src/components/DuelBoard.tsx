@@ -7,19 +7,19 @@ function buildMaskStyle(m: CardMask): React.CSSProperties {
     case 'clip-edge': {
       const r = m.ratio ?? 0.5
       const dirs: Record<string, string> = { top: `inset(0 0 ${(1-r)*100}% 0)`, bottom: `inset(${(1-r)*100}% 0 0 0)`, left: `inset(0 ${(1-r)*100}% 0 0)`, right: `inset(0 0 0 ${(1-r)*100}%)` }
-      return { background: 'rgba(0,0,0,0.92)', clipPath: dirs[m.direction ?? 'top'] ?? dirs.top }
+      return { background: 'rgb(0 0 0 / 0.92)', clipPath: dirs[m.direction ?? 'top'] ?? dirs.top }
     }
     case 'blur':
       return { backdropFilter: `blur(${m.intensity ?? 2}px)`, WebkitBackdropFilter: `blur(${m.intensity ?? 2}px)` }
     case 'pixelate':
-      return { backdropFilter: `blur(${(m.intensity ?? 10)/3}px)`, WebkitBackdropFilter: `blur(${(m.intensity ?? 10)/3}px)`, background: 'rgba(0,0,0,0.15)' }
+      return { backdropFilter: `blur(${(m.intensity ?? 10)/3}px)`, WebkitBackdropFilter: `blur(${(m.intensity ?? 10)/3}px)`, background: 'rgb(0 0 0 / 0.15)' }
     case 'stripe': {
       const a = m.angle ?? 45, w = (m.width ?? 0.08) * 100
-      return { background: `repeating-linear-gradient(${a}deg, transparent, transparent ${w}%, rgba(0,0,0,0.85) ${w}%, rgba(0,0,0,0.85) ${w*2}%)` }
+      return { background: `repeating-linear-gradient(${a}deg, transparent, transparent ${w}%, rgb(0 0 0 / 0.85) ${w}%, rgb(0 0 0 / 0.85) ${w*2}%)` }
     }
     case 'spotlight': {
       const cx = (m.cx ?? 0.5)*100, cy = (m.cy ?? 0.5)*100, r = (m.radius ?? 0.2)*100
-      return { background: 'rgba(0,0,0,0.92)', maskImage: `radial-gradient(circle at ${cx}% ${cy}%, transparent ${r}%, black ${r+2}%)`, WebkitMaskImage: `radial-gradient(circle at ${cx}% ${cy}%, transparent ${r}%, black ${r+2}%)` }
+      return { background: 'rgb(0 0 0 / 0.92)', maskImage: `radial-gradient(circle at ${cx}% ${cy}%, transparent ${r}%, black ${r+2}%)`, WebkitMaskImage: `radial-gradient(circle at ${cx}% ${cy}%, transparent ${r}%, black ${r+2}%)` }
     }
     default:
       return {}
@@ -142,7 +142,7 @@ export function DuelBoard({ duelState, currentUserId, onGrab, arranging, arrange
       {/* 分隔线 - 中间决斗区标识 */}
       <div className="flex items-center gap-2 px-4 py-1.5 shrink-0 bg-gold/5">
         <div className="h-px flex-1 bg-gold/20" />
-        <span className="text-gold/60 text-tiny font-serif tracking-wider">
+        <span className="text-gold-light/90 text-tiny font-serif tracking-wider">
           -- 决斗场 --
         </span>
         <div className="h-px flex-1 bg-gold/20" />
@@ -151,7 +151,7 @@ export function DuelBoard({ duelState, currentUserId, onGrab, arranging, arrange
       {/* 己方区域 */}
       <div className="flex-1 overflow-y-auto relative">
         <div className="absolute top-1 left-1/2 -translate-x-1/2 z-10 pointer-events-none">
-          <span className="text-gold/40 text-tiny bg-black/40 px-2 py-0.5 rounded-full font-serif">
+          <span className="text-gold-light/90 text-tiny bg-black/40 px-2 py-0.5 rounded-full font-serif">
             -- 我的领域 --
           </span>
         </div>
@@ -201,7 +201,7 @@ function DuelCardGrid({ cards, flipped, onGrab, isOpponent, onCardClickWithIndex
   if (cards.length === 0) {
     return (
       <div className="flex items-center justify-center h-full py-8">
-        <span className="text-muted text-caption font-serif italic">
+        <span className="text-muted text-caption">
           {isOpponent ? '对方场上还没有牌' : '你的场上还没有牌'}
         </span>
       </div>
@@ -239,15 +239,8 @@ function DuelCardGrid({ cards, flipped, onGrab, isOpponent, onCardClickWithIndex
                   whileHover={isClaimed ? {} : { y: -3, scale: 1.05, transition: { duration: 0.1 } }}
                   whileTap={isClaimed ? {} : { scale: 0.93 }}
                   onClick={() => { if (isClaimed) return; onCardClickWithIndex ? onCardClickWithIndex(idx, card.id) : onGrab(card.id) }}
-                  className={`relative overflow-hidden rounded-lg select-none w-full h-full ${isSelected ? 'border-2 border-success/80' : isClaimed ? 'border border-white/5' : 'border border-gold/10'} ${isClaimed ? 'cursor-default grayscale' : 'cursor-pointer'}`}
-                  style={{
-                    // 阴影无法用类表达，保留 inline；绿色泛光改用 success 变量引用
-                    boxShadow: isSelected
-                      ? '0 0 16px rgb(var(--color-success)/ 0.6), 0 4px 12px rgba(0,0,0,0.5)'
-                      : isClaimed
-                        ? '0 1px 4px rgba(0,0,0,0.3)'
-                        : '0 2px 8px rgba(0,0,0,0.4)',
-                  }}
+                  /* 卡面阴影归 shadow-token：选中→shadow-gold(原绿色泛光)、常态→shadow-card、已抢→shadow-panel(差异见交付说明) */
+                  className={`relative overflow-hidden rounded-lg select-none w-full h-full ${isSelected ? 'border-2 border-success/80 shadow-gold' : isClaimed ? 'border border-white/5 shadow-panel' : 'border border-gold/10 shadow-card'} ${isClaimed ? 'cursor-default grayscale' : 'cursor-pointer'}`}
                 >
                   {card.cover_url ? (
                     <img src={card.cover_url} alt=""
@@ -255,8 +248,7 @@ function DuelCardGrid({ cards, flipped, onGrab, isOpponent, onCardClickWithIndex
                       loading="lazy"
                     />
                   ) : (
-                    <div className="absolute inset-0 flex items-center justify-center"
-                      style={{ background: 'linear-gradient(160deg, rgb(var(--color-surface)), rgb(var(--color-ink)))' }}>
+                    <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-b from-surface to-ink">
                       <span className="text-gold/40 text-tiny font-serif">{card.display_text.slice(0, 4)}</span>
                     </div>
                   )}

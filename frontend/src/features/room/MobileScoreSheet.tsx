@@ -44,7 +44,7 @@ export function MobileScoreSheet({ players, currentUserId, hostId, isJudgeMode }
         className="flex w-full items-center justify-center gap-2 px-4 py-2 text-tiny text-muted touch-pan-y"
       >
         <span>{handleText}</span>
-        <ChevronUp size={13} className={`transition-transform duration-fast ${open ? 'rotate-180' : ''}`} aria-hidden="true" />
+        <ChevronUp size={16} className={`transition-transform duration-fast ${open ? 'rotate-180' : ''}`} aria-hidden="true" />
       </motion.button>
 
       <AnimatePresence initial={false}>

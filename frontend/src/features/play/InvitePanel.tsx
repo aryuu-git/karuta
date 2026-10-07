@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Link2, Copy, Share2 } from 'lucide-react'
-import { Button, useToast } from '../../components/ui'
+import { Button, PanelSurface, useToast } from '../../components/ui'
 import { inviteLink } from './roomCreate'
 
 /** 邀请面板（§4.4）：大字房间码 + 复制邀请链接/复制码 + 系统分享（支持才显示） */
@@ -58,8 +58,7 @@ export function InvitePanel({ code, autoFocus = false, className = '' }: InviteP
   }
 
   return (
-    <div className={`rounded-2xl p-5 ${className}`}
-      style={{ background: 'linear-gradient(180deg, rgb(var(--color-ink)) 0%, rgb(var(--color-ink-deep)) 100%)', border: '1px solid rgb(var(--accent-primary)/ 0.12)' }}>
+    <PanelSurface variant="ink" radius="2xl" className={`p-5 ${className}`}>
       <p className="text-gold/60 text-caption font-serif tracking-widest text-center mb-3">邀请战友</p>
 
       <div
@@ -77,18 +76,18 @@ export function InvitePanel({ code, autoFocus = false, className = '' }: InviteP
         animate={{ opacity: 1, y: 0 }}
         className="flex flex-wrap items-center justify-center gap-2"
       >
-        <Button size="sm" icon={<Link2 size={14} />} onClick={handleCopyLink}>
+        <Button size="sm" icon={<Link2 size={16} />} onClick={handleCopyLink}>
           复制邀请链接
         </Button>
-        <Button size="sm" variant="outline" icon={<Copy size={14} />} onClick={handleCopyCode}>
+        <Button size="sm" variant="outline" icon={<Copy size={16} />} onClick={handleCopyCode}>
           复制码
         </Button>
         {canShare && (
-          <Button size="sm" variant="outline" icon={<Share2 size={14} />} onClick={handleShare}>
+          <Button size="sm" variant="outline" icon={<Share2 size={16} />} onClick={handleShare}>
             系统分享
           </Button>
         )}
       </motion.div>
-    </div>
+    </PanelSurface>
   )
 }

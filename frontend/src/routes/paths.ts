@@ -7,6 +7,8 @@ export const paths = {
   register: () => '/register',
   guest: () => '/guest',
   profile: () => '/profile',
+  /** 对局记录（全量历史对局的独立页） */
+  games: () => '/games',
 
   decks: () => '/decks',
   deck: (id: number) => `/decks/${id}`,

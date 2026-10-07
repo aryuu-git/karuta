@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { OptionCard, ProgressBar } from './ui'
 import { getAudioDuration, isWasmSupported } from '../utils/audioProcessor'
 import type { ProcessOptions } from '../utils/audioProcessor'
 
@@ -46,55 +47,44 @@ export function AudioUploadOptions({ audioFile, onChange, processing, progress }
     <div className="border border-border rounded-lg p-3 space-y-3 bg-ink-deep/10">
       <div className="flex items-center justify-between">
         <span className="text-muted text-tiny">⚙️ 音频处理</span>
+      </div>
+
+      {/* 压缩（统一 OptionCard；children 区承载音频时长 / 处理状态） */}
+      <OptionCard
+        selected={compress}
+        onSelect={() => setCompress(prev => !prev)}
+        selection="checkbox"
+        allowReselect
+        title="压缩为 MP3 (128kbps)"
+        desc="减小体积"
+        disabled={processing}
+      >
         {duration !== null && (
-          <span className="text-gold/60 text-tiny">
-            时长 {formatDuration(duration)}
-          </span>
+          <span className="text-gold/60 text-tiny">时长 {formatDuration(duration)}</span>
         )}
         {loadingDuration && (
           <span className="text-muted/40 text-tiny">读取中...</span>
         )}
-      </div>
-
-      {/* 压缩 */}
-      <label className="flex items-center gap-2 cursor-pointer">
-        <input
-          type="checkbox"
-          checked={compress}
-          onChange={e => setCompress(e.target.checked)}
-          disabled={processing}
-          className="accent-gold w-3.5 h-3.5"
-        />
-        <span className="text-body-text/80 text-tiny">压缩为 MP3 (128kbps)</span>
-        <span className="text-muted/50 text-tiny ml-auto">减小体积</span>
-      </label>
+      </OptionCard>
 
       {/* 裁剪 */}
       <div className="space-y-1.5">
         <span className="text-muted text-tiny">裁剪：</span>
-        <div className="flex gap-2 flex-wrap">
+        <div className="grid grid-cols-3 gap-2">
           {([
             { value: 'none', label: '不裁剪' },
             { value: 'first30', label: '前 30s' },
             { value: 'random30', label: '随机 30s' },
           ] as const).map(opt => (
-            <label key={opt.value}
-              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-tiny cursor-pointer transition-all ${
-                trim === opt.value
-                  ? 'bg-gold/20 text-gold border border-gold/40'
-                  : 'bg-white/5 text-body-text/50 border border-transparent hover:border-white/10'
-              } ${(opt.value !== 'none' && tooShort) || processing ? 'opacity-40 cursor-not-allowed' : ''}`}>
-              <input
-                type="radio"
-                name="trim"
-                value={opt.value}
-                checked={trim === opt.value}
-                onChange={() => setTrim(opt.value)}
-                disabled={processing || (opt.value !== 'none' && tooShort)}
-                className="hidden"
-              />
-              {opt.label}
-            </label>
+            <OptionCard
+              key={opt.value}
+              selected={trim === opt.value}
+              onSelect={() => setTrim(opt.value)}
+              selection="radio"
+              title={opt.label}
+              disabled={processing || (opt.value !== 'none' && tooShort)}
+              className="justify-center"
+            />
           ))}
         </div>
         {tooShort && (
@@ -109,12 +99,7 @@ export function AudioUploadOptions({ audioFile, onChange, processing, progress }
             <span className="text-gold text-tiny">转码中…</span>
             <span className="text-gold/60 text-tiny">{Math.round(progress * 100)}%</span>
           </div>
-          <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-gradient-to-r from-gold-dark to-gold rounded-full transition-all duration-300"
-              style={{ width: `${Math.max(progress * 100, 2)}%` }}
-            />
-          </div>
+          <ProgressBar value={progress * 100} tone="gold" />
         </div>
       )}
     </div>

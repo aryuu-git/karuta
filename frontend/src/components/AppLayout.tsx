@@ -1,9 +1,10 @@
-import { lazy, Suspense, useEffect, useRef, type ReactNode } from 'react'
+import { useState, lazy, Suspense, useEffect, useRef, type ReactNode } from 'react'
 import { Link, useNavigate, useLocation, Outlet } from 'react-router-dom'
 import { Swords, Images, Layers, CircleUserRound, LogOut } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { useAchievementCenter } from '../features/achievements/useAchievementCenter'
 import { paths } from '../routes/paths'
+import { Avatar, Menu, type MenuItem } from './ui'
 
 // 更新日志依赖 framer-motion：懒加载隔离，避免拉入首屏主包（决策日志 D2-A2）
 const Changelog = lazy(() => import('./Changelog').then(m => ({ default: m.Changelog })))
@@ -47,10 +48,24 @@ export function AppLayout({ children }: { children?: ReactNode }) {
   // 成就解锁队列（右下角仪式层弹层；来源=WS 推送 + 路由切换 diff）
   const { queue, dismiss } = useAchievementCenter()
 
+  // 用户菜单开合（受控传给 Menu）
+  const [userMenuOpen, setUserMenuOpen] = useState(false)
+
   const handleLogout = () => {
     logout()
     navigate(paths.login())
   }
+
+  // 路由变化即收起用户菜单（2026-09-30：防跨页残留）
+  useEffect(() => {
+    setUserMenuOpen(false)
+  }, [location.pathname])
+
+  // 用户菜单两项：个人主页 / 退出（danger 档高亮）
+  const userMenuItems: MenuItem[] = [
+    { key: 'profile', label: '个人主页', icon: <CircleUserRound size={16} />, onSelect: () => navigate(paths.profile()) },
+    { key: 'logout', label: '退出', icon: <LogOut size={16} />, tone: 'danger', onSelect: handleLogout },
+  ]
 
   const navLinkClass = (active: boolean) =>
     `flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-fast hover:scale-105 ${
@@ -64,9 +79,8 @@ export function AppLayout({ children }: { children?: ReactNode }) {
       <Suspense fallback={null}>
         <AchievementPopup queue={queue} dismiss={dismiss} />
       </Suspense>
-      {/* 顶部导航 */}
-      <header className="sticky top-0 z-sticky backdrop-blur-sm"
-        style={{ background: 'rgb(var(--accent-bg-mid)/ 0.85)', borderBottom: '1px solid rgb(var(--accent-primary)/ 0.1)', boxShadow: '0 4px 20px rgba(0,0,0,0.3), 0 1px 0 rgb(var(--accent-primary)/ 0.05)' }}>
+      {/* 顶部导航（投影走 shadow-card token，替代手写 boxShadow 字面量） */}
+      <header className="sticky top-0 z-sticky backdrop-blur-sm bg-accent-bg-mid/85 border-b border-accent/10 shadow-card">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-[var(--header-h)] flex items-center justify-between">
           {/* 品牌 + 导航 */}
           <div className="flex items-center gap-4">
@@ -91,25 +105,24 @@ export function AppLayout({ children }: { children?: ReactNode }) {
             </nav>
           </div>
 
-          {/* 用户区 */}
+          {/* 用户区：头像/昵称锚定菜单（个人主页 / 退出）；开源仓库入口归内容页脚 SiteFooter */}
           <div className="flex items-center gap-2">
-            <Link to={paths.profile()}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-fast hover:scale-105 ${
-                location.pathname === paths.profile()
-                  ? 'border border-gold/50 bg-gold/10'
-                  : 'border border-border hover:border-gold/40 hover:bg-gold/5'
-              }`}
-              style={{ color: location.pathname === paths.profile() ? 'rgb(var(--color-gold))' : 'rgb(var(--accent-primary)/ 0.7)' }}>
-              <CircleUserRound size={16} />
-              <span className="hidden sm:inline">{user?.username}</span>
-            </Link>
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-1.5 text-muted text-sm hover:text-crimson transition-all duration-fast px-3 py-1.5 rounded-lg border border-border hover:border-crimson/40 hover:scale-105"
-            >
-              <LogOut size={15} />
-              <span className="hidden sm:inline">退出</span>
-            </button>
+            <Menu
+              open={userMenuOpen}
+              onOpenChange={setUserMenuOpen}
+              trigger={
+                <button
+                  type="button"
+                  aria-haspopup="menu"
+                  aria-expanded={userMenuOpen}
+                  className="flex items-center gap-2 px-2 py-1.5 rounded-lg border border-transparent hover:border-gold/30 hover:bg-gold/5 transition-colors duration-fast"
+                >
+                  <Avatar username={user?.username ?? ''} avatarUrl={user?.avatar_url} size={28} />
+                  <span className="hidden sm:inline text-caption text-body-text">{user?.username}</span>
+                </button>
+              }
+              items={userMenuItems}
+            />
           </div>
         </div>
       </header>

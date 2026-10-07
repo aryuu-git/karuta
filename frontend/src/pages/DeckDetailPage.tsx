@@ -4,8 +4,8 @@ import { useQueryClient } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Pencil, Swords, Download, Copy, Trash2, Plus, Lock, Play, Music, ListChecks, Check, Image as ImageIcon, Heart, ArrowUp, ArrowDown } from 'lucide-react'
 import {
-  Button, Input, ConfirmDialog, Dialog, EmptyState, HeroHeader,
-  PageContainer, Skeleton, useToast,
+  ActionBar, Button, IconButton, Input, ConfirmDialog, Dialog, EmptyState, HeroHeader,
+  OptionCard, PageContainer, SegmentedTabs, Skeleton, useToast,
 } from '../components/ui'
 import { useDeckDetail, queryKeys } from '../api/queries'
 import { api } from '../api/client'
@@ -384,10 +384,10 @@ export function DeckDetailPage() {
               {isOwner && (
                 <Button variant="ghost" size="xs" onClick={startEdit} icon={<Pencil size={12} aria-hidden="true" />}>修改</Button>
               )}
-              <Button size="xs" onClick={openPicker} icon={<Swords size={13} />}>用它开局</Button>
+              <Button size="xs" onClick={openPicker} icon={<Swords size={16} />}>用它开局</Button>
               <Button variant="outline" size="xs" onClick={handleExport} loading={exporting} disabled={cards.length === 0}
-                title="下载所有牌面封面图的压缩包" icon={<Download size={13} />}>导出封面</Button>
-              <Button variant="outline" size="xs" onClick={() => setShowCloneOptions(true)} loading={cloning} icon={<Copy size={13} />}>复制</Button>
+                title="下载所有牌面封面图的压缩包" icon={<Download size={16} />}>导出封面</Button>
+              <Button variant="outline" size="xs" onClick={() => setShowCloneOptions(true)} loading={cloning} icon={<Copy size={16} />}>复制</Button>
               {isOwner && (
                 <Button variant="danger" size="xs" onClick={() => setShowDeleteDeck(true)} icon={<Trash2 size={12} aria-hidden="true" />} aria-label="删除牌组" title="删除牌组" />
               )}
@@ -398,41 +398,32 @@ export function DeckDetailPage() {
 
       {/* 共享设置（仅 owner） */}
       {deck && isOwner && (
-        <div className="flex items-center gap-3 mb-6 flex-wrap rounded-xl px-4 py-3"
-          style={{ background: 'rgb(var(--accent-bg-end)/ 0.4)', border: '1px solid rgb(var(--accent-primary)/ 0.08)' }}>
+        <div className="flex items-center gap-3 mb-6 flex-wrap rounded-xl px-4 py-3 bg-accent-bg-end/40 border border-accent/10">
           <span className="text-muted/50 text-xs font-serif">共享范围：</span>
-          <div className="flex gap-1.5">
-            {Object.entries(SHARE_LABELS).map(([key, { label, icon: Icon }]) => (
-              <button key={key}
-                onClick={() => handleShareChange(key)}
-                disabled={savingShare}
-                className={`inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full transition-all ${
-                  shareLevel === key
-                    ? 'bg-gradient-to-r from-gold/25 to-pink-500/15 text-gold border border-gold/40'
-                    : 'bg-white/5 text-white/40 border border-white/5 hover:border-pink-300/20 hover:text-pink-300/70'
-                }`}>
-                <Icon size={12} aria-hidden="true" />
-                {label}
-              </button>
-            ))}
-          </div>
+          {/* 权限选项片：SegmentedTabs chip；保存中以禁用态样式（透明度+锁交互）呈现 */}
+          <SegmentedTabs
+            variant="chip"
+            aria-label="共享范围"
+            className={savingShare ? 'pointer-events-none opacity-50' : ''}
+            value={shareLevel}
+            onChange={handleShareChange}
+            options={Object.entries(SHARE_LABELS).map(([key, { label, icon: Icon }]) => ({
+              value: key,
+              label,
+              icon: <Icon size={12} aria-hidden="true" />,
+            }))}
+          />
           {shareLevel === 'editable' && (
             <>
               <span className="text-muted/50 text-xs ml-2 font-serif">编辑权限：</span>
-              <div className="flex gap-1.5">
-                {Object.entries(EDIT_LABELS).map(([key, label]) => (
-                  <button key={key}
-                    onClick={() => handleEditLevelChange(key)}
-                    disabled={savingShare}
-                    className={`text-xs px-3 py-1.5 rounded-full transition-all ${
-                      editLevel === key
-                        ? 'bg-gradient-to-r from-gold/25 to-pink-500/15 text-gold border border-gold/40'
-                        : 'bg-white/5 text-white/40 border border-white/5 hover:border-pink-300/20 hover:text-pink-300/70'
-                    }`}>
-                    {label}
-                  </button>
-                ))}
-              </div>
+              <SegmentedTabs
+                variant="chip"
+                aria-label="编辑权限"
+                className={savingShare ? 'pointer-events-none opacity-50' : ''}
+                value={editLevel}
+                onChange={handleEditLevelChange}
+                options={Object.entries(EDIT_LABELS).map(([key, label]) => ({ value: key, label }))}
+              />
             </>
           )}
         </div>
@@ -466,47 +457,35 @@ export function DeckDetailPage() {
                 <Button variant="ghost" size="sm" onClick={enterOrderMode} icon={<ArrowUp size={12} aria-hidden="true" />}>排序</Button>
               )}
               {canAdd && !selectMode && !orderMode && (
-                <Button size="sm" onClick={() => setShowPicker(true)} icon={<Plus size={14} />}>从牌库添加</Button>
+                <Button size="sm" onClick={() => setShowPicker(true)} icon={<Plus size={16} />}>从牌库添加</Button>
               )}
             </div>
           </div>
 
-          {/* 多选模式工具栏 */}
+          {/* 多选批量条：ActionBar 统一吸底批量条，内部按钮走 Button size="xs" */}
           {selectMode && (
-            <div className="mb-3 flex items-center justify-between px-4 py-2.5 rounded-xl"
-              style={{ background: 'rgb(var(--accent-primary)/ 0.08)', border: '1px solid rgb(var(--accent-primary)/ 0.2)' }}>
-              <div className="flex items-center gap-3">
-                <button onClick={() => {
-                  if (selectedCards.size === cards.length) setSelectedCards(new Set())
-                  else setSelectedCards(new Set(cards.map(c => c.id)))
-                }}
-                  className="text-xs text-gold/80 hover:text-gold transition-colors">
-                  {selectedCards.size === cards.length ? '取消全选' : '全选'}
-                </button>
-                <span className="text-muted text-xs font-serif">
-                  已选中 <span className="text-gold font-bold">{selectedCards.size}</span> 张
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <button onClick={handleBatchRemove}
-                  disabled={selectedCards.size === 0 || batchRemoving}
-                  className="text-xs px-3 py-1.5 rounded-lg font-medium transition-all disabled:opacity-30 hover:scale-105"
-                  style={{ background: 'rgb(var(--accent-primary)/ 0.15)', border: '1px solid rgb(var(--accent-primary)/ 0.3)', color: 'rgb(var(--color-gold))' }}>
-                  {batchRemoving ? '移除中…' : '移除选中'}
-                </button>
-                <button onClick={() => { setSelectMode(false); setSelectedCards(new Set()) }}
-                  className="text-xs px-3 py-1.5 rounded-lg text-muted hover:text-white transition-colors"
-                  style={{ border: '1px solid rgb(var(--accent-primary)/ 0.1)' }}>
-                  完成
-                </button>
-              </div>
-            </div>
+            <ActionBar className="animate-slide-in-up">
+              <Button size="xs" variant="ghost" onClick={() => {
+                if (selectedCards.size === cards.length) setSelectedCards(new Set())
+                else setSelectedCards(new Set(cards.map(c => c.id)))
+              }}>
+                {selectedCards.size === cards.length ? '取消全选' : '全选'}
+              </Button>
+              <span className="text-muted text-xs font-serif border-l border-white/10 pl-2">
+                已选中 <span className="text-gold font-bold">{selectedCards.size}</span> 张
+              </span>
+              <Button size="xs" variant="gold" disabled={selectedCards.size === 0 || batchRemoving}
+                icon={<Trash2 size={12} aria-hidden="true" />} onClick={handleBatchRemove}>
+                {batchRemoving ? '移除中…' : '移除选中'}
+              </Button>
+              <Button size="xs" variant="ghost"
+                onClick={() => { setSelectMode(false); setSelectedCards(new Set()) }}>完成</Button>
+            </ActionBar>
           )}
 
           {/* 排序模式工具栏 */}
           {orderMode && (
-            <div className="mb-3 flex items-center justify-between px-4 py-2.5 rounded-xl"
-              style={{ background: 'rgb(var(--color-gold)/ 0.06)', border: '1px solid rgb(var(--color-gold)/ 0.25)' }}>
+            <div className="mb-3 flex items-center justify-between px-4 py-2.5 rounded-lg bg-gold/5 border border-gold/25">
               <span className="text-muted text-xs font-serif">调整牌序：↑↓ 移动，保存后对局按此顺序入场</span>
               <div className="flex items-center gap-2">
                 <Button size="sm" loading={savingOrder} onClick={() => void handleSaveOrder()}>保存顺序</Button>
@@ -516,14 +495,13 @@ export function DeckDetailPage() {
           )}
 
           {cards.length === 0 ? (
-            <div className="rounded-2xl"
-              style={{ background: 'linear-gradient(160deg, rgb(var(--accent-bg-end)/ 0.5), rgb(var(--accent-bg-mid)/ 0.8))', border: '1px dashed rgb(var(--accent-primary)/ 0.2)' }}>
+            <div className="rounded-2xl bg-panel-void border border-dashed border-accent/20">
               {/* 空态：EmptyState 统一组件（默认樱花插画，空状态插画允许 emoji），保留和纸渐变容器 */}
               <EmptyState
                 title="牌组还没有歌牌"
                 description={canAdd ? '从牌库添加歌牌' : '牌组还是空的'}
                 action={canAdd ? (
-                  <Button onClick={() => setShowPicker(true)} icon={<Plus size={14} />}>从牌库添加</Button>
+                  <Button onClick={() => setShowPicker(true)} icon={<Plus size={16} />}>从牌库添加</Button>
                 ) : undefined}
               />
             </div>
@@ -552,23 +530,19 @@ export function DeckDetailPage() {
                       <>
                         <span className="absolute top-1.5 left-1.5 w-6 h-6 rounded-full bg-black/70 text-gold text-xs flex items-center justify-center font-bold tabular-nums">{i + 1}</span>
                         <div className="absolute bottom-2 right-2 flex gap-1">
-                          <button onClick={() => moveCard(i, -1)} disabled={i === 0}
-                            className="w-7 h-7 rounded-full bg-black/60 text-white flex items-center justify-center disabled:opacity-30 hover:bg-gold/80 hover:text-ink-deep transition-all">
-                            <ArrowUp size={13} />
-                          </button>
-                          <button onClick={() => moveCard(i, 1)} disabled={i === orderedIds.length - 1}
-                            className="w-7 h-7 rounded-full bg-black/60 text-white flex items-center justify-center disabled:opacity-30 hover:bg-gold/80 hover:text-ink-deep transition-all">
-                            <ArrowDown size={13} />
-                          </button>
+                          <IconButton tone="neutral" icon={<ArrowUp size={16} />} onClick={() => moveCard(i, -1)}
+                            disabled={i === 0} aria-label="上移" />
+                          <IconButton tone="neutral" icon={<ArrowDown size={16} />} onClick={() => moveCard(i, 1)}
+                            disabled={i === orderedIds.length - 1} aria-label="下移" />
                         </div>
                       </>
                     )}
                     {/* 移除入口（非多选/排序态 hover 显示） */}
                     {canRemove && !selectMode && !orderMode && (
-                      <button onClick={() => setRemoveCardId(card.id)}
-                        className="absolute top-1.5 left-1.5 opacity-0 group-hover:opacity-100 transition-opacity w-6 h-6 rounded-full bg-black/60 text-muted hover:text-crimson flex items-center justify-center">
-                        <Trash2 size={11} />
-                      </button>
+                      <IconButton tone="danger" icon={<Trash2 size={12} aria-hidden="true" />}
+                        onClick={() => setRemoveCardId(card.id)}
+                        className="absolute top-1.5 left-1.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                        aria-label="移出牌组" />
                     )}
                   </motion.div>
                 ))}
@@ -588,24 +562,22 @@ export function DeckDetailPage() {
       >
         <p className="text-muted/40 text-xs font-serif mb-4">选择复制方式</p>
         <div className="space-y-2">
-          <button onClick={() => handleClone('full')}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all hover:scale-[1.02]"
-            style={{ background: 'rgb(var(--accent-primary)/ 0.08)', border: '1px solid rgb(var(--accent-primary)/ 0.2)' }}>
-            <Music size={20} className="text-gold/80 shrink-0" aria-hidden="true" />
-            <div>
-              <p className="text-white/90 text-sm font-medium">复制牌面 + 歌曲</p>
-              <p className="text-muted text-xs">引用相同的牌，完整保留歌曲</p>
-            </div>
-          </button>
-          <button onClick={() => handleClone('covers_only')}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all hover:scale-[1.02]"
-            style={{ background: 'rgb(var(--accent-primary)/ 0.05)', border: '1px solid rgb(var(--accent-primary)/ 0.1)' }}>
-            <ImageIcon size={20} className="text-gold/80 shrink-0" aria-hidden="true" />
-            <div>
-              <p className="text-white/90 text-sm font-medium">只复制牌面</p>
-              <p className="text-muted text-xs">创建新牌只有封面，自行配歌</p>
-            </div>
-          </button>
+          <OptionCard
+            selected={false}
+            onSelect={() => handleClone('full')}
+            layout="row"
+            icon={<Music size={20} className="text-gold/80 shrink-0" aria-hidden="true" />}
+            title="复制牌面 + 歌曲"
+            desc="引用相同的牌，完整保留歌曲"
+          />
+          <OptionCard
+            selected={false}
+            onSelect={() => handleClone('covers_only')}
+            layout="row"
+            icon={<ImageIcon size={20} className="text-gold/80 shrink-0" aria-hidden="true" />}
+            title="只复制牌面"
+            desc="创建新牌只有封面，自行配歌"
+          />
         </div>
       </Dialog>
 
@@ -650,7 +622,7 @@ export function DeckDetailPage() {
           <>
             <Button variant="outline" onClick={() => setEditingName(false)}>取消</Button>
             <Button onClick={saveEdit} loading={savingName} disabled={!editName.trim()}
-              icon={<Check size={14} strokeWidth={3} />}>保存</Button>
+              icon={<Check size={16} strokeWidth={3} />}>保存</Button>
           </>
         }
       >

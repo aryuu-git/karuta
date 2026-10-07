@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, type FormEvent, type ReactNode } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Button, Input, PageContainer, HeroHeader, ConfirmDialog, StepProgress } from '../components/ui'
+import { Button, Input, PageContainer, HeroHeader, ConfirmDialog } from '../components/ui'
 import { api } from '../api/client'
 import { paths } from '../routes/paths'
 import type { Card, CardAudio } from '../api/types'
@@ -25,9 +25,6 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
-/** 造牌向导四步（docs §6.4）：素材 → 信息 → 权限 → 预览提交 */
-const WIZARD_STEPS = ['素材', '信息', '权限', '预览提交']
-
 /** 单文件状态机 → 展示文案（操作层，无颜文字） */
 const AUDIO_STATE_TEXT: Record<AudioFileState, string> = {
   queued: '等待中',
@@ -46,24 +43,12 @@ const AUDIO_STATE_CLASS: Record<AudioFileState, string> = {
   failed: 'text-crimson',
 }
 
-/** 分享级别 → 预览文案 */
-const SHARE_LEVEL_TEXT = { private: '私有', playable: '可使用', editable: '可编辑' } as const
-
-/** 向导底部导航：上一步 / 下一步（下一步可禁用）；children 可替换右侧下一步为主提交按钮 */
-function StepNav({ onPrev, onNext, nextDisabled, children }: {
-  onPrev?: () => void
-  onNext?: () => void
-  nextDisabled?: boolean
-  children?: ReactNode
-}) {
+/** 单页分区标题：金线小节名（沿用原向导步骤名，作扫读锚点） */
+function SectionHeading({ children }: { children: ReactNode }) {
   return (
-    <div className="flex items-center justify-between gap-3 pt-1">
-      {onPrev
-        ? <Button type="button" variant="ghost" size="sm" onClick={onPrev}>上一步</Button>
-        : <span />}
-      {children ?? (onNext
-        ? <Button type="button" size="sm" onClick={onNext} disabled={nextDisabled}>下一步</Button>
-        : null)}
+    <div className="flex items-center gap-3">
+      <h2 className="font-serif text-body font-semibold text-gold/90">{children}</h2>
+      <span className="flex-1 h-px bg-border/60" />
     </div>
   )
 }
@@ -75,9 +60,6 @@ export function CardCreatePage() {
   const { user } = useAuth()
   const isEdit = !!id
   const cardId = parseInt(id ?? '0', 10)
-
-  // 向导当前步（编辑模式素材已存在，直接落步骤 2）
-  const [step, setStep] = useState(isEdit ? 1 : 0)
 
   // 表单字段（创建/编辑双模式共用）
   const {
@@ -176,16 +158,10 @@ export function CardCreatePage() {
     setCoverPreview(file ? URL.createObjectURL(file) : coverPreview)
   }
 
-  // —— 向导放行规则：步骤1需≥1音频（新建），步骤2需牌名 ——
-  const canLeaveStep1 = isEdit || createAudioFiles.length > 0 || !!audioFile
-  const canLeaveStep2 = displayText.trim().length > 0
-
-  /** 下一步（带放行校验，未满足时原地不动） */
-  const goNext = () => {
-    if (step === 0 && canLeaveStep1) setStep(1)
-    else if (step === 1 && canLeaveStep2) setStep(2)
-    else if (step === 2) setStep(3)
-  }
+  // —— 提交放行（单页表单：校验绑定提交按钮，不再绑步骤）：两模式都要牌名，新建还须封面+音频 ——
+  const canSubmit = isEdit
+    ? displayText.trim().length > 0
+    : displayText.trim().length > 0 && !!audioFile && !!coverFile
 
   /** 单个追加音频上传：成功标记 done，失败仅标记该项（已成功项不回滚） */
   const uploadExtraAudio = async (targetCardId: number, index: number): Promise<boolean> => {
@@ -325,7 +301,7 @@ export function CardCreatePage() {
   if (loading) {
     return (
       <PageContainer size="sm">
-        <div className="text-pink-300/50 animate-pulse font-serif text-xl text-center py-24">
+        <div className="text-gold/50 animate-pulse font-serif text-xl text-center py-24">
           加载中…
         </div>
       </PageContainer>
@@ -353,39 +329,37 @@ export function CardCreatePage() {
         onBack={handleBack}
       />
 
-      {/* 造牌向导进度条：已完成步可点击回退 */}
-      <div className="mb-4">
-        <StepProgress steps={WIZARD_STEPS} current={step} onStepClick={setStep} />
-      </div>
-
-      <div className="rounded-2xl p-6" style={{ background: 'linear-gradient(180deg, rgb(var(--accent-bg-end)/ 0.5) 0%, rgb(var(--accent-bg-mid)/ 0.8) 100%)', border: '1px solid rgb(var(--accent-primary)/ 0.12)' }}>
-        {/* 全部步骤保持挂载，仅切换可见区：跨步数据零丢失，表单逻辑不动 */}
-        <form onSubmit={isEdit
-          ? (e) => { e.preventDefault(); if (step === 3) handleSave() }
-          : (e) => { if (step !== 3) { e.preventDefault(); return } void handleCreate(e) }}
+      <div className="rounded-2xl p-6 bg-gradient-to-b from-accent-bg-end/50 to-accent-bg-mid/80 border border-accent/[0.12]">
+        {/* 单页表单（2026-10-05 去向导化，创建/编辑同构）：全部字段一页可见，提交条常驻底部 */}
+        <form onSubmit={(e) => { e.preventDefault(); if (isEdit) void handleSave(); else void handleCreate(e) }}
           className="flex flex-col gap-5">
 
-          {/* ── 步骤 1 素材：封面 + 音频 ── */}
-          <div className={step === 0 ? 'flex flex-col gap-5' : 'hidden'}>
+          {/* ── 素材：封面 + 音频 ── */}
+          <div className="flex flex-col gap-5">
+            <SectionHeading>素材</SectionHeading>
             {/* Cover image (create mode) */}
             {!isEdit && (
               <div>
                 <label className="text-muted text-xs block mb-1.5"><ImageIcon className="mr-1 inline h-3.5 w-3.5" /> 封面图片 *</label>
                 <div className="flex items-start gap-4">
+                  {/* 拖拽高亮走 shadow-gold token 叠加层（替代手写 boxShadow 字面量） */}
                   <UploadZone
                     accept="image/*"
-                    className="w-24 border border-dashed rounded-lg overflow-hidden cursor-pointer transition-all duration-200 shrink-0"
-                    baseStyle={{ aspectRatio: '3/4', borderColor: 'rgb(var(--accent-bg)/ 0.8)', boxShadow: 'none', background: 'rgb(var(--color-ink-deep))' }}
-                    dragOverStyle={{ borderColor: 'rgb(var(--accent-primary)/ 0.8)', boxShadow: '0 0 16px rgb(var(--accent-primary)/ 0.3)', background: 'rgb(var(--accent-primary)/ 0.05)' }}
+                    className="relative w-24 border border-dashed rounded-lg cursor-pointer transition-all duration-200 shrink-0"
+                    baseStyle={{ aspectRatio: '3/4', borderColor: 'rgb(var(--accent-bg)/ 0.8)', background: 'rgb(var(--color-ink-deep))' }}
+                    dragOverStyle={{ borderColor: 'rgb(var(--accent-primary)/ 0.8)', background: 'rgb(var(--accent-primary)/ 0.05)' }}
                     onFiles={handleCoverFiles}>
-                    {(dragOver) => coverPreview ? (
-                      <img src={coverPreview} alt="preview" className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center gap-1 text-muted">
-                        {dragOver ? <Sparkles className="h-4 w-4" /> : <ImageIcon className="h-4 w-4" />}
-                        <span className="text-[10px]">点击上传</span>
-                      </div>
-                    )}
+                    {(dragOver) => (<>
+                      {dragOver && <span aria-hidden="true" className="pointer-events-none absolute inset-0 rounded-lg shadow-gold" />}
+                      {coverPreview ? (
+                        <img src={coverPreview} alt="preview" className="w-full h-full object-cover rounded-lg" />
+                      ) : (
+                        <div className="w-full h-full flex flex-col items-center justify-center gap-1 text-muted">
+                          {dragOver ? <Sparkles className="h-4 w-4" /> : <ImageIcon className="h-4 w-4" />}
+                          <span className="text-[10px]">点击上传</span>
+                        </div>
+                      )}
+                    </>)}
                   </UploadZone>
                   <div className="text-muted text-xs pt-2">
                     <p>jpg / png / webp</p>
@@ -400,6 +374,12 @@ export function CardCreatePage() {
               <EditCoverField cardId={cardId} coverPreview={coverPreview} onPreviewChange={setCoverPreview} />
             )}
 
+            {/* Edit mode: 音频管理（素材分区正位；按钮均 type=button，防误触提交） */}
+            {isEdit && (
+              <EditAudioPanel cardId={cardId} audios={audios} onAudiosChange={setAudios}
+                playingAudioId={playingAudioId} onTogglePlay={togglePlay} />
+            )}
+
             {/* Audio file (create mode only) */}
             {!isEdit && (
               <div>
@@ -408,11 +388,13 @@ export function CardCreatePage() {
                   accept="audio/*"
                   multiple
                   filter={isAudioFile}
-                  className="border border-dashed rounded-lg p-3 cursor-pointer transition-all duration-200 text-center"
-                  baseStyle={{ borderColor: 'rgb(var(--accent-bg)/ 0.8)', boxShadow: 'none', background: 'transparent' }}
-                  dragOverStyle={{ borderColor: 'rgb(var(--accent-primary)/ 0.8)', boxShadow: '0 0 16px rgb(var(--accent-primary)/ 0.3)', background: 'rgb(var(--accent-primary)/ 0.05)' }}
+                  className="relative border border-dashed rounded-lg p-3 cursor-pointer transition-all duration-200 text-center"
+                  baseStyle={{ borderColor: 'rgb(var(--accent-bg)/ 0.8)', background: 'transparent' }}
+                  dragOverStyle={{ borderColor: 'rgb(var(--accent-primary)/ 0.8)', background: 'rgb(var(--accent-primary)/ 0.05)' }}
                   onFiles={selectFiles}>
-                  {(dragOver) => createAudioFiles.length > 0 ? (
+                  {(dragOver) => (<>
+                    {dragOver && <span aria-hidden="true" className="pointer-events-none absolute inset-0 rounded-lg shadow-gold" />}
+                    {createAudioFiles.length > 0 ? (
                     <div className="text-xs">
                       <div className="text-gold font-medium">{createAudioFiles.length} 首音频已选</div>
                       <div className="text-muted mt-0.5 max-h-scroll-xs overflow-y-auto">{createAudioFiles.map(f => f.name).join(', ')}</div>
@@ -429,6 +411,7 @@ export function CardCreatePage() {
                       <span className="text-xs text-muted/40">mp3 / wav / flac 等 · ≤20MB</span>
                     </div>
                   )}
+                  </>)}
                 </UploadZone>
 
                 {/* 单文件状态机：状态 + 进度 + 失败独立重试 */}
@@ -442,11 +425,11 @@ export function CardCreatePage() {
                         )}
                         <span className={`${AUDIO_STATE_CLASS[f.status]} shrink-0`}>{AUDIO_STATE_TEXT[f.status]}</span>
                         {f.status === 'failed' && (
-                          <button type="button" disabled={uploading}
+                          <Button type="button" variant="link" size="sm" disabled={uploading}
                             onClick={() => void retryAudioFile(i)}
-                            className="text-gold hover:text-gold/80 shrink-0 disabled:opacity-40">
+                            className="shrink-0">
                             重试
-                          </button>
+                          </Button>
                         )}
                       </div>
                     ))}
@@ -465,11 +448,11 @@ export function CardCreatePage() {
               />
             )}
 
-            <StepNav onNext={goNext} nextDisabled={!canLeaveStep1} />
           </div>
 
-          {/* ── 步骤 2 信息：牌名/作品/标签/提示 ── */}
-          <div className={step === 1 ? 'flex flex-col gap-5' : 'hidden'}>
+          {/* ── 信息：牌名/作品/标签/提示 ── */}
+          <div className="flex flex-col gap-5">
+            <SectionHeading>信息</SectionHeading>
             {/* Display text */}
             <div>
               <Input label={<><Music2 className="mr-1 inline h-3.5 w-3.5" /> 牌名（歌曲名） *</>} type="text" value={displayText} onChange={e => setDisplayText(e.target.value)}
@@ -495,11 +478,11 @@ export function CardCreatePage() {
               </div>
             )}
 
-            <StepNav onPrev={() => setStep(0)} onNext={goNext} nextDisabled={!canLeaveStep2} />
           </div>
 
-          {/* ── 步骤 3 权限：分享级别 ── */}
-          <div className={step === 2 ? 'flex flex-col gap-5' : 'hidden'}>
+          {/* ── 权限：分享级别 ── */}
+          <div className="flex flex-col gap-5">
+            <SectionHeading>权限</SectionHeading>
             {/* Share level (only owner can toggle) */}
             {(!isEdit || (card && user && card.owner_id === user.id)) && (
               <ShareLevelPicker
@@ -507,66 +490,27 @@ export function CardCreatePage() {
                 onChange={(value) => { setShareLevel(value); setIsShared(value !== 'private') }} />
             )}
 
-            <StepNav onPrev={() => setStep(1)} onNext={goNext} />
           </div>
 
-          {/* ── 步骤 4 预览提交 ── */}
-          <div className={step === 3 ? 'flex flex-col gap-5' : 'hidden'}>
-            {/* 预览摘要：牌面信息汇总（创建模式无落库卡牌，不能复用 ReadOnlyCardView） */}
-            <div className="rounded-xl border border-border bg-ink-deep/20 p-4 flex gap-4">
-              {coverPreview ? (
-                <img src={coverPreview} alt="cover" className="w-20 rounded-lg object-cover shrink-0" style={{ aspectRatio: '3/4' }} />
-              ) : (
-                <div className="w-20 rounded-lg bg-white/5 flex items-center justify-center shrink-0" style={{ aspectRatio: '3/4' }}>
-                  <ImageIcon className="h-5 w-5 text-muted/40" />
-                </div>
-              )}
-              <div className="flex-1 min-w-0 space-y-1.5">
-                <p className="text-gold text-body truncate">{displayText || '—'}</p>
-                {series && <p className="text-muted text-caption truncate">作品 · {series}</p>}
-                {tags.trim() && (
-                  <div className="flex flex-wrap gap-1">
-                    {tags.split(',').map(t => t.trim()).filter(Boolean).map(t => (
-                      <span key={t} className="text-tiny px-1.5 py-0.5 rounded bg-gold/10 text-gold/80 border border-gold/20">{t}</span>
-                    ))}
-                  </div>
-                )}
-                {!isEdit && hintText.trim() && <p className="text-muted text-tiny truncate">提示 · {hintText.trim()}</p>}
-                <p className="text-muted text-tiny">
-                  音频 · {isEdit ? `${audios.length} 首` : `${createAudioFiles.length} 首`}
-                  {' · '}权限 · {SHARE_LEVEL_TEXT[shareLevel]}
-                </p>
-              </div>
-            </div>
+          {/* 上传/处理错误（创建模式失败可见，贴提交条展示） */}
+          {uploadError && (
+            <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
+              className="text-crimson text-xs bg-crimson/10 border border-crimson/30 rounded-lg px-3 py-2.5">
+              {uploadError}
+            </motion.p>
+          )}
 
-            {/* Upload error */}
-            {uploadError && (
-              <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
-                className="text-crimson text-xs bg-crimson/10 border border-crimson/30 rounded-lg px-3 py-2.5">
-                {uploadError}
-              </motion.p>
-            )}
-
-            <StepNav onPrev={() => setStep(2)}>
-              {/* Submit button（仅步骤 4 出现） */}
-              <Button type="submit"
-                loading={uploading || processing || saving}
-                disabled={!isEdit && (createAudioFiles.length === 0 && !audioFile || !coverFile)}
-                icon={isEdit ? <Check size={14} /> : <Sparkles size={14} />}>
-                {isEdit ? '保存修改' : '保存'}
-              </Button>
-            </StepNav>
+          {/* ── 常驻提交条（sticky）：任意滚动位置可提交；校验不通过按钮禁用 ── */}
+          <div className="sticky bottom-0 -mx-6 -mb-6 px-6 py-3 flex items-center justify-end gap-3 border-t border-border bg-ink-deep/90 backdrop-blur-sm rounded-b-2xl">
+            <Button type="submit"
+              loading={uploading || processing || saving}
+              disabled={!canSubmit}
+              icon={isEdit ? <Check size={16} /> : <Sparkles size={16} />}>
+              {isEdit ? '保存修改' : '创建歌牌'}
+            </Button>
           </div>
         </form>
       </div>
-
-      {/* Edit mode: audio management panel（素材步可见区，保持挂载） */}
-      {isEdit && (
-        <div className={step === 0 ? '' : 'hidden'}>
-          <EditAudioPanel cardId={cardId} audios={audios} onAudiosChange={setAudios}
-            playingAudioId={playingAudioId} onTogglePlay={togglePlay} />
-        </div>
-      )}
 
       <CustomTagDialog open={showTagDialog} onConfirm={handleAddCustomTag} onCancel={() => setShowTagDialog(false)} />
 

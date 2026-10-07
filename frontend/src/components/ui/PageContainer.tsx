@@ -5,7 +5,7 @@ import { type ReactNode } from 'react'
  * 档位对应原页面各色 max-w 手写值（重构 R4 收敛）：
  * - sm: max-w-2xl（表单页/聚焦页）
  * - md: max-w-4xl（默认列表页）
- * - lg: max-w-5xl（宽列表/详情页）
+ * - lg: max-w-content（内容列宽度契约 1120px，布局契约 §1.3；列表页/宽详情页统一消费）
  * - xl: max-w-7xl（全局级页面）
  */
 export type PageContainerSize = 'sm' | 'md' | 'lg' | 'xl'
@@ -13,7 +13,7 @@ export type PageContainerSize = 'sm' | 'md' | 'lg' | 'xl'
 const sizeClasses: Record<PageContainerSize, string> = {
   sm: 'max-w-2xl',
   md: 'max-w-4xl',
-  lg: 'max-w-5xl',
+  lg: 'max-w-content',
   xl: 'max-w-7xl',
 }
 
