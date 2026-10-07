@@ -12,12 +12,12 @@ import (
 )
 
 func TestRegisterInviteModes(t *testing.T) {
-	// Owner 决策 2026-09-21：邀请码框常驻——开放注册态改为校验固定默认码 33989
-	// （原「无需任何码」契约作废；双态矩阵详见 TestRegisterInviteGateModes）。
-	t.Run("open registration requires the fixed default code", func(t *testing.T) {
+	// Owner 决策 2026-09-30：关态=开放注册，邀请码字段忽略（原固定码剧场作废；
+	// 双态矩阵详见 TestRegisterInviteGateModes）。
+	t.Run("open registration needs no invite code", func(t *testing.T) {
 		h := newTestAuthHandler(t, false)
 		req := httptest.NewRequest(http.MethodPost, "/api/auth/register", strings.NewReader(`{
-			"username":"open-user","email":"open@example.test","password":"secret1","invite_code":"33989"
+			"username":"open-user","email":"open@example.test","password":"secret1"
 		}`))
 		rec := httptest.NewRecorder()
 		h.Register(rec, req)
@@ -36,14 +36,14 @@ func TestRegisterInviteModes(t *testing.T) {
 		if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "INVITE_REQUIRED") {
 			t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 		}
-		// 固定默认码在开态同样无效（一次性码语义）
+		// 任意非数据库码在开态同样无效（一次性码语义）
 		req2 := httptest.NewRequest(http.MethodPost, "/api/auth/register", strings.NewReader(`{
-			"username":"closed-user2","email":"closed2@example.test","password":"secret1","invite_code":"33989"
+			"username":"closed-user2","email":"closed2@example.test","password":"secret1","invite_code":"not-a-db-code"
 		}`))
 		rec2 := httptest.NewRecorder()
 		h.Register(rec2, req2)
 		if rec2.Code != http.StatusBadRequest {
-			t.Fatalf("default code must be rejected when invite gate is on, status=%d body=%s", rec2.Code, rec2.Body.String())
+			t.Fatalf("non-database code must be rejected when invite gate is on, status=%d body=%s", rec2.Code, rec2.Body.String())
 		}
 	})
 }

@@ -36,11 +36,6 @@ import (
 const (
 	defaultEmailSuffix = "@karuta.local"
 	guestEmailSuffix   = "@guest.karuta"
-	// defaultOpenInviteCode 邀请码开关关闭时的固定默认码（Owner 决策
-	// 2026-09-21：恢复改造前交互——注册页邀请码框常驻，关态填 33989 即过）。
-	// 注意：固定码无实际安全门槛，仅为交互仪式感；真正的门是开关开启后
-	// 的数据库一次性码。
-	defaultOpenInviteCode = "33989"
 )
 
 type AuthHandler struct {
@@ -204,16 +199,11 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "username and password are required")
 		return
 	}
-	// 邀请码门（Owner 决策 2026-09-21）：框常驻双态校验——
-	// 开关开启：数据库一次性码（事务内消费）；开关关闭：固定默认码 33989。
+	// 邀请码门（双态，Owner 决策 2026-09-30）：开关开启只认数据库一次性码
+	// （事务内消费）；开关关闭为开放注册，邀请码字段忽略不校验。
 	inviteRequired := h.inviteRequired.Load()
-	if inviteRequired {
-		if req.InviteCode == "" {
-			writeError(w, http.StatusBadRequest, "INVITE_REQUIRED", "invite code is required")
-			return
-		}
-	} else if req.InviteCode != defaultOpenInviteCode {
-		writeError(w, http.StatusBadRequest, "INVALID_INVITE", "invalid or already used invite code")
+	if inviteRequired && req.InviteCode == "" {
+		writeError(w, http.StatusBadRequest, "INVITE_REQUIRED", "invite code is required")
 		return
 	}
 	if req.Email == "" {

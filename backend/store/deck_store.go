@@ -219,25 +219,15 @@ func (s *DeckStore) DeleteDeck(id int64) error {
 	}
 	defer tx.Rollback()
 
-	// 找出所有关联的 card id
-	rows, err := tx.Query(`SELECT id FROM cards WHERE deck_id = ?`, id)
-	if err != nil {
-		return fmt.Errorf("query cards: %w", err)
-	}
-	var cardIDs []int64
-	for rows.Next() {
-		var cid int64
-		if err := rows.Scan(&cid); err == nil {
-			cardIDs = append(cardIDs, cid)
-		}
-	}
-	rows.Close()
-
-	// 删 game_records（引用这些 card）
-	for _, cid := range cardIDs {
-		if _, err := tx.Exec(`DELETE FROM game_records WHERE card_id = ?`, cid); err != nil {
-			return fmt.Errorf("delete game records: %w", err)
-		}
+	// 删 game_records：两个方向都得清——本牌组的 card（可能在他人房间留有战绩）、
+	// 本牌组的 room（战绩里可能是借来的共享卡，cards.deck_id 不属于本牌组，按 card 清不掉）。
+	// game_records 的 room_id/card_id 外键均无 ON DELETE，靠这里显式清；
+	// 漏删会让下面 DELETE rooms/cards 触发 FK 约束（删牌组 500 的根因）。
+	if _, err := tx.Exec(`
+		DELETE FROM game_records
+		WHERE room_id IN (SELECT id FROM rooms WHERE deck_id = ?)
+		   OR card_id IN (SELECT id FROM cards WHERE deck_id = ?)`, id, id); err != nil {
+		return fmt.Errorf("delete game records: %w", err)
 	}
 
 	// 找出所有关联的 room id

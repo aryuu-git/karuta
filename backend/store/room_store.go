@@ -417,8 +417,8 @@ func (s *RoomStore) GetUserStats(userID int64) (*UserStats, error) {
 		)
 		SELECT
 			COUNT(*)                          AS total_games,
-			SUM(CASE WHEN rnk <= 3 THEN 1 ELSE 0 END) AS top3_games,
-			SUM(CASE WHEN rnk = 1 THEN 1 ELSE 0 END)  AS first_games,
+			COALESCE(SUM(CASE WHEN rnk <= 3 THEN 1 ELSE 0 END), 0) AS top3_games,
+			COALESCE(SUM(CASE WHEN rnk = 1 THEN 1 ELSE 0 END), 0)  AS first_games,
 			COALESCE(SUM(score), 0)           AS total_score,
 			COALESCE(MAX(score), 0)           AS best_score
 		FROM my_games

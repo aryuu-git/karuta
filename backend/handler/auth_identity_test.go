@@ -53,7 +53,7 @@ func TestRenameReleasesOldUsername(t *testing.T) {
 	e := newAdminEnv(t)
 	r := authRouter(e)
 
-	w1, token := doRegister(t, r, `{"username":"alice","password":"secret1","invite_code":"33989"}`)
+	w1, token := doRegister(t, r, `{"username":"alice","password":"secret1"}`)
 	if w1.Code != http.StatusCreated {
 		t.Fatalf("register alice: %d %s", w1.Code, w1.Body.String())
 	}
@@ -70,7 +70,7 @@ func TestRenameReleasesOldUsername(t *testing.T) {
 	}
 
 	// 旧昵称空出后可被他人注册
-	if w3, _ := doRegister(t, r, `{"username":"alice","password":"secret2","invite_code":"33989"}`); w3.Code != http.StatusCreated {
+	if w3, _ := doRegister(t, r, `{"username":"alice","password":"secret2"}`); w3.Code != http.StatusCreated {
 		t.Fatalf("expected 201 re-registering released username, got %d: %s", w3.Code, w3.Body.String())
 	}
 }
@@ -80,7 +80,7 @@ func TestRenameKeepsCustomEmail(t *testing.T) {
 	e := newAdminEnv(t)
 	r := authRouter(e)
 
-	w1, token := doRegister(t, r, `{"username":"carol","password":"secret1","email":"custom@example.test","invite_code":"33989"}`)
+	w1, token := doRegister(t, r, `{"username":"carol","password":"secret1","email":"custom@example.test"}`)
 	if w1.Code != http.StatusCreated {
 		t.Fatalf("register carol: %d %s", w1.Code, w1.Body.String())
 	}
@@ -122,16 +122,16 @@ func TestRegisterValidatesUsername(t *testing.T) {
 	r := authRouter(e)
 
 	// trim 后仅 1 字符 → 400（修复前 201）
-	if w, _ := doRegister(t, r, `{"username":" q ","password":"secret1","invite_code":"33989"}`); w.Code != http.StatusBadRequest {
+	if w, _ := doRegister(t, r, `{"username":" q ","password":"secret1"}`); w.Code != http.StatusBadRequest {
 		t.Fatalf("expected 400 for 1-char name, got %d: %s", w.Code, w.Body.String())
 	}
 	// 64 字符 → 400（修复前 201）
 	long := strings.Repeat("n", 64)
-	if w, _ := doRegister(t, r, `{"username":"`+long+`","password":"secret1","invite_code":"33989"}`); w.Code != http.StatusBadRequest {
+	if w, _ := doRegister(t, r, `{"username":"`+long+`","password":"secret1"}`); w.Code != http.StatusBadRequest {
 		t.Fatalf("expected 400 for 64-char name, got %d: %s", w.Code, w.Body.String())
 	}
 	// 前后空格被吞：入库昵称为 trim 后值（修复前 ' spaced ' 与 'spaced' 双账号并存）
-	if w, _ := doRegister(t, r, `{"username":"  spaced  ","password":"secret1","invite_code":"33989"}`); w.Code != http.StatusCreated {
+	if w, _ := doRegister(t, r, `{"username":"  spaced  ","password":"secret1"}`); w.Code != http.StatusCreated {
 		t.Fatalf("expected 201 for spaced name, got %d: %s", w.Code, w.Body.String())
 	}
 	var stored string
@@ -147,27 +147,24 @@ func TestRegisterValidatesUsername(t *testing.T) {
 	}
 }
 
-// Owner 决策 2026-09-21：邀请码框常驻双态——开关关闭校验固定默认码 33989，
-// 开启后仅数据库一次性码有效（33989 同样被拒）。
+// Owner 决策 2026-09-30：关态=开放注册（invite_code 字段忽略）；开态只认数据库
+// 一次性码。原固定默认码 33989 剧场已拆除（2026-09-21 方案作废）。
 func TestRegisterInviteGateModes(t *testing.T) {
 	e := newAdminEnv(t) // fallback false = 关态
 	r := authRouter(e)
 
-	// 关态：无码 400 / 错码 400 INVALID_INVITE / 33989 放行
-	if w, _ := doRegister(t, r, `{"username":"nocode01","password":"secret1"}`); w.Code != http.StatusBadRequest {
-		t.Fatalf("closed mode: expected 400 without code, got %d: %s", w.Code, w.Body.String())
+	// 关态：无码 201；携带任意邀请码也不校验（字段忽略，不烧码）
+	if w, _ := doRegister(t, r, `{"username":"nocode01","password":"secret1"}`); w.Code != http.StatusCreated {
+		t.Fatalf("closed mode: expected 201 without code, got %d: %s", w.Code, w.Body.String())
 	}
-	if w, _ := doRegister(t, r, `{"username":"wrongcd","password":"secret1","invite_code":"12345"}`); w.Code != http.StatusBadRequest || !strings.Contains(w.Body.String(), "INVALID_INVITE") {
-		t.Fatalf("closed mode: expected 400 INVALID_INVITE for wrong default code, got %d: %s", w.Code, w.Body.String())
-	}
-	if w, _ := doRegister(t, r, `{"username":"withdef","password":"secret1","invite_code":"33989"}`); w.Code != http.StatusCreated {
-		t.Fatalf("closed mode: expected 201 with default code, got %d: %s", w.Code, w.Body.String())
+	if w, _ := doRegister(t, r, `{"username":"anycod01","password":"secret1","invite_code":"whatever"}`); w.Code != http.StatusCreated {
+		t.Fatalf("closed mode: expected 201 ignoring invite field, got %d: %s", w.Code, w.Body.String())
 	}
 
-	// 开态：默认码失效；一次性码 201；空码 INVITE_REQUIRED
+	// 开态：非数据库码 INVALID_INVITE；一次性码 201；空码 INVITE_REQUIRED
 	e.handler.inviteRequired.Store(true)
-	if w, _ := doRegister(t, r, `{"username":"opendef","password":"secret1","invite_code":"33989"}`); w.Code != http.StatusBadRequest {
-		t.Fatalf("open mode: expected 400 for fixed default code, got %d: %s", w.Code, w.Body.String())
+	if w, _ := doRegister(t, r, `{"username":"openbad","password":"secret1","invite_code":"not-a-db-code"}`); w.Code != http.StatusBadRequest || !strings.Contains(w.Body.String(), "INVALID_INVITE") {
+		t.Fatalf("open mode: expected 400 INVALID_INVITE for non-database code, got %d: %s", w.Code, w.Body.String())
 	}
 	inv, err := e.store.Invites.Generate(e.active)
 	if err != nil {
