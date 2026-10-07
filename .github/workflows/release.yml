@@ -37,6 +37,7 @@ jobs:
         working-directory: frontend
         run: |
           npm ci
+          npm run design:lint
           npm test
           npm run build
 
