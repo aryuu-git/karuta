@@ -73,9 +73,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return
         }
         if (attempt < 1 && !cancelled) {
-          const { promise, resolve } = Promise.withResolvers<void>()
-          setTimeout(resolve, 600)
-          await promise
+          // 用构造器而非 Promise.withResolvers（ES2024 / Node 22+，本项目 lib=ES2020、
+          // CI 跑 Node 20）：600ms 退避后重试一次
+          await new Promise<void>((resolve) => setTimeout(resolve, 600))
           return restore(attempt + 1)
         }
       }
