@@ -7,7 +7,7 @@
 试听 + 波形）、底部批量浮条（加入牌组/设共享/加标签/删除/导出）、库内试听、点赞、
 牌包导入导出。数据面：双页签（我的/万牌共享）**全部服务端分页 + 三排序**（最新/
 名称/使用次数）+ 关键词/标签服务端筛选（标签精确 token，见边界 #1 修复记录）；
-列表带音频总时长聚合。造牌为四步向导（音频状态机 → 信息 → 提示/共享 → 提交），
+列表带音频总时长聚合。造牌/编辑为同构单页表单（素材→信息→权限，sticky 常驻提交；2026-10-06 去向导化），
 音频经浏览器端 ffmpeg.wasm 可选压缩/裁剪，时长实测上行为 B1 权威回合时钟数据源。
 
 ## 能力清单
@@ -25,7 +25,7 @@
 | 9 | 加入牌组 | 单卡（抽屉）+ 批量（浮条）→ 牌组选择弹窗 → `AddCardsToDeck`（含 S2 可见性校验：他人 private 卡不可塞入） | `CardLibraryPage.tsx`；`handler/deck.go` |
 | 10 | 牌包导出/导入 | 导出：选中卡/抽屉单卡 → `manifest.json` + 封面/音频二进制 zip；导入：解析后走 create/addAudio 重建，**一律默认私有**，无封面占位图兜底，成败计数 toast；jszip 动态加载不进主包 | `utils/cardPack.ts` |
 | 11 | 波形 | `extractPeaks`（fetch+decodeAudioData → 28 峰值）；抽屉内联条形波形已播金色高亮；解码失败缓存 null 不重试（CORS/格式静默降级） | `utils/waveform.ts`；`components/Waveform.tsx` |
-| 12 | 造牌四步向导 | 音频（多选状态机 queued→transcoding→uploading→done/failed，单文件重试）→ 信息（牌名/作品名/封面/标签）→ 提示/共享 → 提交（失败音频单独补传）；编辑模式同构 | `pages/CardCreatePage.tsx`；`features/card-create/*` |
+| 12 | 造牌/编辑单页表单 | 素材（多选音频状态机 queued→transcoding→uploading→done/failed，单文件重试）→ 信息（牌名/作品名/封面/标签）→ 提示/共享，sticky 常驻提交（失败音频单独补传）；创建/编辑同构，2026-10-06 去向导化 | `pages/CardCreatePage.tsx`；`features/card-create/*` |
 | 13 | 媒体安全 | 上传走内容寻址去重（sha256+kind）；删除按真实引用计数，克隆共享物理对象防误删；配额超限 413；DeleteCard 四表单事务 | `media/service.go`；`handler/card.go`；`store/card_store.go` |
 | 14 | 权限门 | GetCard 可见性门（owner 或非 private，无权 404 不暴露存在性）；写操作 owner-only；UpdateAudio 归属校验（IDOR 修复）；share_level 值域白名单三处 | `handler/card.go`（回归 `card_deck_security_test.go`） |
 | 15 | 牌组三页签与创建（牌组层） | 我的/协作/公共三页签；创建弹窗含共享级别 + 编辑权限（editable 时显 add_only/full）；关键词本地筛选、公共页创建人服务端筛选 | `pages/DecksPage.tsx`；`handler/deck.go` |

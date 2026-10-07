@@ -4,6 +4,13 @@ This directory contains the production baseline for atomic, rollback-capable
 single-server deployment. It is compatible with the existing Go binary, Vite
 `dist`, SQLite database, uploads directory and optional COS configuration.
 
+> For the day-to-day flow (build a package, upload it, run one script that
+> backs up → replaces → restarts → health-checks → auto-rolls back), see
+> [deploy/README.md](../deploy/README.md). The scripts are
+> `deploy/scripts/build-release.sh` (build side) and
+> `deploy/scripts/deploy-oneclick.sh` (server side). The release/ symlink flow
+> below remains for CI-produced artifacts.
+
 ## One-time server bootstrap
 
 Run these steps during a maintenance window because the current in-memory games

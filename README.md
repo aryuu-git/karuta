@@ -9,7 +9,6 @@
 | | |
 |---|---|
 | 🌐 **在线体验** | [http://101.34.245.28/](http://101.34.245.28/) |
-| 📋 **需求 / JIRA** | [腾讯文档](https://docs.qq.com/sheet/DZVhIcVZHSmpMcWpo?tab=BB08J2) |
 | 📞 **联系 QQ** | 951505136 |
 
 ## ⚡ 功能一览
@@ -64,14 +63,6 @@ COS_SECRET_ID=... COS_SECRET_KEY=... go run ./cmd/server
 | [docs/architecture.md](docs/architecture.md) | 技术栈、目录结构、媒体/实时链路设计 |
 | [docs/deployment.md](docs/deployment.md) | 生产部署与回滚手册 |
 | [docs/handoff.md](docs/handoff.md) | 上线改造决策与 AI 协作交接记录 |
-
-## ☕ 支持作者
-
-赞助作者多买点 galgame 周边，和孝敬他的法老控爹～
-
-| 微信 | 支付宝 |
-|:---:|:---:|
-| <img src="docs/images/donate-wechat.png" width="200"> | <img src="docs/images/donate-alipay.jpg" width="200"> |
 
 ---
 

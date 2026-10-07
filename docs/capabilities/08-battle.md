@@ -103,7 +103,7 @@ auto（自动轮播抢牌）、judge（房主裁判选牌）、duel（1v1 编排
 - 浏览器 UI：`browser-game-verify`（auto 全链含 claimed toast 计数=1 回归——双 WS 竞态修复钉死）、`duel-ui-verify`（九断言，含 FAB 遮挡修复实证）、`judge-ui-verify`（七断言 + 暂停全端同步）
 - 韧性：`banner-reconnect-verify`（真实断线横幅 n/10 → 恢复消失）、`ws-kick-verify`（禁用踢 WS 四步）、`rematch-ui-verify`（自然结算 1s 快局七断言）
 
-**单元/组件**：前端 vitest 81 条中 battle 相关约 40 条——roomReducer 15（竞态守卫三断言/myRoundStatus 全链/displayOrder）、roomCreate 10、StatusStrip 10、ConnectionBanner 7、MobileScoreSheet 7、PresetPicker 9；后端 `go test` 13 包（rematch 5 条 403/409/404/成功+25列继承/reinvite）。
+**单元/组件**：前端 vitest 82 条中 battle 相关约 40 条——roomReducer 15（竞态守卫三断言/myRoundStatus 全链/displayOrder）、roomCreate 10、StatusStrip 10、ConnectionBanner 7、MobileScoreSheet 7、PresetPicker 10；后端 `go test` 13 包（rematch 5 条 403/409/404/成功+25列继承/reinvite）。
 
 **历史修复在战场层的沉淀**：WS 升级 Hijacker 透传（修复前全量 WS 500，仅真实协议可暴露）、双 WS 连接竞态（代际守卫）、duel FAB 吞点击、已抢牌复活竞态（LiveBoard + reducer 守卫双侧）、对局会话生命周期（强停终止 session）。
 
