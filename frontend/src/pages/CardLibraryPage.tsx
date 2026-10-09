@@ -530,7 +530,7 @@ export function CardLibraryPage() {
 
       {/* 底部批量操作浮条（多选态）：ActionBar 统一吸底批量条，内部按钮走 Button size="xs" */}
       {selectMode && tab === 'mine' && (
-        <ActionBar className="w-max max-w-[calc(100vw-2rem)] flex-wrap justify-center">
+        <ActionBar className="w-max flex-wrap justify-center">
           <Button size="xs" variant="ghost" onClick={toggleCurrentPage}>
             {allCurrentSelected ? '取消本页全选' : '全选本页'}
           </Button>
