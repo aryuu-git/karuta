@@ -10,11 +10,8 @@
 | BIND_ADDR | 开发为空；生产为 127.0.0.1 | 后端监听地址；仅在明确需要直连时改为 `0.0.0.0` |
 | JWT_SECRET | karuta-secret-key | JWT 签名密钥；生产环境至少 32 个字符 |
 | DB_PATH | ./data/karuta.db | SQLite 数据库路径；**相对运行目录解析**——从 `backend/` 内启动须设 `DB_PATH=../data/karuta.db`，否则落进 `backend/data/`（产物统一约定：一切数据在仓库根 `data/`） |
-| MEDIA_STORAGE | cos | 媒体存储方式：`cos` 为默认值；`local` 仅允许 `APP_ENV=development`，无需云凭据，数据库默认改为 `./data/local/karuta.db` |
-| LOCAL_MEDIA_DIR | ./data/local/uploads | 本地模式的媒体目录 |
-| LOCAL_DEMO_DATA | false | 本地模式下设为 `true`，空数据库首次启动时生成测试账号、牌组和媒体；重启保留修改 |
-| COS_SECRET_ID | — | 腾讯云 SecretId（COS 模式**必填**） |
-| COS_SECRET_KEY | — | 腾讯云 SecretKey（COS 模式**必填**） |
+| COS_SECRET_ID | — | 腾讯云 SecretId（**必填**） |
+| COS_SECRET_KEY | — | 腾讯云 SecretKey（**必填**） |
 | COS_BUCKET | karuta-1321249409 | COS Bucket 名称 |
 | COS_REGION | ap-shanghai | COS 地域 |
 | COS_CDN_DOMAIN | (空) | 可选 CDN 域名；配置后媒体 URL 走 CDN |
@@ -29,7 +26,6 @@
 | `data/dist/` | 前端构建输出（`vite build.outDir`） |
 | `data/karuta-server.exe` | 本地开发编译的后端二进制（dev.ps1 输出） |
 | `data/karuta.db` + `-wal`/`-shm` | SQLite 数据库与 WAL（`DB_PATH` 可覆盖） |
-| `data/local/` | 本地测试模式的独立数据库、上传媒体、后端程序和日志 |
 
 ## 上传限制与格式
 
@@ -52,8 +48,6 @@ go build -o ../data/karuta-admin ./cmd/admin
 
 ## 本地开发注意事项
 
-- 推荐使用 [本地测试模式](local-testing.md)，无需腾讯云凭据，媒体和数据库均存本机。
-- 前端 Vite 开发代理默认连接 `http://localhost:8080`；设置 `KARUTA_BACKEND_URL` 可连接其他本地后端端口。一键本地脚本会自动设置。
-- 默认 COS 模式的凭据**必填**——媒体读写直接访问配置的 bucket。
+- COS 凭据**必填**（含本地开发）——媒体读写直接访问真实 bucket，测试数据会进生产桶
 - `dev.ps1` 含密钥且已被 gitignore，永远不要提交；新机器需手动重建
 - 数据库默认在 `data/karuta.db`，删除即重置为空库
