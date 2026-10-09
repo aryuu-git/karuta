@@ -369,7 +369,7 @@ export function DeckDetailPage() {
     <PageContainer size="lg">
       {/* 顶部 Hero 头部 */}
       <HeroHeader
-        onBack={() => navigate(paths.home())}
+        onBack={() => navigate(paths.decks())}
         backLabel="返回"
         title={deck?.name || '牌组详情'}
         subtitle={deck ? `${deck.description || '暂无描述'} · ${deck.card_count} 张歌牌` : undefined}

@@ -10,7 +10,7 @@
 | 前端 | React 18 · TypeScript · Vite · Tailwind CSS · Framer Motion · ffmpeg.wasm |
 | 数据库 | SQLite（单文件，WAL 模式） |
 | 实时通信 | WebSocket（30 秒一次性 ticket 鉴权） |
-| 媒体存储 | 腾讯云 COS（唯一后端，支持 CDN 域名直连） |
+| 媒体存储 | 默认腾讯云 COS；开发测试可切换本地文件存储 |
 
 ## 目录结构
 
@@ -26,7 +26,8 @@ karuta/
 │   ├── middleware/                 # JWT 中间件 + 限流
 │   ├── model/                      # 数据模型
 │   ├── security/                   # WS ticket + Origin 校验
-│   ├── storage/                    # COS 存储（唯一媒体后端）
+│   ├── storage/                    # 统一存储接口：COS / 本地开发文件存储
+│   ├── localdemo/                  # 空数据库的本地演示账号、牌组和合成媒体
 │   ├── store/                      # SQLite 数据访问层
 │   └── ws/                         # WebSocket Hub + 游戏引擎
 ├── frontend/                       # React 前端（Web，自包含 package.json）
@@ -63,6 +64,10 @@ karuta/
 2. **下载**：API 返回的媒体 URL 直接指向 COS/CDN（`storage.SetMediaBaseURL`），客户端不经服务器中转；`/uploads` 路由仅对旧引用做 302 兜底
 3. **删除**：真实引用计数归零后物理删除 COS 对象并清理 `media_assets` 记录
 4. **前提**：bucket 公有读；CORS 需允许桌面端 WebView 来源
+
+### 本地测试
+
+`MEDIA_STORAGE=local` 复用同一套业务 API、SQLite、媒体去重服务和 WebSocket 游戏引擎。媒体由后端 `/uploads/*` 提供，支持音频 Range 请求；Vite 继续使用现有代理配置。本地存储只允许开发环境，默认监听 `127.0.0.1`。一键脚本将数据库与媒体隔离在 `data/local/`，可选的 `LOCAL_DEMO_DATA=true` 只在空数据库生成演示数据。操作见 [local-testing.md](local-testing.md)。
 
 ### 实时对局
 

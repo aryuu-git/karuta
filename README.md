@@ -27,9 +27,19 @@
 
 ## 🚀 快速启动
 
-前置：Go 1.21+ · Node.js 18+ · 腾讯云 COS 凭据（必填）
+前置：Go 1.21+ · Node.js 18+
 
-**一键启动（Windows）**：右键 `deploy/scripts/dev.ps1` → 使用 PowerShell 运行
+**本地测试（Windows，无需腾讯云）**：在项目根目录运行：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\deploy\scripts\dev-local.ps1
+```
+
+打开 <http://127.0.0.1:5173/decks>，首次启动的测试账号为 `localdemo`，密码为 `localdemo123`。脚本会启动真实前后端，并在 `data/local/` 保存独立数据库和媒体文件；按 Ctrl+C 停止。首次运行需要下载依赖。
+
+操作与验收步骤见 **[docs/local-testing.md](docs/local-testing.md)**。
+
+**COS 开发模式**（需配置腾讯云 COS 凭据）：
 
 **手动启动**：
 
@@ -46,7 +56,7 @@ npm install
 npm run dev
 ```
 
-首次启动前设置 COS 凭据（媒体只存 COS，本地不落盘）：
+使用默认 COS 模式时，启动前设置 COS 凭据：
 
 ```bash
 COS_SECRET_ID=... COS_SECRET_KEY=... go run ./cmd/server
@@ -60,6 +70,7 @@ COS_SECRET_ID=... COS_SECRET_KEY=... go run ./cmd/server
 |------|------|
 | [docs/gameplay.md](docs/gameplay.md) | 玩法说明：规则、模式、计分、常见问题 |
 | [docs/configuration.md](docs/configuration.md) | 环境变量、产物目录、管理命令 |
+| [docs/local-testing.md](docs/local-testing.md) | 无需腾讯云的本地启动、演示账号与验收步骤 |
 | [docs/architecture.md](docs/architecture.md) | 技术栈、目录结构、媒体/实时链路设计 |
 | [docs/deployment.md](docs/deployment.md) | 生产部署与回滚手册 |
 | [docs/handoff.md](docs/handoff.md) | 上线改造决策与 AI 协作交接记录 |

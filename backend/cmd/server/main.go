@@ -18,6 +18,7 @@ import (
 
 	"karuta/backend/config"
 	"karuta/backend/handler"
+	"karuta/backend/localdemo"
 	"karuta/backend/media"
 	"karuta/backend/middleware"
 	"karuta/backend/obs"
@@ -66,27 +67,37 @@ func main() {
 		log.Printf("recovery: marked %d interrupted karuta room(s) as aborted", aborted)
 	}
 
-	// Initialize COS storage: the only media backend. Server-local storage
-	// has been removed; media objects live exclusively in COS.
-	cosStorage, err := storage.NewCOSStorage(
-		cfg.COSSecretID,
-		cfg.COSSecretKey,
-		cfg.COSBucket,
-		cfg.COSRegion,
-		cfg.COSCDNDomain,
-	)
-	if err != nil {
-		log.Fatalf("init cos storage: %v", err)
-	}
-	var stor storage.Storage = cosStorage
-	log.Printf("storage: COS enabled (bucket=%s, region=%s)", cfg.COSBucket, cfg.COSRegion)
-	// Server uplink is poor: hand clients absolute media URLs so downloads
-	// never traverse this server. Requires public-read objects.
-	storage.SetMediaBaseURL(cosStorage.PublicBaseURL())
-	log.Printf("media: download URLs served directly from %s", cosStorage.PublicBaseURL())
-	if cfg.COSFixCacheOnStart {
-		log.Printf("storage: COS cache-header repair enabled for this startup")
-		go cosStorage.FixCacheHeaders(appCtx)
+	var stor storage.Storage
+	var localStorage *storage.LocalStorage
+	if cfg.MediaStorage == "local" {
+		localStorage, err = storage.NewLocalStorage(cfg.LocalMediaDir)
+		if err != nil {
+			log.Fatalf("init local storage: %v", err)
+		}
+		stor = localStorage
+		storage.SetMediaBaseURL("")
+		log.Printf("storage: local development media in %s", cfg.LocalMediaDir)
+	} else {
+		cosStorage, err := storage.NewCOSStorage(
+			cfg.COSSecretID,
+			cfg.COSSecretKey,
+			cfg.COSBucket,
+			cfg.COSRegion,
+			cfg.COSCDNDomain,
+		)
+		if err != nil {
+			log.Fatalf("init cos storage: %v", err)
+		}
+		stor = cosStorage
+		log.Printf("storage: COS enabled (bucket=%s, region=%s)", cfg.COSBucket, cfg.COSRegion)
+		// Server uplink is poor: hand clients absolute media URLs so downloads
+		// never traverse this server. Requires public-read objects.
+		storage.SetMediaBaseURL(cosStorage.PublicBaseURL())
+		log.Printf("media: download URLs served directly from %s", cosStorage.PublicBaseURL())
+		if cfg.COSFixCacheOnStart {
+			log.Printf("storage: COS cache-header repair enabled for this startup")
+			go cosStorage.FixCacheHeaders(appCtx)
+		}
 	}
 
 	// WebSocket hub manager
@@ -99,6 +110,12 @@ func main() {
 		TotalBytes:   cfg.QuotaUserBytes,
 		DailyUploads: cfg.QuotaDailyUploads,
 	})
+	if cfg.LocalDemoData {
+		if err := localdemo.Seed(appCtx, db, mediaSvc); err != nil {
+			log.Fatalf("seed local demo: %v", err)
+		}
+		log.Printf("local demo enabled; initial account on an empty database: %s / %s", localdemo.Username, localdemo.Password)
+	}
 
 	// Handlers
 	authH, err := handler.NewAuthHandler(s, stor, mediaSvc, cfg.JWTSecret, cfg.InviteRequired, hubManager)
@@ -259,23 +276,26 @@ func main() {
 	// WebSocket endpoint (auth via short-lived, single-use query ticket)
 	r.Get("/ws/rooms/{id}", wsH.ServeWS)
 
-	// /uploads redirect for legacy relative media references: forward to COS.
-	// Current API responses carry absolute COS URLs and never hit this route.
-	r.Get("/uploads/*", func(w http.ResponseWriter, req *http.Request) {
-		path := strings.TrimPrefix(req.URL.Path, "/uploads/")
-		if path == "" || path == "/" {
-			http.NotFound(w, req)
-			return
-		}
-		cosURL := stor.URL(path)
-		if cosURL == "" {
-			http.NotFound(w, req)
-			return
-		}
-		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
-		w.Header().Set("CDN-Cache-Control", "max-age=31536000")
-		http.Redirect(w, req, cosURL, http.StatusFound)
-	})
+	if localStorage != nil {
+		r.Handle("/uploads/*", localStorage)
+	} else {
+		// Legacy relative references redirect to COS in the default storage mode.
+		r.Get("/uploads/*", func(w http.ResponseWriter, req *http.Request) {
+			path := strings.TrimPrefix(req.URL.Path, "/uploads/")
+			if path == "" || path == "/" {
+				http.NotFound(w, req)
+				return
+			}
+			cosURL := stor.URL(path)
+			if cosURL == "" {
+				http.NotFound(w, req)
+				return
+			}
+			w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+			w.Header().Set("CDN-Cache-Control", "max-age=31536000")
+			http.Redirect(w, req, cosURL, http.StatusFound)
+		})
+	}
 
 	addr := net.JoinHostPort(cfg.BindAddr, cfg.Port)
 	server := &http.Server{

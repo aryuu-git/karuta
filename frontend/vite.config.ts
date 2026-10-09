@@ -3,6 +3,8 @@ import react from '@vitejs/plugin-react'
 import { cpSync, existsSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 
+const backendTarget = process.env.KARUTA_BACKEND_URL || 'http://localhost:8080'
+
 // ffmpeg.wasm 必须同源加载：从 @ffmpeg/core 包把 UMD 产物拷入 public/ffmpeg。
 // 二进制不入 git，npm install 后由本插件在 dev/build 时自动就位。
 function ffmpegCorePlugin() {
@@ -38,16 +40,16 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://localhost:8080',
+        target: backendTarget,
         changeOrigin: true,
       },
       '/ws': {
-        target: 'http://localhost:8080',
+        target: backendTarget,
         changeOrigin: true,
         ws: true,
       },
       '/uploads': {
-        target: 'http://localhost:8080',
+        target: backendTarget,
         changeOrigin: true,
       },
     },
