@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef, type FormEvent, type ReactNode } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { Button, Input, PageContainer, HeroHeader, ConfirmDialog } from '../components/ui'
 import { api } from '../api/client'
+import { queryKeys } from '../api/queries'
 import { paths } from '../routes/paths'
 import type { Card, CardAudio } from '../api/types'
 import { AudioUploadOptions } from '../components/AudioUploadOptions'
@@ -57,9 +59,14 @@ function SectionHeading({ children }: { children: ReactNode }) {
 export function CardCreatePage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const location = useLocation()
+  const qc = useQueryClient()
   const { user } = useAuth()
   const isEdit = !!id
   const cardId = parseInt(id ?? '0', 10)
+  const sourceDeckId = location.state?.fromDeckId
+  const returnDeckId = isEdit && typeof sourceDeckId === 'number'
+    && Number.isSafeInteger(sourceDeckId) && sourceDeckId > 0 ? sourceDeckId : null
 
   // 表单字段（创建/编辑双模式共用）
   const {
@@ -142,13 +149,24 @@ export function CardCreatePage() {
     finally { setLoading(false) }
   }
 
+  /** 返回来源牌组前刷新详情，包含已经单独保存的封面和音频变更。 */
+  const returnToSource = async () => {
+    if (returnDeckId !== null) {
+      await qc.invalidateQueries({
+        queryKey: queryKeys.decks.detail(returnDeckId),
+        refetchType: 'all',
+      })
+    }
+    navigate(returnDeckId !== null ? paths.deck(returnDeckId) : paths.cards(), { replace: isEdit })
+  }
+
   /** 撤退守卫：创建模式已填内容时先弹确认，避免误丢弃 */
   const handleBack = () => {
     if (!isEdit && (audioFile || coverFile || displayText.trim())) {
       setShowLeaveConfirm(true)
       return
     }
-    navigate(paths.cards())
+    void returnToSource()
   }
 
   /** 封面选定（文件框或拖入）：首个文件作为封面并生成预览 */
@@ -255,7 +273,7 @@ export function CardCreatePage() {
     }
   }
 
-  /** 编辑模式保存：回写表单字段后跳转列表 */
+  /** 编辑模式保存：回写表单字段后返回来源页面 */
   const handleSave = async () => {
     if (!isEdit) return
     setSaving(true)
@@ -267,7 +285,7 @@ export function CardCreatePage() {
         is_shared: shareLevel !== 'private',
         share_level: shareLevel,
       })
-      navigate(paths.cards())
+      await returnToSource()
     } catch { /* ignore */ }
     finally { setSaving(false) }
   }
@@ -314,7 +332,7 @@ export function CardCreatePage() {
   if (isEdit && card && !isOwner) {
     return (
       <ReadOnlyCardView card={card} coverPreview={coverPreview} audios={audios}
-        playingAudioId={playingAudioId} onTogglePlay={togglePlay} />
+        playingAudioId={playingAudioId} onTogglePlay={togglePlay} onBack={handleBack} />
     )
   }
 

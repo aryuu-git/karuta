@@ -647,7 +647,9 @@ export function DeckDetailPage() {
       <CardDrawer
         cardId={drawerId}
         onClose={() => setDrawerId(null)}
-        onEdit={c => (user && c.owner_id === user.id) ? navigate(paths.cardEdit(c.id)) : undefined}
+        onEdit={c => (user && c.owner_id === user.id)
+          ? navigate(paths.cardEdit(c.id), { state: { fromDeckId: deckId } })
+          : undefined}
       />
 
       {/* 出阵快速开局弹层（锁定本牌组） */}
