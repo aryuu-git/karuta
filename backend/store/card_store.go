@@ -163,15 +163,7 @@ func (s *CardStore) Update(id int64, displayText, series, tags string, isShared 
 }
 
 func (s *CardStore) ListPublicTags() ([]string, error) {
-	return s.listTags(`SELECT DISTINCT tags FROM cards WHERE share_level IN ('playable','editable') AND tags != ''`)
-}
-
-func (s *CardStore) ListTagsByOwner(ownerID int64) ([]string, error) {
-	return s.listTags(`SELECT DISTINCT tags FROM cards WHERE owner_id = ? AND tags != ''`, ownerID)
-}
-
-func (s *CardStore) listTags(query string, args ...interface{}) ([]string, error) {
-	rows, err := s.db.Query(query, args...)
+	rows, err := s.db.Query(`SELECT DISTINCT c.tags FROM cards c WHERE c.share_level IN ('playable','editable') AND c.tags != ''`)
 	if err != nil {
 		return nil, err
 	}
@@ -179,9 +171,7 @@ func (s *CardStore) listTags(query string, args ...interface{}) ([]string, error
 	tagSet := make(map[string]bool)
 	for rows.Next() {
 		var tags string
-		if err := rows.Scan(&tags); err != nil {
-			return nil, err
-		}
+		rows.Scan(&tags)
 		for _, t := range splitTags(tags) {
 			if t != "" {
 				tagSet[t] = true
@@ -189,9 +179,6 @@ func (s *CardStore) listTags(query string, args ...interface{}) ([]string, error
 		}
 	}
 	result := make([]string, 0, len(tagSet))
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
 	for t := range tagSet {
 		result = append(result, t)
 	}
@@ -376,37 +363,6 @@ func (s *CardStore) MergeTags(id int64, add []string) error {
 	}
 	if _, err := tx.Exec(`UPDATE cards SET tags = ? WHERE id = ?`, strings.Join(existing, ","), id); err != nil {
 		return err
-	}
-	return tx.Commit()
-}
-
-// MergeTagsBatch applies one category to the entire owned selection atomically.
-func (s *CardStore) MergeTagsBatch(ids []int64, add []string, ownerID int64) error {
-	tx, err := s.db.Begin()
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-	for _, id := range ids {
-		var current string
-		if err := tx.QueryRow(`SELECT COALESCE(tags, '') FROM cards WHERE id = ? AND owner_id = ?`, id, ownerID).Scan(&current); err != nil {
-			return err
-		}
-		existing := splitTags(current)
-		seen := make(map[string]bool, len(existing))
-		for _, tag := range existing {
-			seen[tag] = true
-		}
-		for _, tag := range add {
-			tag = strings.TrimSpace(tag)
-			if tag != "" && !seen[tag] {
-				existing = append(existing, tag)
-				seen[tag] = true
-			}
-		}
-		if _, err := tx.Exec(`UPDATE cards SET tags = ? WHERE id = ? AND owner_id = ?`, strings.Join(existing, ","), id, ownerID); err != nil {
-			return err
-		}
 	}
 	return tx.Commit()
 }

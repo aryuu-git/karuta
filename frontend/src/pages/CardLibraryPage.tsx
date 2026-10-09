@@ -11,8 +11,7 @@ import {
   type ButtonVariant,
 } from '../components/ui'
 import { PackPromptDialog } from '../components/PackPromptDialog'
-import { useMyCards, usePublicCards, useCardTags, useMyCardTags, useMyDecks, queryKeys } from '../api/queries'
-import { DEFAULT_TAGS } from '../features/card-create/useCardForm'
+import { useMyCards, usePublicCards, useCardTags, useMyDecks, queryKeys } from '../api/queries'
 import { api } from '../api/client'
 import { useAuth } from '../hooks/useAuth'
 import { paths } from '../routes/paths'
@@ -63,16 +62,13 @@ export function CardLibraryPage() {
   const [deleting, setDeleting] = useState(false)
   const [batchConfirm, setBatchConfirm] = useState(false)
   const [batchDeleting, setBatchDeleting] = useState(false)
-  const [selectionMode, setSelectionMode] = useState<'bulk' | 'category' | null>(null)
-  const selectMode = selectionMode !== null
-  const categorizing = selectionMode === 'category'
+  const [selectMode, setSelectMode] = useState(false)
   const [selectedCards, setSelectedCards] = useState<Set<number>>(new Set())
   const [drawerId, setDrawerId] = useState<number | null>(null)
   const [deckPickerIds, setDeckPickerIds] = useState<number[] | null>(null)
   const [tagDialogOpen, setTagDialogOpen] = useState(false)
   const [showPackPrompt, setShowPackPrompt] = useState(false) // AI 制作导入包提示词弹窗
   const [batchTagInput, setBatchTagInput] = useState('')
-  const [batchTagSaving, setBatchTagSaving] = useState(false)
   // 库内试听（单 audio 元素 + 首音频 URL 缓存）
   const [playingId, setPlayingId] = useState<number | null>(null)
   const previewRef = useRef<HTMLAudioElement | null>(null)
@@ -85,13 +81,11 @@ export function CardLibraryPage() {
   const myQuery = useMyCards({ page: minePage, size: PAGE_SIZE, sort, search: mineQ.search, tag: mineQ.tag })
   const publicQuery = usePublicCards({ search: publicQ.search, tag: publicQ.tag, owner: publicQ.owner, page: publicPage, size: PAGE_SIZE, sort })
   const tagsQuery = useCardTags()
-  const myTagsQuery = useMyCardTags()
   const decksQuery = useMyDecks()
 
   const myCards = myQuery.data ?? []
   const publicCards = publicQuery.data ?? []
   const allPublicTags = tagsQuery.data ?? []
-  const myTags = myTagsQuery.data ?? []
   const cards = tab === 'mine' ? myCards : publicCards
   const activeQ = tab === 'mine' ? myQuery : publicQuery
   const loading = activeQ.isPending
@@ -113,9 +107,8 @@ export function CardLibraryPage() {
 
   const switchTab = (t: Tab) => {
     setTab(t)
-    setSelectionMode(null)
+    setSelectMode(false)
     setSelectedCards(new Set())
-    setTagDialogOpen(false)
     setSearch(t === 'mine' ? mineQ.search : publicQ.search)
     setFilterTag(t === 'mine' ? mineQ.tag : publicQ.tag)
   }
@@ -149,12 +142,8 @@ export function CardLibraryPage() {
 
   // —— 操作 ——
   const invalidateLists = async () => {
-    await Promise.all([
-      qc.invalidateQueries({ queryKey: queryKeys.cards.mineRoot }),
-      qc.invalidateQueries({ queryKey: queryKeys.cards.publicRoot }),
-      qc.invalidateQueries({ queryKey: queryKeys.cards.tags }),
-      qc.invalidateQueries({ queryKey: queryKeys.cards.mineTags }),
-    ])
+    await qc.invalidateQueries({ queryKey: queryKeys.cards.mineRoot })
+    await qc.invalidateQueries({ queryKey: ['cards', 'public'] })
   }
 
   const handleDelete = async (id: number) => {
@@ -184,7 +173,7 @@ export function CardLibraryPage() {
     }
     setSelectedCards(new Set(failed))
     if (failed.length === 0) {
-      setSelectionMode(null)
+      setSelectMode(false)
       setBatchConfirm(false)
       toast.show('✓ 已全部删除', 'success')
     } else {
@@ -228,28 +217,18 @@ export function CardLibraryPage() {
 
   const handleBatchTag = async () => {
     const tag = batchTagInput.trim()
-    if (batchTagSaving || categoryError || !tag || selectedCards.size === 0) return
-    const ids = [...selectedCards]
-    setBatchTagSaving(true)
+    if (!tag || selectedCards.size === 0) return
     try {
-      const res = await api.cards.batchTag(ids, [tag])
-      if (res.applied !== ids.length) throw new Error('部分歌牌未完成归类，请刷新后重试')
-      toast.show(`已将 ${res.applied} 张歌牌归入「${tag}」`, 'success')
+      const res = await api.cards.batchTag([...selectedCards], [tag])
+      toast.show(`✓ 已为 ${res.applied} 张牌加上「${tag}」`, 'success')
       setTagDialogOpen(false)
       setBatchTagInput('')
-      setSelectedCards(new Set())
-      if (categorizing) setSelectionMode(null)
-      await Promise.all([
-        invalidateLists(),
-        qc.invalidateQueries({ queryKey: queryKeys.cards.detailRoot }),
-        qc.invalidateQueries({ queryKey: queryKeys.decks.detailRoot }),
-      ])
-    } catch (err) {
-      toast.show((err as Error).message || '归类失败，请重试', 'fail')
-    } finally {
-      setBatchTagSaving(false)
+      await invalidateQueriesSafe()
+    } catch {
+      toast.show('设置失败，请重试', 'fail')
     }
   }
+  const invalidateQueriesSafe = () => qc.invalidateQueries({ queryKey: queryKeys.cards.mineRoot })
 
   /** 点赞切换（双页签通用）：成功后失效列表刷新计数 */
   const handleToggleLike = async (card: Card) => {
@@ -286,7 +265,7 @@ export function CardLibraryPage() {
       toast.show(res.failed === 0
         ? `✓ 已导入 ${res.created} 张牌（默认私有）`
         : `导入完成：成功 ${res.created}，失败 ${res.failed}`, res.failed === 0 ? 'success' : 'fail')
-      await invalidateLists()
+      await invalidateQueriesSafe()
     } catch (err) {
       toast.show((err as Error).message || '导入失败：文件格式不正确', 'fail')
     } finally {
@@ -334,38 +313,15 @@ export function CardLibraryPage() {
 
   const isOwner = (c: Card) => c.owner_id === (user?.id ?? 0)
 
-  const startSelection = (mode: 'bulk' | 'category' | null) => {
-    previewRef.current?.pause()
-    setPlayingId(null)
-    setSelectionMode(mode)
-    setSelectedCards(new Set())
-    setBatchTagInput('')
-    setTagDialogOpen(false)
-  }
-  const allCurrentSelected = cards.length > 0 && cards.every(card => selectedCards.has(card.id))
-  const toggleCurrentPage = () => {
-    setSelectedCards(previous => {
-      const next = new Set(previous)
-      cards.forEach(card => allCurrentSelected ? next.delete(card.id) : next.add(card.id))
-      return next
-    })
-  }
-  const category = batchTagInput.trim()
-  const categoryError = /[,，\r\n]/.test(category)
-    ? '一次归入一个分类，名称不能包含逗号或换行'
-    : [...category].length > 50 ? '分类名称最多 50 个字' : ''
-  const categoryOptions = [...new Set([...DEFAULT_TAGS, ...myTags])]
-
   // 标签行：服务端全量标签 + 当前页计数徽标
   const tagCounts = new Map<string, number>()
   cards.forEach(c => {
     if (c.tags) c.tags.split(',').forEach(t => { const tag = t.trim(); if (tag) tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1) })
   })
-  const chipTags = ['', ...new Set([...DEFAULT_TAGS, ...(tab === 'mine' ? myTags : allPublicTags), filterTag].filter(Boolean))]
+  const chipTags = ['', ...new Set(['游戏', '动画', ...allPublicTags])]
 
   return (
     <ListPageShell
-      className={selectMode ? (categorizing ? 'pb-28' : 'pb-52 sm:pb-28') : undefined}
       hero={<HeroHeader
         compact
         title="牌库"
@@ -373,16 +329,10 @@ export function CardLibraryPage() {
         actions={
           tab === 'mine' ? (
             <>
-              <Button variant={selectionMode === 'bulk' ? 'gold' : 'ghost'} size="sm"
-                disabled={categorizing}
-                onClick={() => startSelection(selectMode ? null : 'bulk')}
-                icon={selectionMode === 'bulk' ? <Check size={12} /> : <Pencil size={12} />}>
-                {selectionMode === 'bulk' ? '退出多选' : '多选'}
-              </Button>
-              <Button variant={categorizing ? 'gold' : 'outline'} size="sm"
-                onClick={() => startSelection(categorizing ? null : 'category')}
-                icon={<Tag size={12} />}>
-                {categorizing ? '取消归类' : '批量归类'}
+              <Button variant={selectMode ? 'gold' : 'ghost'} size="sm"
+                onClick={() => { setSelectMode(v => !v); setSelectedCards(new Set()) }}
+                icon={selectMode ? <Check size={12} /> : <Pencil size={12} />}>
+                {selectMode ? '退出多选' : '多选'}
               </Button>
               <Button variant="ghost" size="sm" onClick={() => setShowPackPrompt(true)}
                 icon={<Wand2 size={16} />}>ai-native</Button>
@@ -447,9 +397,6 @@ export function CardLibraryPage() {
           </div>
         </>
       }>
-      {categorizing && (
-        <p className="text-muted text-sm mb-4" role="status">勾选要归类的歌牌，然后点击「完成」选择分类；可跨页选择。</p>
-      )}
       {/* 加载：3:4 牌面骨架网格（与 CardTile 同尺寸） */}
       {loading && (
         <Skeleton variant="card" rows={6}
@@ -494,7 +441,6 @@ export function CardLibraryPage() {
                   showOwner={tab === 'public'}
                   selectable={selectMode && tab === 'mine'}
                   selected={selectedCards.has(card.id)}
-                  selectionShape={categorizing ? 'circle' : 'square'}
                   playing={playingId === card.id}
                   onLike={handleToggleLike}
                   onOpen={() => {
@@ -530,44 +476,37 @@ export function CardLibraryPage() {
 
       {/* 底部批量操作浮条（多选态）：ActionBar 统一吸底批量条，内部按钮走 Button size="xs" */}
       {selectMode && tab === 'mine' && (
-        <ActionBar className="w-max flex-wrap justify-center">
-          <Button size="xs" variant="ghost" onClick={toggleCurrentPage}>
-            {allCurrentSelected ? '取消本页全选' : '全选本页'}
+        <ActionBar className="animate-slide-in-up">
+          <Button size="xs" variant="ghost" onClick={() => {
+            if (selectedCards.size === cards.length) setSelectedCards(new Set())
+            else setSelectedCards(new Set(cards.map(c => c.id)))
+          }}>
+            {selectedCards.size === cards.length ? '取消全选' : '全选'}
           </Button>
           <span className="text-muted text-xs font-serif border-l border-white/10 pl-2">
             已选 <span className="text-gold font-bold">{selectedCards.size}</span>
           </span>
-          {categorizing ? (
-            <>
-              <Button size="xs" variant="ghost" onClick={() => startSelection(null)}>取消</Button>
-              <Button size="xs" disabled={selectedCards.size === 0}
-                icon={<Check size={12} />} onClick={() => setTagDialogOpen(true)}>完成</Button>
-            </>
-          ) : (
-            <>
-              <Button size="xs" variant="gold" disabled={selectedCards.size === 0}
-                icon={<Plus size={16} />} onClick={() => setDeckPickerIds([...selectedCards])}>加入牌组</Button>
-              <Button size="xs" variant="outline" disabled={selectedCards.size === 0 || packing}
-                icon={<Download size={16} />} onClick={() => void handleExport([...selectedCards])}>导出</Button>
-              {(['private', 'playable', 'editable'] as const).map(level => {
-                const LevelIcon = shareIcons[level]
-                return (
-                  <Button key={level} size="xs" variant={shareVariant[level]} disabled={selectedCards.size === 0}
-                    icon={<LevelIcon size={12} />} onClick={() => handleBatchShare(level)}>
-                    {shareLabels[level]}
-                  </Button>
-                )
-              })}
-              <Button size="xs" variant="outline" disabled={selectedCards.size === 0}
-                icon={<Tag size={12} />} onClick={() => setTagDialogOpen(true)}>加标签</Button>
-              <Button size="xs" variant="danger" disabled={selectedCards.size === 0 || batchDeleting}
-                icon={batchDeleting ? undefined : <Trash2 size={12} />} onClick={() => setBatchConfirm(true)}>
-                {batchDeleting ? '…' : '删除'}
+          <Button size="xs" variant="gold" disabled={selectedCards.size === 0}
+            icon={<Plus size={16} />} onClick={() => setDeckPickerIds([...selectedCards])}>加入牌组</Button>
+          <Button size="xs" variant="outline" disabled={selectedCards.size === 0 || packing}
+            icon={<Download size={16} />} onClick={() => void handleExport([...selectedCards])}>导出</Button>
+          {(['private', 'playable', 'editable'] as const).map(level => {
+            const LevelIcon = shareIcons[level]
+            return (
+              <Button key={level} size="xs" variant={shareVariant[level]} disabled={selectedCards.size === 0}
+                icon={<LevelIcon size={12} />} onClick={() => handleBatchShare(level)}>
+                {shareLabels[level]}
               </Button>
-              <Button size="xs" variant="ghost"
-                onClick={() => startSelection(null)}>完成</Button>
-            </>
-          )}
+            )
+          })}
+          <Button size="xs" variant="outline" disabled={selectedCards.size === 0}
+            icon={<Tag size={12} />} onClick={() => setTagDialogOpen(true)}>加标签</Button>
+          <Button size="xs" variant="danger" disabled={selectedCards.size === 0 || batchDeleting}
+            icon={batchDeleting ? undefined : <Trash2 size={12} />} onClick={() => setBatchConfirm(true)}>
+            {batchDeleting ? '…' : '删除'}
+          </Button>
+          <Button size="xs" variant="ghost"
+            onClick={() => { setSelectMode(false); setSelectedCards(new Set()) }}>完成</Button>
         </ActionBar>
       )}
 
@@ -605,29 +544,18 @@ export function CardLibraryPage() {
         </div>
       </Dialog>
 
-      {/* 分类沿用标签，可选择已有分类或创建新分类。 */}
-      <Dialog open={tagDialogOpen} title={`将 ${selectedCards.size} 张歌牌归类`}
-        closable={!batchTagSaving}
-        onClose={() => { if (!batchTagSaving) setTagDialogOpen(false) }}
+      {/* 批量加标签 */}
+      <Dialog open={tagDialogOpen} title={`为 ${selectedCards.size} 张牌加标签`}
+        onClose={() => setTagDialogOpen(false)}
         actions={
           <>
-            <Button variant="ghost" size="sm" disabled={batchTagSaving} onClick={() => setTagDialogOpen(false)}>取消</Button>
-            <Button size="sm" loading={batchTagSaving} disabled={!category || !!categoryError || selectedCards.size === 0}
-              onClick={handleBatchTag}>确认归类</Button>
+            <Button variant="ghost" size="sm" onClick={() => setTagDialogOpen(false)}>取消</Button>
+            <Button size="sm" disabled={!batchTagInput.trim()} onClick={handleBatchTag}>添加</Button>
           </>
         }>
-        <p className="text-muted text-sm mb-4">选择已有分类，或输入新的分类名称。归类会添加标签，保留歌牌原有的标签。</p>
-        <div className="flex flex-wrap gap-2 mb-4" aria-label="已有分类">
-          {categoryOptions.map(tag => (
-            <Button key={tag} type="button" size="xs" variant={category === tag ? 'gold' : 'outline'}
-              aria-pressed={category === tag} disabled={batchTagSaving} onClick={() => setBatchTagInput(tag)}>{tag}</Button>
-          ))}
-        </div>
-        <Input id="card-category-name" label="分类名称" type="text" value={batchTagInput} disabled={batchTagSaving}
-          onChange={e => setBatchTagInput(e.target.value)}
+        <Input type="text" value={batchTagInput} onChange={e => setBatchTagInput(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter') void handleBatchTag() }}
-          placeholder="例如：动画歌曲" />
-        {categoryError && <p className="text-crimson text-xs mt-2" role="alert">{categoryError}</p>}
+          placeholder="输入标签名，如：热血" />
       </Dialog>
 
       {/* 单卡删除确认 */}

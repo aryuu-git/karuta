@@ -11,16 +11,12 @@ import type { Card, Deck, RoomListItem, UserStats } from './types'
 export const queryKeys = {
   cards: {
     mineRoot: ['cards', 'mine'] as const,
-    publicRoot: ['cards', 'public'] as const,
-    detailRoot: ['cards', 'detail'] as const,
     mine: (params?: object) => ['cards', 'mine', params ?? {}] as const,
     public: (params?: object) => ['cards', 'public', params ?? {}] as const,
     tags: ['cards', 'tags'] as const,
-    mineTags: ['cards', 'mine-tags'] as const,
     detail: (id: number) => ['cards', 'detail', id] as const,
   },
   decks: {
-    detailRoot: ['decks', 'detail'] as const,
     mine: ['decks', 'mine'] as const,
     editable: ['decks', 'editable'] as const,
     public: (owner?: string) => ['decks', 'public', owner ?? ''] as const,
@@ -63,11 +59,6 @@ export function usePublicCards(params: { search?: string; tag?: string; owner?: 
 /** 公共标签集 */
 export function useCardTags() {
   return useQuery({ queryKey: queryKeys.cards.tags, queryFn: () => api.cards.listTags() })
-}
-
-/** 我的全部标签，包含私有歌牌及其他分页中的标签。 */
-export function useMyCardTags() {
-  return useQuery({ queryKey: queryKeys.cards.mineTags, queryFn: () => api.cards.listMyTags() })
 }
 
 /** 我的牌组 */

@@ -45,7 +45,7 @@ export function HeroHeader({ icon, title, subtitle, onBack, backLabel = '撤退'
             </div>
           </div>
         </div>
-        {actions && <div className="shrink-0 max-w-full flex flex-wrap items-center gap-2">{actions}</div>}
+        {actions && <div className="shrink-0 flex items-center gap-2">{actions}</div>}
       </div>
 
       {children && <div className="relative mt-4">{children}</div>}

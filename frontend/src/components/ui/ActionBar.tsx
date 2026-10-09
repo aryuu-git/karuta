@@ -11,7 +11,7 @@ export interface ActionBarProps {
 
 export function ActionBar({ children, className = '' }: ActionBarProps) {
   return (
-    <div className={`fixed bottom-4 left-1/2 -translate-x-1/2 z-float flex items-center gap-2 px-4 py-2.5 rounded-2xl shadow-2xl border border-gold/30 bg-ink-deep/95 backdrop-blur max-w-[calc(100vw-2rem)] ${className}`}>
+    <div className={`fixed bottom-4 left-1/2 -translate-x-1/2 z-float flex items-center gap-2 px-4 py-2.5 rounded-2xl shadow-2xl border border-gold/30 bg-ink-deep/95 backdrop-blur ${className}`}>
       {children}
     </div>
   )

@@ -32,11 +32,10 @@ const SHARE_TONE: Record<string, { icon: typeof Lock; label: string; tone: strin
  * 卡角徽标（音频数·时长 / 共享级别）。复用 KarutaCard 的视觉基因但独立实现——
  * 对局是热路径，不共用组件以杜绝回归风险。
  */
-export function CardTile({ card, selectable, selected, selectionShape, playing, showOwner, onOpen, onTogglePlay, onSelect, onLike }: {
+export function CardTile({ card, selectable, selected, playing, showOwner, onOpen, onTogglePlay, onSelect, onLike }: {
   card: Card
   selectable?: boolean
   selected?: boolean
-  selectionShape?: 'square' | 'circle'
   playing?: boolean
   showOwner?: boolean
   onOpen?: (card: Card) => void
@@ -90,10 +89,8 @@ export function CardTile({ card, selectable, selected, selectionShape, playing, 
       {selectable && (
         <Checkbox
           checked={selected ?? false}
-          size={selectionShape === 'circle' ? 'md' : 'sm'}
-          shape={selectionShape}
-          onChange={onSelect ? () => onSelect(card.id) : undefined}
-          aria-label={`选择${card.display_text || '未命名歌牌'}`}
+          size="sm"
+          aria-label="选择"
           className={`absolute top-1.5 left-1.5 z-10 ${selected ? '' : 'group-hover:border-gold/70'}`}
         />
       )}

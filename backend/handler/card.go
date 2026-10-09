@@ -215,22 +215,7 @@ func (h *CardHandler) ToggleLike(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]interface{}{"liked": liked, "likes": likes})
 }
 
-// GET /api/cards/mine/tags — 当前用户全部歌牌的标签，包括私有歌牌。
-func (h *CardHandler) ListMyTags(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.GetUserID(r.Context())
-	if !ok {
-		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "not authenticated")
-		return
-	}
-	tags, err := h.store.Cards.ListTagsByOwner(userID)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to list tags")
-		return
-	}
-	writeJSON(w, http.StatusOK, tags)
-}
-
-// POST /api/cards/batch-tag — 只允许本人歌牌，校验全部通过后批量并入标签。
+// POST /api/cards/batch-tag — 批量并入标签（owner 校验逐卡；已存在不重复）
 func (h *CardHandler) BatchUpdateTags(w http.ResponseWriter, r *http.Request) {
 	userID, ok := middleware.GetUserID(r.Context())
 	if !ok {
@@ -238,57 +223,24 @@ func (h *CardHandler) BatchUpdateTags(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req struct {
-		CardIDs []int64  `json:"card_ids"`
+		CardIDs []int64 `json:"card_ids"`
 		Tags    []string `json:"tags"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || len(req.CardIDs) == 0 || len(req.Tags) == 0 {
 		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "card_ids and tags required")
 		return
 	}
-	if len(req.CardIDs) > 1000 || len(req.Tags) > 50 {
-		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "too many cards or tags")
-		return
-	}
-	tags := make([]string, 0, len(req.Tags))
-	for _, tag := range req.Tags {
-		tag = strings.TrimSpace(tag)
-		if tag == "" || strings.ContainsAny(tag, ",，\r\n") || len([]rune(tag)) > 50 {
-			writeError(w, http.StatusBadRequest, "BAD_REQUEST", "tag must contain 1-50 characters without commas or line breaks")
-			return
-		}
-		tags = append(tags, tag)
-	}
-	ids := make([]int64, 0, len(req.CardIDs))
-	seen := make(map[int64]bool)
+	applied := 0
 	for _, id := range req.CardIDs {
-		if id <= 0 {
-			writeError(w, http.StatusBadRequest, "BAD_REQUEST", "invalid card id")
-			return
-		}
-		if seen[id] {
-			continue
-		}
-		seen[id] = true
 		card, err := h.store.Cards.GetByID(id)
-		if errors.Is(err, sql.ErrNoRows) {
-			writeError(w, http.StatusNotFound, "NOT_FOUND", "card not found")
-			return
+		if err != nil || card.OwnerID != userID {
+			continue // 非本人的卡静默跳过（批量语义：尽力而为，逐卡生效）
 		}
-		if err != nil {
-			writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to load card")
-			return
+		if err := h.store.Cards.MergeTags(id, req.Tags); err == nil {
+			applied++
 		}
-		if card.OwnerID != userID {
-			writeError(w, http.StatusForbidden, "FORBIDDEN", "only your own cards can be categorized")
-			return
-		}
-		ids = append(ids, id)
 	}
-	if err := h.store.Cards.MergeTagsBatch(ids, tags, userID); err != nil {
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "failed to update tags")
-		return
-	}
-	writeJSON(w, http.StatusOK, map[string]interface{}{"applied": len(ids)})
+	writeJSON(w, http.StatusOK, map[string]interface{}{"applied": applied})
 }
 
 // POST /api/cards

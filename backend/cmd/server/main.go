@@ -221,7 +221,6 @@ func main() {
 
 		// Card routes (library)
 		r.Get("/api/cards/mine", cardH.ListMyCards)
-		r.Get("/api/cards/mine/tags", cardH.ListMyTags)
 		r.Get("/api/cards/tags", cardH.ListPublicTags)
 		r.Get("/api/cards/public", cardH.ListPublicCards)
 		r.Get("/api/cards/{id}", cardH.GetCard)

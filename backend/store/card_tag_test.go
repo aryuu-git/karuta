@@ -5,7 +5,6 @@ package store
 import (
 	"database/sql"
 	"path/filepath"
-	"reflect"
 	"testing"
 )
 
@@ -21,60 +20,6 @@ func newTagTestStore(t *testing.T) (*Store, *sql.DB) {
 		t.Fatal(err)
 	}
 	return s, db
-}
-
-func TestOwnerTagsIncludePrivateCardsWithoutLeakingOtherOwners(t *testing.T) {
-	s, db := newTagTestStore(t)
-	if _, err := db.Exec(`
-		INSERT INTO users (id, username, email, password) VALUES (2, 'other', 'other@x.test', 'x');
-		INSERT INTO cards (owner_id, display_text, tags, share_level) VALUES
-			(1, 'private', '私有分类, 游戏', 'private'),
-			(1, 'shared', '游戏,动画', 'playable'),
-			(2, 'other private', '他人分类', 'private'),
-			(2, 'other public', '他人公开分类', 'playable');
-	`); err != nil {
-		t.Fatal(err)
-	}
-	tags, err := s.Cards.ListTagsByOwner(1)
-	if err != nil || !reflect.DeepEqual(tags, []string{"动画", "游戏", "私有分类"}) {
-		t.Fatalf("owner tags = %v, error = %v", tags, err)
-	}
-}
-
-func TestMergeTagsBatchPreservesTagsAndRollsBackOnFailure(t *testing.T) {
-	s, db := newTagTestStore(t)
-	if _, err := db.Exec(`
-		INSERT INTO users (id, username, email, password) VALUES (2, 'other', 'other@x.test', 'x');
-		INSERT INTO cards (id, owner_id, display_text, tags) VALUES
-			(1, 1, 'a', '游戏'), (2, 1, 'b', '动画'), (3, 2, 'other', '他人分类');
-	`); err != nil {
-		t.Fatal(err)
-	}
-	if err := s.Cards.MergeTagsBatch([]int64{1, 2}, []string{" 分类 ", "分类"}, 1); err != nil {
-		t.Fatal(err)
-	}
-	for _, id := range []int64{1, 2} {
-		card, err := s.Cards.GetByID(id)
-		if err != nil {
-			t.Fatal(err)
-		}
-		want := "游戏,分类"
-		if id == 2 {
-			want = "动画,分类"
-		}
-		if card.Tags != want {
-			t.Fatalf("card %d tags = %q, want %q", id, card.Tags, want)
-		}
-	}
-	for _, badID := range []int64{3, 999} {
-		if err := s.Cards.MergeTagsBatch([]int64{1, badID}, []string{"不应保存"}, 1); err == nil {
-			t.Fatal("expected invalid selection to be rejected")
-		}
-		card, _ := s.Cards.GetByID(1)
-		if card.Tags != "游戏,分类" {
-			t.Fatal("failed batch partially changed the first card")
-		}
-	}
 }
 
 func TestListPublicTagExactMatch(t *testing.T) {
