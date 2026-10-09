@@ -418,6 +418,7 @@ export const api = {
   cards: {
     listMine: listMyCards,
     listTags: () => request<string[]>('/cards/tags'),
+    listMyTags: () => request<string[]>('/cards/mine/tags'),
     listPublic: listPublicCards,
     get: getCard,
     batchTag: batchTagCards,
