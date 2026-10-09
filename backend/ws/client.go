@@ -108,14 +108,9 @@ func (c *Client) readPump() {
 				c.hub.HandleDuelGrab(c.userID, msg.CardID)
 			}
 		case "media_event":
-			// B1：客户端仅上报媒体事件（buffer_fail=缓冲失败），
-			// audio_ended 不再触发结束。缓冲失败时服务端提前切首防卡死。
-			if msg.RoundID > 0 && msg.Text == "buffer_fail" {
-				slog.Warn("media buffer fail, skipping round", "user_id", c.userID, "round_id", msg.RoundID)
-				c.hub.SkipCard()
-			} else {
-				slog.Info("media event", "user_id", c.userID, "round_id", msg.RoundID, "event", msg.Text)
-			}
+			// 媒体故障仅作诊断：单个客户端的自动播放限制、网络或解码失败
+			// 不能结束全房间回合。切首由服务端时钟和房主控制负责。
+			slog.Info("media event", "user_id", c.userID, "round_id", msg.RoundID, "event", msg.Text)
 		case "give_card":
 			c.hub.HandleDuelGiveCard(c.userID, msg.CardID)
 		case "duel_arrange_swap":

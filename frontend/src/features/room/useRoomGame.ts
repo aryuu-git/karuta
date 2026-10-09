@@ -583,7 +583,7 @@ export function useRoomGame(roomId: number, user: User | null) {
   // 本地 ended 事件仅用于 ReadingPanel 内部状态，无需通知服务端。
   const handleAudioEnded = useCallback(() => {}, [])
 
-  // B1：缓冲失败上报——服务端收到后可提前切首，避免全场卡死等待。
+  // 本端缓冲失败仅上报诊断，不改变全房间的回合计时。
   const handleBufferError = useCallback(() => {
     send({ type: 'media_event', round_id: currentRoundIdRef.current, text: 'buffer_fail' })
   }, [send])
