@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ProgressBar, type ProgressBarTone } from './ui'
+import { Button, ProgressBar, type ProgressBarTone } from './ui'
 
 interface ReadingPanelProps {
   hintText: string | null
@@ -12,7 +12,7 @@ interface ReadingPanelProps {
   countdown: number | null
   intervalCountdown: number | null
   onAudioEnded?: () => void
-  /** B1：音频重试耗尽（缓冲失败）时上报服务端，服务端可提前切首防卡死 */
+  /** 音频重试耗尽时上报诊断，个人播放故障不改变房间进度 */
   onBufferError?: () => void
   isLastCard?: boolean
 }
@@ -20,18 +20,21 @@ interface ReadingPanelProps {
 // intervalSec 保留 prop 供外部传入，ReadingPanel 内部仅用 audio timeupdate 驱动进度条
 export function ReadingPanel({ hintText, audioUrl, startRatio, intervalSec: _intervalSec, isActive, isPaused, countdown, intervalCountdown, onAudioEnded, onBufferError, isLastCard }: ReadingPanelProps) {
   const audioRef = useRef<HTMLAudioElement>(null)
-  const cleanupRef = useRef<(() => void) | null>(null)
+  const tryPlayRef = useRef<(() => void) | null>(null)
+  const playbackStateRef = useRef({ isActive, isPaused })
+  playbackStateRef.current = { isActive, isPaused }
   const [audioError, setAudioError] = useState(false)
+  const [autoplayBlocked, setAutoplayBlocked] = useState(false)
   const [progress, setProgress] = useState(0)
 
   // 音频加载和播放（含重试机制）
   useEffect(() => {
     const audio = audioRef.current
+    setAudioError(false)
+    setProgress(0)
     if (!audio || !audioUrl) return
     let cancelled = false
 
-    setAudioError(false)
-    setProgress(0)
     audio.pause()
     audio.currentTime = 0
 
@@ -39,56 +42,70 @@ export function ReadingPanel({ hintText, audioUrl, startRatio, intervalSec: _int
     audio.src = audioUrl
     audio.load()
 
-      // 随机片段：加载完 metadata 后 seek 到指定位置
-      const currentStartRatio = startRatio
-      const seekHandler = () => {
-        if (currentStartRatio && currentStartRatio > 0 && audio.duration && isFinite(audio.duration)) {
-          audio.currentTime = audio.duration * currentStartRatio
-        }
+    // 随机片段：加载完 metadata 后 seek 到指定位置
+    const seekHandler = () => {
+      if (startRatio && startRatio > 0 && audio.duration && isFinite(audio.duration)) {
+        audio.currentTime = audio.duration * startRatio
       }
-      audio.addEventListener('loadedmetadata', seekHandler, { once: true })
+    }
+    audio.addEventListener('loadedmetadata', seekHandler, { once: true })
 
-      let retryCount = 0
-      let retryTimer: ReturnType<typeof setTimeout>
+    let retryCount = 0
+    let playPending = false
+    let retryTimer: ReturnType<typeof setTimeout> | undefined
 
-      const tryPlay = () => {
+    const tryPlay = () => {
+      if (cancelled || playPending || !playbackStateRef.current.isActive || playbackStateRef.current.isPaused) return
+      clearTimeout(retryTimer)
+      playPending = true
+      audio.play().then(() => {
+        playPending = false
         if (cancelled) return
-        audio.play().catch(() => {
-          retryCount++
-          if (retryCount < 3 && !cancelled) {
-            retryTimer = setTimeout(tryPlay, 1000)
-          } else if (!cancelled) {
-            setAudioError(true)
-            onBufferError?.()
-          }
-        })
-      }
+        retryCount = 0
+        setAudioError(false)
+        setAutoplayBlocked(false)
+      }).catch((error: unknown) => {
+        playPending = false
+        if (cancelled) return
+        const name = error instanceof Error || error instanceof DOMException ? error.name : ''
+        if (name === 'NotAllowedError') {
+          // 刷新后的移动浏览器需要用户手势解锁声音，无需重试或上报媒体故障。
+          setAutoplayBlocked(true)
+          return
+        }
+        if (name === 'AbortError' || playbackStateRef.current.isPaused || !playbackStateRef.current.isActive) return
+        retryCount++
+        if (retryCount < 3) {
+          retryTimer = setTimeout(tryPlay, 1000)
+        } else {
+          setAudioError(true)
+          onBufferError?.()
+        }
+      })
+    }
+    tryPlayRef.current = tryPlay
 
-      const ended = () => onAudioEnded?.()
-      audio.addEventListener('canplaythrough', tryPlay, { once: true })
-      audio.addEventListener('ended', ended)
-
-      // cleanup 存到外层
-      cleanupRef.current = () => {
-        clearTimeout(retryTimer)
-        audio.removeEventListener('canplaythrough', tryPlay)
-        audio.removeEventListener('ended', ended)
-        audio.removeEventListener('loadedmetadata', seekHandler)
-        audio.pause()
-      }
+    const ended = () => onAudioEnded?.()
+    audio.addEventListener('ended', ended)
+    // play() 会等待媒体就绪；立即尝试才能在浏览器限制预加载时也显示解锁入口。
+    tryPlay()
 
     return () => {
       cancelled = true
-      cleanupRef.current?.()
+      tryPlayRef.current = null
+      clearTimeout(retryTimer)
+      audio.removeEventListener('ended', ended)
+      audio.removeEventListener('loadedmetadata', seekHandler)
+      audio.pause()
     }
-  }, [audioUrl, onAudioEnded])
+  }, [audioUrl, startRatio, onAudioEnded, onBufferError])
 
   // 暂停/继续音频
   useEffect(() => {
     const audio = audioRef.current
     if (!audio) return
-    if (isPaused) audio.pause()
-    else if (isActive && audioUrl) audio.play().catch(() => null)
+    if (isPaused || !isActive) audio.pause()
+    else if (audioUrl) tryPlayRef.current?.()
   }, [isPaused, isActive, audioUrl])
 
   // 进度条：跟随音频实际播放进度（currentTime / duration）
@@ -174,9 +191,7 @@ export function ReadingPanel({ hintText, audioUrl, startRatio, intervalSec: _int
 
                 {/* 上句文字 */}
                 <div className="flex-1 text-center">
-                  {audioError ? (
-                    <span className="text-crimson text-caption">音频加载失败，可凭提示找牌</span>
-                  ) : hintText ? (
+                  {hintText ? (
                     <motion.p initial={{ opacity: 0, letterSpacing: '0.1em' }} animate={{ opacity: 1, letterSpacing: '0.3em' }}
                       transition={{ duration: 0.4 }}
                       className="font-serif text-2xl sm:text-3xl font-medium text-body-text tracking-widest drop-shadow-lg"
@@ -194,6 +209,16 @@ export function ReadingPanel({ hintText, audioUrl, startRatio, intervalSec: _int
                   transition={{ duration: 1.5, repeat: Infinity, delay: 0.75 }}
                   className="text-gold text-xl shrink-0">♪</motion.div>
               </div>
+
+              {autoplayBlocked && (
+                <div className="mt-2 flex justify-center">
+                  <Button type="button" size="sm" variant="outline" disabled={isPaused}
+                    onClick={() => tryPlayRef.current?.()}>开启声音</Button>
+                </div>
+              )}
+              {audioError && (
+                <p className="mt-2 text-center text-crimson text-caption">音频加载失败，可凭提示找牌</p>
+              )}
 
               {/* 进度条：统一 ProgressBar（tone 承接三态配色，shimmer 承接光扫） */}
               <ProgressBar className="mt-3" value={progress} tone={barTone} shimmer />

@@ -1,8 +1,6 @@
-import { useNavigate } from 'react-router-dom'
 import type { Card, CardAudio } from '../../api/types'
 import { Tv, Play, Pause } from 'lucide-react'
 import { PageContainer, HeroHeader, Button, PanelSurface, Badge } from '../../components/ui'
-import { paths } from '../../routes/paths'
 
 interface ReadOnlyCardViewProps {
   card: Card
@@ -10,16 +8,16 @@ interface ReadOnlyCardViewProps {
   audios: CardAudio[]
   playingAudioId: number | null
   onTogglePlay: (audio: CardAudio) => void
+  onBack: () => void
 }
 
 /** 编辑模式下非属主的只读视图：展示卡牌信息与可试听音频（导航壳由路由层 AppLayout 提供） */
-export function ReadOnlyCardView({ card, coverPreview, audios, playingAudioId, onTogglePlay }: ReadOnlyCardViewProps) {
-  const navigate = useNavigate()
+export function ReadOnlyCardView({ card, coverPreview, audios, playingAudioId, onTogglePlay, onBack }: ReadOnlyCardViewProps) {
   return (
     <PageContainer size="sm">
       <HeroHeader
         title={`🎴 ${card.display_text || '未命名'}`}
-        onBack={() => navigate(paths.cards())}
+        onBack={onBack}
       />
 
       <PanelSurface variant="void-soft" radius="2xl" className="p-6">
