@@ -42,7 +42,7 @@ export function useRoomGame(roomId: number, user: User | null) {
   const serverOffsetRef = useRef(0)   // 服务端时间 - 本地时间（毫秒）
   const roundEndsAtRef = useRef(0)    // 当前回合截止（服务端 UnixMilli）
   const currentRoundIdRef = useRef(0)
-  // B1：抢牌命令幂等 ID（单调递增），防网络重试导致重复判分
+  // 抢牌命令 ID 在本页面内递增；服务端按连接去重，刷新后可从 1 开始。
   const grabCmdRef = useRef(0)
 
   // 音频预取：等待大厅全量封面 + 前三首音频，对局中由 next_audio_urls 滚动预取

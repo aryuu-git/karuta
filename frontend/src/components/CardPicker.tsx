@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Music, Globe } from 'lucide-react'
 import { api } from '../api/client'
@@ -18,56 +18,59 @@ const PAGE_SIZE = 40
 
 export function CardPicker({ open, onClose, onSelect, excludeIds = [] }: CardPickerProps) {
   const [tab, setTab] = useState<Tab>('mine')
-  const [myCards, setMyCards] = useState<Card[]>([])
-  const [publicCards, setPublicCards] = useState<Card[]>([])
+  const [cards, setCards] = useState<Card[]>([])
   const [loading, setLoading] = useState(false)
   const [search, setSearch] = useState('')
+  const [committedSearch, setCommittedSearch] = useState('')
   const [filterTag, setFilterTag] = useState('')
   const [filterOwner, setFilterOwner] = useState('')
   const [allTags, setAllTags] = useState<string[]>(['游戏', '动画'])
   const [selected, setSelected] = useState<Set<number>>(new Set())
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(false)
-
-  const loadMyCards = useCallback(async () => {
-    setLoading(true)
-    try {
-      const cards = await api.cards.listMine()
-      setMyCards(cards)
-    } catch { /* ignore */ }
-    finally { setLoading(false) }
-  }, [])
-
-  const loadPublicCards = useCallback(async (query?: string, tag?: string, owner?: string, pageNum = 1) => {
-    setLoading(true)
-    try {
-      const cards = await api.cards.listPublic({ search: query || undefined, tag: tag || undefined, owner: owner || undefined, size: PAGE_SIZE, page: pageNum })
-      setPublicCards(cards)
-      setHasMore(cards.length >= PAGE_SIZE)
-      setPage(pageNum)
-    } catch { /* ignore */ }
-    finally { setLoading(false) }
-  }, [])
+  const [error, setError] = useState<string | null>(null)
+  const [reload, setReload] = useState(0)
 
   useEffect(() => {
     if (!open) return
+    let active = true
+    setLoading(true)
+    setError(null)
+    const params = { search: committedSearch || undefined, tag: filterTag || undefined, size: PAGE_SIZE, page }
+    const request = tab === 'mine'
+      ? api.cards.listMine(params)
+      : api.cards.listPublic({ ...params, owner: filterOwner || undefined })
+    request.then(result => {
+      if (!active) return
+      setCards(result)
+      setHasMore(result.length >= PAGE_SIZE)
+    }).catch(() => {
+      if (!active) return
+      setCards([])
+      setHasMore(false)
+      setError('加载失败，请重试')
+    }).finally(() => {
+      if (active) setLoading(false)
+    })
+    // Ignore responses from a previous page, filter, tab or closed dialog.
+    return () => { active = false }
+  }, [open, tab, page, committedSearch, filterTag, filterOwner, reload])
+
+  useEffect(() => {
+    if (!open) return
+    let active = true
     setSelected(new Set())
     setPage(1)
-    if (tab === 'mine') {
-      loadMyCards()
-    } else {
-      loadPublicCards(search, filterTag, filterOwner, 1)
-    }
-    api.cards.listTags().then(tags => setAllTags(['游戏', '动画', ...tags.filter(t => t !== '游戏' && t !== '动画')])).catch(() => {})
-  }, [open, tab, filterTag, filterOwner])
+    api.cards.listTags().then(tags => {
+      if (active) setAllTags(['游戏', '动画', ...tags.filter(t => t !== '游戏' && t !== '动画')])
+    }).catch(() => {})
+    return () => { active = false }
+  }, [open])
 
-  const handleSearch = () => {
+  const handleSearch = (query = search) => {
     setPage(1)
-    if (tab === 'mine') {
-      loadMyCards()
-    } else {
-      loadPublicCards(search, filterTag, filterOwner, 1)
-    }
+    setCommittedSearch(query)
+    setReload(prev => prev + 1)
   }
 
   const toggleCard = (id: number) => {
@@ -84,13 +87,6 @@ export function CardPicker({ open, onClose, onSelect, excludeIds = [] }: CardPic
     onSelect(Array.from(selected))
     onClose()
   }
-
-  const filteredMyCards = myCards.filter(c => {
-    if (search && !c.display_text.toLowerCase().includes(search.toLowerCase()) && !c.series.toLowerCase().includes(search.toLowerCase())) return false
-    if (filterTag && !(c.tags || '').includes(filterTag)) return false
-    return true
-  })
-  const cards = tab === 'mine' ? filteredMyCards : publicCards
 
   if (!open) return null
 
@@ -126,7 +122,7 @@ export function CardPicker({ open, onClose, onSelect, excludeIds = [] }: CardPic
               className="mb-3"
               aria-label="牌库来源"
               value={tab}
-              onChange={setTab}
+              onChange={value => { setTab(value); setPage(1) }}
               options={[
                 { value: 'mine' as Tab, label: '我的牌库', icon: <Music size={16} aria-hidden="true" /> },
                 { value: 'public' as Tab, label: '公共牌库', icon: <Globe size={16} aria-hidden="true" /> },
@@ -137,7 +133,7 @@ export function CardPicker({ open, onClose, onSelect, excludeIds = [] }: CardPic
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') handleSearch() }}
-                onClear={() => { setSearch(''); if (tab === 'public') loadPublicCards('', filterTag, filterOwner, 1) }}
+                onClear={() => { setSearch(''); handleSearch('') }}
                 placeholder={tab === 'mine' ? '搜索我的牌…' : '搜索歌牌名或作品名…'} />
               <div className="flex items-center gap-1.5 flex-wrap">
                 {/* 标签筛选片：SegmentedTabs chip（label 含当前列表计数，0 不显示） */}
@@ -152,7 +148,7 @@ export function CardPicker({ open, onClose, onSelect, excludeIds = [] }: CardPic
                       size="sm"
                       aria-label="标签筛选"
                       value={filterTag}
-                      onChange={setFilterTag}
+                      onChange={value => { setFilterTag(value); setPage(1) }}
                       options={['', ...allTags].map(t => {
                         const count = t ? (tagCounts.get(t) || 0) : cards.length
                         return { value: t, label: <>{t ? t : '全部'}{count > 0 ? ` (${count})` : ''}</> }
@@ -163,7 +159,7 @@ export function CardPicker({ open, onClose, onSelect, excludeIds = [] }: CardPic
                 {tab === 'public' && (
                   <Input size="sm" fit className="w-24 shrink-0"
                     value={filterOwner}
-                    onChange={e => setFilterOwner(e.target.value)}
+                    onChange={e => { setFilterOwner(e.target.value); setPage(1) }}
                     onKeyDown={e => { if (e.key === 'Enter') handleSearch() }}
                     placeholder="创建人" />
                 )}
@@ -176,7 +172,13 @@ export function CardPicker({ open, onClose, onSelect, excludeIds = [] }: CardPic
             {loading && (
               <div className="text-gold/70 text-tiny animate-pulse text-center py-8 font-serif">加载中…</div>
             )}
-            {!loading && cards.length === 0 && (
+            {!loading && error && (
+              <div className="text-center py-8">
+                <p role="alert" className="text-muted text-caption mb-2">{error}</p>
+                <Button variant="outline" size="sm" onClick={() => setReload(prev => prev + 1)}>重试</Button>
+              </div>
+            )}
+            {!loading && !error && cards.length === 0 && (
               <div className="text-center py-8">
                 <div className="text-3xl mb-2">🌸</div>
                 <p className="text-gold-light/90 text-caption font-serif mb-1">没有可选的牌</p>
@@ -232,19 +234,19 @@ export function CardPicker({ open, onClose, onSelect, excludeIds = [] }: CardPic
             )}
           </div>
 
-          {/* Pagination (public tab only) */}
-          {tab === 'public' && (publicCards.length > 0 || page > 1) && (
+          {/* Both libraries use server-side pagination. */}
+          {(cards.length > 0 || page > 1) && (
             <div className="px-5 py-2 shrink-0 flex items-center justify-center gap-2 border-t border-gold/5">
               <button
-                disabled={page <= 1}
-                onClick={() => loadPublicCards(search, filterTag, filterOwner, page - 1)}
+                disabled={loading || page <= 1}
+                onClick={() => setPage(prev => prev - 1)}
                 className="text-tiny px-2.5 py-1 rounded border border-gold/10 text-muted hover:text-gold disabled:opacity-30 transition-all">
                 ← 上页
               </button>
               <span className="text-muted text-tiny tabular-nums">第 {page} 页</span>
               <button
-                disabled={!hasMore}
-                onClick={() => loadPublicCards(search, filterTag, filterOwner, page + 1)}
+                disabled={loading || !hasMore}
+                onClick={() => setPage(prev => prev + 1)}
                 className="text-tiny px-2.5 py-1 rounded border border-gold/10 text-muted hover:text-gold disabled:opacity-30 transition-all">
                 下页 →
               </button>

@@ -84,6 +84,9 @@ func (c *Client) readPump() {
 	})
 
 	var lastChat time.Time
+	// Command IDs restart when the page is reloaded. Deduplicate within this
+	// connection so a previous connection cannot suppress new grab attempts.
+	var lastGrabCmdID int64
 
 	for {
 		_, raw, err := c.conn.ReadMessage()
@@ -103,8 +106,14 @@ func (c *Client) readPump() {
 		switch msg.Type {
 		case "grab":
 			if c.role != "spectator" {
+				if msg.CmdID > 0 {
+					if msg.CmdID <= lastGrabCmdID {
+						continue
+					}
+					lastGrabCmdID = msg.CmdID
+				}
 				// Route to duel or normal mode
-				c.hub.HandleGrab(c.userID, msg.CardID, msg.CmdID)
+				c.hub.HandleGrab(c.userID, msg.CardID)
 				c.hub.HandleDuelGrab(c.userID, msg.CardID)
 			}
 		case "media_event":

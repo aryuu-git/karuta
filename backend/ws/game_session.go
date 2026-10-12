@@ -60,8 +60,6 @@ type GameSession struct {
 	// roundEndsAt 当前回合的服务端权威截止时刻（音频开始 + 时长 + 缓冲）。
 	// 客户端 audio_ended 不再触发切首；到期由本时刻驱动。
 	roundEndsAt time.Time
-	// lastCmdID 记录每个玩家最近一次抢牌命令 ID，实现幂等（防网络重试重复判分）。
-	lastCmdID map[int64]int64
 
 	// judge mode
 	judgeMode      bool
@@ -145,7 +143,6 @@ func newGameSession(hub *RoomHub, room *model.Room, cards []*model.Card, s *stor
 		resumeCh:           make(chan struct{}, 8),
 		stopCh:             make(chan struct{}),
 		store:              s,
-		lastCmdID:          make(map[int64]int64),
 		judgeMode:          isJudge,
 		judgeUserID:        room.HostID,
 	}
@@ -905,19 +902,11 @@ func (gs *GameSession) waitInterval() bool {
 }
 
 // HandleGrab processes a grab attempt from a player.
-// cmdID 为客户端生成的单调递增命令 ID：网络重试导致的重复投递
-// （同一玩家 cmdID 不大于上次）会被静默忽略，防止重复判分。
-// cmdID=0 视为不支持幂等的旧客户端，直接处理。
-func (gs *GameSession) HandleGrab(userID, cardID int64, cmdID int64) {
+// Duplicate commands are filtered by the WebSocket client per connection.
+func (gs *GameSession) HandleGrab(userID, cardID int64) {
 	gs.mu.Lock()
 	defer gs.mu.Unlock()
 
-	if cmdID > 0 {
-		if last, ok := gs.lastCmdID[userID]; ok && cmdID <= last {
-			return
-		}
-		gs.lastCmdID[userID] = cmdID
-	}
 	if gs.judgeMode && userID == gs.judgeUserID {
 		gs.hub.SendJSONToUser(userID, map[string]interface{}{
 			"type": "grab_banned",
