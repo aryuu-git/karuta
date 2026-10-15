@@ -1,5 +1,6 @@
 import type { Card, RoomState, RoomPlayer } from '../../api/types'
 import type { GameResult } from './types'
+import type { JudgeQueueState } from '../../api/ws-events'
 
 /** 当前正在读的牌（读牌区展示契约） */
 export interface CurrentReading {
@@ -8,6 +9,7 @@ export interface CurrentReading {
   audioUrl: string
   hintText: string
   startRatio?: number
+  startSec?: number
 }
 
 /** 废牌堆条目 */
@@ -42,6 +44,7 @@ export interface RoomGameState {
   isPaused: boolean
   isLastCard: boolean
   isJudgeWaiting: boolean
+  judgeQueue: JudgeQueueState | null
   isSpectator: boolean
   /** 刚加入进行中的对局（本首结束后才可参与抢牌） */
   justJoined: boolean
@@ -78,6 +81,7 @@ export function createInitialRoomState(): RoomGameState {
     isPaused: false,
     isLastCard: false,
     isJudgeWaiting: false,
+    judgeQueue: null,
     isSpectator: false,
     justJoined: false,
     myRoundStatus: 'idle',
@@ -98,7 +102,8 @@ export type RoomAction =
   | { type: 'room_state'; state: RoomState }
   | { type: 'set_countdown'; count: number }
   | { type: 'clear_countdown' }
-  | { type: 'card_start'; cardId: number; cardAudioId: number; audioUrl: string; hintText: string; startRatio?: number; isLast: boolean }
+  | { type: 'card_start'; cardId: number; cardAudioId: number; audioUrl: string; hintText: string; startRatio?: number; startSec?: number; isLast: boolean }
+  | { type: 'judge_queue'; queue: JudgeQueueState }
   | { type: 'card_claimed'; cardId: number; remaining: number; winnerName: string; hintText: string }
   | { type: 'card_missed'; cardId: number; remaining: number }
   | { type: 'card_exhausted'; cardId: number }
@@ -160,6 +165,8 @@ function buildDiscardPile(state: RoomState): DiscardEntry[] {
  */
 export function roomReducer(state: RoomGameState, action: RoomAction): RoomGameState {
   switch (action.type) {
+    case 'judge_queue':
+      return { ...state, judgeQueue: action.queue }
     case 'init': {
       const s = action.state
 
@@ -260,6 +267,7 @@ export function roomReducer(state: RoomGameState, action: RoomAction): RoomGameS
           audioUrl: action.audioUrl,
           hintText: action.hintText,
           startRatio: action.startRatio,
+          startSec: action.startSec,
         },
       }
     }

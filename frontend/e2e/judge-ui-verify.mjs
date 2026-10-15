@@ -55,6 +55,7 @@ await dismiss(vicS.page)
 
 // 1) 开局 → 裁判等待选牌
 await hostS.page.getByRole('button', { name: /开始游戏/ }).click()
+await hostS.page.getByRole('button', { name: '展开裁判播放仪表板' }).click()
 let judgePanel = false
 for (let i = 0; i < 30 && !judgePanel; i++) {
   judgePanel = await hostS.page.locator('text=/选择下一首要播放的牌/').first().isVisible().catch(() => false)
@@ -64,7 +65,7 @@ out.judge_panel_shown = judgePanel
 await hostS.page.screenshot({ path: `${OUT}judge-panel.png` })
 
 // 2) 裁判点击选牌（QA牌1）
-await hostS.page.locator('text=QA牌1').first().click({ force: true })
+await hostS.page.getByRole('region', { name: '可选歌曲' }).locator('div.rounded-lg').filter({ hasText: 'QA牌1' }).first().getByRole('button', { name: /加入待播/ }).click()
 let victimActive = false
 for (let i = 0; i < 20 && !victimActive; i++) {
   victimActive = await vicS.page.locator('text=/可抢牌/').first().isVisible().catch(() => false)

@@ -26,11 +26,6 @@ type PlayItem struct {
 	DurationSec float64
 }
 
-type judgePlayRequest struct {
-	CardID      int64
-	CardAudioID int64
-}
-
 // GameSession manages the lifecycle of a single karuta game.
 type GameSession struct {
 	hub  *RoomHub
@@ -64,9 +59,10 @@ type GameSession struct {
 	// judge mode
 	judgeMode      bool
 	judgeUserID    int64
-	judgePlayCh    chan judgePlayRequest
-	judgeEndCh     chan struct{}
-	judgeOfflineCh chan struct{}
+	judgePlayCh    chan struct{} // 唤醒队列消费者，歌曲保存在 judgeQueue 中
+	judgeQueue     []JudgeQueueCommand
+	judgePlayed    map[int]bool
+	judgeOfflineAt time.Time
 }
 
 func expandToPlayItems(cards []*model.Card) []*PlayItem {
@@ -147,9 +143,8 @@ func newGameSession(hub *RoomHub, room *model.Room, cards []*model.Card, s *stor
 		judgeUserID:        room.HostID,
 	}
 	if isJudge {
-		gs.judgePlayCh = make(chan judgePlayRequest, 1)
-		gs.judgeEndCh = make(chan struct{}, 1)
-		gs.judgeOfflineCh = make(chan struct{}, 1)
+		gs.judgePlayCh = make(chan struct{}, 1)
+		gs.judgePlayed = make(map[int]bool)
 	}
 	return gs
 }
@@ -320,105 +315,52 @@ func (gs *GameSession) upcomingAudioURLs(start, limit int) []string {
 }
 
 func (gs *GameSession) runJudgeMode() {
-	playedCount := 0
-
 	for {
-		gs.hub.BroadcastJSON(map[string]interface{}{
-			"type":         "judge_waiting",
-			"played_count": playedCount,
-			"total_count":  len(gs.playItems),
-		})
-
-		var req judgePlayRequest
-		select {
-		case <-gs.stopCh:
+		item, req, ok := gs.nextJudgeItem()
+		if !ok {
 			return
-		case <-gs.judgeEndCh:
-			goto gameOver
-		case <-gs.judgeOfflineCh:
-			gs.hub.BroadcastJSON(map[string]interface{}{
-				"type":    "judge_offline",
-				"timeout": 60,
-			})
-			reconnected := false
-			reconnectTimer := time.NewTimer(60 * time.Second)
-		waitLoop:
-			for {
-				select {
-				case <-gs.stopCh:
-					reconnectTimer.Stop()
-					return
-				case req = <-gs.judgePlayCh:
-					reconnectTimer.Stop()
-					reconnected = true
-					break waitLoop
-				case <-reconnectTimer.C:
-					gs.hub.BroadcastJSON(map[string]interface{}{
-						"type": "judge_timeout",
-					})
-					goto gameOver
-				}
-			}
-			if !reconnected {
-				goto gameOver
-			}
-		case req = <-gs.judgePlayCh:
 		}
-
-		playedCount++
-
-		// find the PlayItem: prefer exact match by CardAudioID, fallback to first unplayed of this card
-		var item *PlayItem
-		if req.CardAudioID > 0 {
-			for _, pi := range gs.playItems {
-				if pi.CardAudioID == req.CardAudioID {
-					if _, done := gs.roundResults[pi.Index]; !done {
-						item = pi
-						break
-					}
-				}
-			}
-		}
-		if item == nil {
-			for _, pi := range gs.playItems {
-				if pi.CardID == req.CardID {
-					if _, done := gs.roundResults[pi.Index]; !done {
-						item = pi
-						break
-					}
-				}
-			}
-		}
-		if item == nil {
-			continue
-		}
-
 		gs.mu.Lock()
-		gs.currentIdx = item.Index
-		gs.grabWindow[item.Index] = time.Now()
-		gs.wrongUsers = make(map[int64]bool)
-		gs.mu.Unlock()
-
-		judgeCardStart := map[string]interface{}{
-			"type":          "card_start",
-			"round_id":      item.Index + 1,
-			"card_id":       item.CardID,
-			"card_audio_id": item.CardAudioID,
-			"audio_url":     audioURLFromPath(item.AudioPath),
-			"hint_text":     item.HintText,
-			"index":         playedCount,
-			"total":         len(gs.playItems),
-			"is_last":       playedCount >= len(gs.playItems),
-		}
-		if gs.room.RandomStart {
+		playedCount := len(gs.judgePlayed)
+		startRatio := 0.0
+		if req.StartSec == nil && gs.room.RandomStart {
 			rng := rand.New(rand.NewSource(gs.room.MaskSeed ^ item.CardAudioID ^ int64(playedCount)))
 			maxPct := gs.room.RandomStartMax
 			if maxPct <= 0 || maxPct > 80 {
 				maxPct = 50
 			}
-			judgeCardStart["start_ratio"] = float64(rng.Intn(maxPct)) / 100.0
+			startRatio = float64(rng.Intn(maxPct)) / 100.0
 		}
-		gs.hub.BroadcastJSON(judgeCardStart)
+		startSec := item.DurationSec * startRatio
+		if req.StartSec != nil {
+			startSec = *req.StartSec
+		}
+		gs.playStartTime = time.Now()
+		settle := time.Duration(gs.room.IntervalSec) * time.Second
+		if item.DurationSec > 0 {
+			gs.roundEndsAt = gs.playStartTime.Add(time.Duration((item.DurationSec-startSec)*float64(time.Second)) + settle)
+		} else {
+			maxWait := settle * 10
+			if maxWait < 60*time.Second {
+				maxWait = 60 * time.Second
+			}
+			gs.roundEndsAt = gs.playStartTime.Add(maxWait)
+		}
+		msg := map[string]interface{}{
+			"type": "card_start", "round_id": item.Index + 1,
+			"card_id": item.CardID, "card_audio_id": item.CardAudioID,
+			"audio_url": audioURLFromPath(item.AudioPath), "hint_text": item.HintText,
+			"index": playedCount, "total": len(gs.playItems), "is_last": playedCount == len(gs.playItems),
+			"start_at": gs.playStartTime.UnixMilli(), "ends_at": gs.roundEndsAt.UnixMilli(),
+			"server_now": time.Now().UnixMilli(),
+		}
+		if req.StartSec != nil {
+			msg["start_sec"] = startSec
+		} else if startRatio > 0 {
+			msg["start_ratio"] = startRatio
+		}
+		gs.mu.Unlock()
+		gs.hub.BroadcastJSON(msg)
 
 		if !gs.waitInterval() {
 			return
@@ -427,48 +369,33 @@ func (gs *GameSession) runJudgeMode() {
 		gs.mu.Lock()
 		delete(gs.grabWindow, item.Index)
 		_, grabbed := gs.roundResults[item.Index]
+		if !grabbed {
+			gs.cardRemainingCount[item.CardID]--
+		}
+		remaining := gs.cardRemainingCount[item.CardID]
+		allPlayed := true
+		for _, count := range gs.cardRemainingCount {
+			if count > 0 {
+				allPlayed = false
+				break
+			}
+		}
 		gs.mu.Unlock()
 
 		if !grabbed {
-			gs.mu.Lock()
-			gs.cardRemainingCount[item.CardID]--
-			remaining := gs.cardRemainingCount[item.CardID]
-			gs.mu.Unlock()
-
 			gs.hub.BroadcastJSON(map[string]interface{}{
-				"type":      "card_missed",
-				"card_id":   item.CardID,
-				"remaining": remaining,
+				"type": "card_missed", "card_id": item.CardID, "remaining": remaining,
 			})
 			if remaining <= 0 {
-				gs.hub.BroadcastJSON(map[string]interface{}{
-					"type":    "card_exhausted",
-					"card_id": item.CardID,
-				})
+				gs.hub.BroadcastJSON(map[string]interface{}{"type": "card_exhausted", "card_id": item.CardID})
 			}
 			_ = gs.store.GameRecords.InsertRecord(gs.room.ID, item.CardID, nil, time.Now())
 		}
-
-		allPlayed := true
-		for _, pi := range gs.playItems {
-			if _, done := gs.roundResults[pi.Index]; !done {
-				// check if this card's remaining > 0 (it could be missed but remaining consumed)
-				gs.mu.Lock()
-				r := gs.cardRemainingCount[pi.CardID]
-				gs.mu.Unlock()
-				if r > 0 {
-					allPlayed = false
-					break
-				}
-			}
-		}
 		if allPlayed {
-			break
+			gs.broadcastGameOver()
+			return
 		}
 	}
-
-gameOver:
-	gs.broadcastGameOver()
 }
 
 func (gs *GameSession) broadcastGameOver() {
@@ -619,6 +546,13 @@ func (gs *GameSession) SendRoomStateToClient(client *Client) {
 		return
 	}
 	safeSend(client, data)
+	if gs.IsJudge(client.userID) {
+		gs.mu.Lock()
+		gs.judgeOfflineAt = time.Time{}
+		gs.sendJudgeQueueLocked()
+		gs.wakeJudgeQueue()
+		gs.mu.Unlock()
+	}
 }
 
 func (gs *GameSession) broadcastRoomState() {
@@ -644,6 +578,11 @@ func (gs *GameSession) broadcastRoomState() {
 			"judge_waiting":   judgeWaiting,
 		},
 	})
+	if gs.judgeMode {
+		gs.mu.Lock()
+		gs.sendJudgeQueueLocked()
+		gs.mu.Unlock()
+	}
 }
 
 // SnapshotBoard 返回当前棋盘的权威投影（REST 快照恢复用）：
@@ -728,9 +667,10 @@ func (gs *GameSession) buildCardList() []map[string]interface{} {
 			audioList := make([]map[string]interface{}, 0, len(c.Audios))
 			for _, a := range c.Audios {
 				audioList = append(audioList, map[string]interface{}{
-					"id":        a.ID,
-					"audio_url": storage.FileURL(a.AudioPath, "audio"),
-					"hint_text": a.HintText,
+					"id":           a.ID,
+					"audio_url":    storage.FileURL(a.AudioPath, "audio"),
+					"hint_text":    a.HintText,
+					"duration_sec": a.DurationSec,
 				})
 			}
 			item["audios"] = audioList
@@ -1011,14 +951,26 @@ func (gs *GameSession) HandleGrab(userID, cardID int64) {
 	if gs.room.MultiAudioMode == "once" && remaining > 0 {
 		gs.cardRemainingCount[cardID] = 0
 		remaining = 0
-		// Remove future playItems with same cardID
-		filtered := gs.playItems[:gs.currentIdx+1]
-		for i := gs.currentIdx + 1; i < len(gs.playItems); i++ {
-			if gs.playItems[i].CardID != cardID {
-				filtered = append(filtered, gs.playItems[i])
+		if gs.judgeMode {
+			// 裁判可任意顺序播放，保留稳定的回合索引，只移除待播项。
+			pending := gs.judgeQueue[:0]
+			for _, req := range gs.judgeQueue {
+				if req.CardID != cardID {
+					pending = append(pending, req)
+				}
 			}
+			gs.judgeQueue = pending
+			gs.sendJudgeQueueLocked()
+		} else {
+			// Remove future playItems with same cardID.
+			filtered := gs.playItems[:gs.currentIdx+1]
+			for i := gs.currentIdx + 1; i < len(gs.playItems); i++ {
+				if gs.playItems[i].CardID != cardID {
+					filtered = append(filtered, gs.playItems[i])
+				}
+			}
+			gs.playItems = filtered
 		}
-		gs.playItems = filtered
 	}
 
 	gs.lastCardWinner = userID
@@ -1085,16 +1037,6 @@ func (gs *GameSession) Resume() {
 	gs.hub.BroadcastJSON(map[string]interface{}{"type": "resumed"})
 }
 
-func (gs *GameSession) JudgePlayCard(cardID, cardAudioID int64) {
-	if gs.judgePlayCh == nil {
-		return
-	}
-	select {
-	case gs.judgePlayCh <- judgePlayRequest{CardID: cardID, CardAudioID: cardAudioID}:
-	default:
-	}
-}
-
 func (gs *GameSession) Stop() {
 	select {
 	case <-gs.stopCh:
@@ -1115,13 +1057,19 @@ func (gs *GameSession) IsJudge(userID int64) bool {
 }
 
 func (gs *GameSession) OnJudgeDisconnected() {
-	if gs.judgeOfflineCh == nil {
+	if !gs.judgeMode {
 		return
 	}
-	select {
-	case gs.judgeOfflineCh <- struct{}{}:
-	default:
+	// 同一裁判的另一标签页仍在线时，不进入离线等待。
+	for _, id := range gs.hub.OnlineUserIDs() {
+		if id == gs.judgeUserID {
+			return
+		}
 	}
+	gs.mu.Lock()
+	gs.judgeOfflineAt = time.Now()
+	gs.wakeJudgeQueue()
+	gs.mu.Unlock()
 }
 
 func (gs *GameSession) checkAllBanned() {

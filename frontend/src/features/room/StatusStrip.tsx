@@ -39,7 +39,7 @@ export function StatusStrip({ identity, roundStatus, justJoined, countdown, onJo
       return { text: '⏳ 本首结束后可参与抢牌', cls: STYLES.justJoined, strong: false }
     }
     if (identity === 'judge') {
-      return { text: '👑 你是裁判 · 从上方选牌区选择要读的牌', cls: STYLES.judge, strong: false }
+      return { text: '👑 你是裁判 · 点击右侧播放控制安排歌曲', cls: STYLES.judge, strong: false }
     }
     if (identity === 'spectator') {
       return { text: '👁 旁观中', cls: STYLES.spectator, strong: false }

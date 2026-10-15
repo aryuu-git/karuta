@@ -34,6 +34,20 @@ async function ready(audio: HTMLAudioElement) {
 }
 
 describe('读牌音频故障与自动播放', () => {
+  it('裁判指定的秒数优先于随机片段，显式 0 从头播放', async () => {
+    const { audio, props, rerender } = renderReading()
+    Object.defineProperty(audio, 'duration', { configurable: true, value: 100 })
+    rerender(<ReadingPanel {...props} startRatio={0.5} startSec={30} />)
+    await act(async () => fireEvent.loadedMetadata(audio))
+    expect(audio.currentTime).toBe(30)
+    rerender(<ReadingPanel {...props} startRatio={0.5} startSec={0} />)
+    await act(async () => fireEvent.loadedMetadata(audio))
+    expect(audio.currentTime).toBe(0)
+    rerender(<ReadingPanel {...props} startRatio={0.5} />)
+    await act(async () => fireEvent.loadedMetadata(audio))
+    expect(audio.currentTime).toBe(50)
+  })
+
   it('手机刷新后的自动播放限制不重试、不上报缓冲失败，点击可开启声音', async () => {
     vi.mocked(HTMLMediaElement.prototype.play).mockRejectedValueOnce(new DOMException('Gesture required', 'NotAllowedError'))
     const { audio, props } = renderReading()

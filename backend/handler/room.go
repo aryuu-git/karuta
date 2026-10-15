@@ -425,8 +425,8 @@ func (h *RoomHandler) CreateRoom(w http.ResponseWriter, r *http.Request) {
 		DuelGrabChances int  `json:"duel_grab_chances"`
 		DuelArrangeTime int  `json:"duel_arrange_time"`
 		// v7：私密房（列表隐藏）与人数上限（2-32，默认 16）
-		IsPrivate   bool `json:"is_private"`
-		MaxPlayers  int  `json:"max_players"`
+		IsPrivate  bool `json:"is_private"`
+		MaxPlayers int  `json:"max_players"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "invalid request body")
@@ -1076,22 +1076,23 @@ func (h *RoomHandler) PlayCard(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusConflict, "INVALID_MODE", "room is not in judge mode")
 		return
 	}
-	if room.Status != "reading" && room.Status != "waiting" {
+	if room.Status != "reading" && room.Status != "waiting" && room.Status != "paused" {
 		writeError(w, http.StatusConflict, "INVALID_STATUS", "room is not active")
 		return
 	}
 
-	var req struct {
-		CardID      int64 `json:"card_id"`
-		CardAudioID int64 `json:"card_audio_id"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.CardID == 0 {
+	var req ws.JudgeQueueCommand
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || (req.CardID == 0 && req.Action != "clear") {
 		writeError(w, http.StatusBadRequest, "BAD_REQUEST", "card_id is required")
 		return
 	}
 
 	// If room was still in waiting, transition to reading and initialise session first
 	if room.Status == "waiting" {
+		if req.Action != "" && req.Action != "add" {
+			writeError(w, http.StatusConflict, "NOT_STARTED", "game has not been started")
+			return
+		}
 		cards, err := h.store.DeckCards.ListCardsByDeck(room.DeckID)
 		if err != nil || len(cards) == 0 {
 			cards, _ = h.store.Cards.ListByDeck(room.DeckID)
@@ -1114,8 +1115,10 @@ func (h *RoomHandler) PlayCard(w http.ResponseWriter, r *http.Request) {
 		}
 		hub := h.hubManager.GetOrCreate(roomID)
 		hub.StartGame(room, cards, h.store)
-		time.Sleep(100 * time.Millisecond) // 等 session 初始化
-		hub.JudgePlayCard(req.CardID, req.CardAudioID)
+		if err := hub.JudgePlayCard(req); err != nil {
+			writeError(w, http.StatusBadRequest, "INVALID_QUEUE", err.Error())
+			return
+		}
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 		return
 	}
@@ -1125,7 +1128,10 @@ func (h *RoomHandler) PlayCard(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusConflict, "NOT_STARTED", "game has not been started")
 		return
 	}
-	hub.JudgePlayCard(req.CardID, req.CardAudioID)
+	if err := hub.JudgePlayCard(req); err != nil {
+		writeError(w, http.StatusBadRequest, "INVALID_QUEUE", err.Error())
+		return
+	}
 
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }

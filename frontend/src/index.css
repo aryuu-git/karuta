@@ -224,8 +224,60 @@
   to { opacity: 1; transform: none; }
 }
 
+/* 保持内容挂载：宽度/位移双向过渡可在快速切换时反向继续，关闭后再隐藏。 */
+.judge-sidebar {
+  --judge-sidebar-width: 20rem;
+  position: absolute;
+  inset-block: 0;
+  right: 0;
+  width: calc(100% - 2.75rem);
+  max-width: 24rem;
+  min-height: 0;
+  overflow: hidden;
+  visibility: hidden;
+  opacity: 0;
+  transform: translateX(100%);
+  transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.24s ease, visibility 0s linear 0.32s;
+}
+
+.judge-sidebar[data-open="true"] {
+  visibility: visible;
+  opacity: 1;
+  transform: none;
+  transition-delay: 0s;
+}
+
+@media (min-width: 768px) {
+  .judge-sidebar {
+    position: relative;
+    inset: auto;
+    flex: none;
+    width: 0;
+    max-width: none;
+    opacity: 1;
+    transform: none;
+    transition: width 0.32s cubic-bezier(0.22, 1, 0.36, 1), visibility 0s linear 0.32s;
+  }
+
+  .judge-sidebar[data-open="true"] { width: var(--judge-sidebar-width); }
+
+  .judge-sidebar-content {
+    width: var(--judge-sidebar-width);
+    opacity: 0;
+    transform: translateX(24px);
+    transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.24s ease;
+  }
+
+  .judge-sidebar[data-open="true"] .judge-sidebar-content { opacity: 1; transform: none; }
+}
+
+@media (min-width: 1024px) {
+  .judge-sidebar { --judge-sidebar-width: 24rem; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .fade-in { animation: none; }
+  .judge-sidebar, .judge-sidebar-content { transition: none; }
 }
 
 /* Toast 入场：自顶部滑入（ToastProvider 不引 framer-motion，保首屏包体） */

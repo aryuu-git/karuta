@@ -133,6 +133,9 @@ export function useRoomGame(roomId: number, user: User | null) {
   const handleEvent = useCallback((event: WSEvent) => {
     const s = stateRef.current
     switch (event.type) {
+      case 'judge_queue':
+        dispatch({ type: 'judge_queue', queue: { items: event.items, played: event.played } })
+        break
       case 'room_state':
         dispatch({ type: 'room_state', state: event.data })
         // 重连快照：回合状态以服务端为准，重置不做本地残留推断
@@ -162,6 +165,7 @@ export function useRoomGame(roomId: number, user: User | null) {
           audioUrl: event.audio_url,
           hintText: event.hint_text,
           startRatio: event.start_ratio,
+          startSec: event.start_sec,
           isLast: event.is_last ?? false,
         })
         if (willShuffle) setTimeout(() => dispatch({ type: 'shuffle_unblock' }), 600)
