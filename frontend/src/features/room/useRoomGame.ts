@@ -42,7 +42,7 @@ export function useRoomGame(roomId: number, user: User | null) {
   const serverOffsetRef = useRef(0)   // 服务端时间 - 本地时间（毫秒）
   const roundEndsAtRef = useRef(0)    // 当前回合截止（服务端 UnixMilli）
   const currentRoundIdRef = useRef(0)
-  // B1：抢牌命令幂等 ID（单调递增），防网络重试导致重复判分
+  // 抢牌命令 ID 在本页面内递增；服务端按连接去重，刷新后可从 1 开始。
   const grabCmdRef = useRef(0)
 
   // 音频预取：等待大厅全量封面 + 前三首音频，对局中由 next_audio_urls 滚动预取
@@ -133,6 +133,9 @@ export function useRoomGame(roomId: number, user: User | null) {
   const handleEvent = useCallback((event: WSEvent) => {
     const s = stateRef.current
     switch (event.type) {
+      case 'judge_queue':
+        dispatch({ type: 'judge_queue', queue: { items: event.items, played: event.played } })
+        break
       case 'room_state':
         dispatch({ type: 'room_state', state: event.data })
         // 重连快照：回合状态以服务端为准，重置不做本地残留推断
@@ -162,6 +165,7 @@ export function useRoomGame(roomId: number, user: User | null) {
           audioUrl: event.audio_url,
           hintText: event.hint_text,
           startRatio: event.start_ratio,
+          startSec: event.start_sec,
           isLast: event.is_last ?? false,
         })
         if (willShuffle) setTimeout(() => dispatch({ type: 'shuffle_unblock' }), 600)

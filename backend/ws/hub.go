@@ -2,6 +2,7 @@ package ws
 
 import (
 	"encoding/json"
+	"errors"
 	"sync"
 	"time"
 
@@ -434,13 +435,12 @@ func (h *RoomHub) HandleAudioEnded(userID int64, roundID int) {
 }
 
 // HandleGrab routes a grab message to the active game session.
-// cmdID 为客户端命令 ID，透传给会话做幂等去重。
-func (h *RoomHub) HandleGrab(userID, cardID int64, cmdID int64) {
+func (h *RoomHub) HandleGrab(userID, cardID int64) {
 	h.mu.RLock()
 	sess := h.session
 	h.mu.RUnlock()
 	if sess != nil {
-		sess.HandleGrab(userID, cardID, cmdID)
+		sess.HandleGrab(userID, cardID)
 	}
 }
 
@@ -487,13 +487,14 @@ func (h *RoomHub) ResumeGame() {
 }
 
 // JudgePlayCard signals the game session that the judge has chosen a card to play.
-func (h *RoomHub) JudgePlayCard(cardID, cardAudioID int64) {
+func (h *RoomHub) JudgePlayCard(req JudgeQueueCommand) error {
 	h.mu.RLock()
 	sess := h.session
 	h.mu.RUnlock()
 	if sess != nil {
-		sess.JudgePlayCard(cardID, cardAudioID)
+		return sess.UpdateJudgeQueue(req)
 	}
+	return errors.New("对局尚未开始")
 }
 
 // GetUsername returns the username for a given userID (from connected clients).

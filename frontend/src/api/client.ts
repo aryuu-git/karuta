@@ -1,5 +1,11 @@
 import type { User, Deck, Card, CardAudio, Room, RoomState, RoomListItem, UserStats, UserGame, RankingEntry, AuthResponse, Achievement } from './types'
 import { API_BASE, AUTH_TOKEN_KEY } from '../config'
+import type { JudgeQueueItem } from './ws-events'
+
+export type JudgeQueueCommand = Partial<JudgeQueueItem> & {
+  action: 'add' | 'remove' | 'move' | 'update' | 'clear'
+  position?: number
+}
 
 const BASE = API_BASE
 
@@ -321,6 +327,13 @@ function playCard(roomId: number, cardId: number, cardAudioId?: number): Promise
   })
 }
 
+function updateJudgeQueue(roomId: number, command: JudgeQueueCommand): Promise<void> {
+  return request(`/rooms/${roomId}/play-card`, {
+    method: 'POST',
+    body: JSON.stringify(command),
+  })
+}
+
 function joinRoom(code: string): Promise<{ room: Room; role: string }> {
   return request('/rooms/join', {
     method: 'POST',
@@ -464,6 +477,7 @@ export const api = {
     forceEnd: forceEndRoom,
     nextCard,
     playCard,
+    updateJudgeQueue,
     claimSeat,
     leaveSeat,
     kickFromSeat,

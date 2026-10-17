@@ -6,6 +6,7 @@ interface ReadingPanelProps {
   hintText: string | null
   audioUrl: string | null
   startRatio?: number
+  startSec?: number
   intervalSec: number
   isActive: boolean
   isPaused: boolean
@@ -18,7 +19,7 @@ interface ReadingPanelProps {
 }
 
 // intervalSec 保留 prop 供外部传入，ReadingPanel 内部仅用 audio timeupdate 驱动进度条
-export function ReadingPanel({ hintText, audioUrl, startRatio, intervalSec: _intervalSec, isActive, isPaused, countdown, intervalCountdown, onAudioEnded, onBufferError, isLastCard }: ReadingPanelProps) {
+export function ReadingPanel({ hintText, audioUrl, startRatio, startSec, intervalSec: _intervalSec, isActive, isPaused, countdown, intervalCountdown, onAudioEnded, onBufferError, isLastCard }: ReadingPanelProps) {
   const audioRef = useRef<HTMLAudioElement>(null)
   const tryPlayRef = useRef<(() => void) | null>(null)
   const playbackStateRef = useRef({ isActive, isPaused })
@@ -44,8 +45,9 @@ export function ReadingPanel({ hintText, audioUrl, startRatio, intervalSec: _int
 
     // 随机片段：加载完 metadata 后 seek 到指定位置
     const seekHandler = () => {
-      if (startRatio && startRatio > 0 && audio.duration && isFinite(audio.duration)) {
-        audio.currentTime = audio.duration * startRatio
+      if (audio.duration && isFinite(audio.duration)) {
+        const offset = startSec ?? (audio.duration * (startRatio ?? 0))
+        audio.currentTime = Math.max(0, Math.min(offset, Math.max(0, audio.duration - 0.01)))
       }
     }
     audio.addEventListener('loadedmetadata', seekHandler, { once: true })
@@ -98,7 +100,7 @@ export function ReadingPanel({ hintText, audioUrl, startRatio, intervalSec: _int
       audio.removeEventListener('loadedmetadata', seekHandler)
       audio.pause()
     }
-  }, [audioUrl, startRatio, onAudioEnded, onBufferError])
+  }, [audioUrl, startRatio, startSec, onAudioEnded, onBufferError])
 
   // 暂停/继续音频
   useEffect(() => {

@@ -61,10 +61,22 @@ export interface RoomState {
 }
 
 // WebSocket 事件
+export interface JudgeQueueItem {
+  card_id: number
+  card_audio_id: number
+  start_sec?: number
+}
+
+export interface JudgeQueueState {
+  items: JudgeQueueItem[]
+  played: JudgeQueueItem[]
+}
+
 export type WSEvent =
+  | ({ type: 'judge_queue' } & JudgeQueueState)
   | { type: 'room_state'; data: RoomState }
   // start_at/ends_at/server_now：B1 服务端权威回合时钟（UnixMilli）
-  | { type: 'card_start'; card_id: number; card_audio_id?: number; round_id?: number; audio_url: string; hint_text: string; index?: number; total?: number; is_last?: boolean; start_ratio?: number; next_audio_urls?: string[]; start_at?: number; ends_at?: number; server_now?: number }
+  | { type: 'card_start'; card_id: number; card_audio_id?: number; round_id?: number; audio_url: string; hint_text: string; index?: number; total?: number; is_last?: boolean; start_ratio?: number; start_sec?: number; next_audio_urls?: string[]; start_at?: number; ends_at?: number; server_now?: number }
   // remaining/hint_text 与后端 game_session.go 的 card_claimed 广播字段对齐
   | { type: 'card_claimed'; card_id: number; winner_id: number; winner_name: string; remaining?: number; hint_text?: string }
   // remaining 与后端 card_missed 广播字段对齐

@@ -2,7 +2,7 @@ import type { User } from '../../../api/types'
 import { ReadingPanel } from '../../../components/ReadingPanel'
 import { CardGrid } from '../../../components/CardGrid'
 import { ScoreBoard } from '../../../components/ScoreBoard'
-import { JudgePanel } from '../../../components/JudgePanel'
+import { JudgeSidebar } from '../../../components/JudgeSidebar'
 import { ChatRoom } from '../../../components/ChatRoom'
 import { EggAnimation } from '../../../components/EggAnimation'
 import { DuelBoard } from '../../../components/DuelBoard'
@@ -75,6 +75,7 @@ export function RoomBattleView({
         hintText={state.currentReading?.hintText ?? null}
         audioUrl={state.currentReading?.audioUrl ?? null}
         startRatio={state.currentReading?.startRatio}
+        startSec={state.currentReading?.startSec}
         intervalSec={room.interval_sec}
         isActive={!!state.currentReading}
         isPaused={state.isPaused}
@@ -137,39 +138,37 @@ export function RoomBattleView({
           <span className="text-gold/60 font-serif animate-pulse">正在初始化对局…</span>
         </div>
       ) : isJudgeMode && isHost ? (
-        // 裁判视图：上方选牌区 + 下方只读棋布
-        <div className="flex flex-col flex-1 overflow-hidden">
-          <div className="shrink-0 border-b border-gold/10 h-[38%] overflow-hidden">
-            <JudgePanel
-              roomId={room.id}
-              cards={state.cards}
-              playedCardIds={new Set(Array.from(state.cardRemaining.entries()).filter(([, r]) => r <= 0).map(([id]) => id))}
-              currentCardId={state.currentReading?.cardId ?? null}
-              currentAudioId={state.currentReading?.cardAudioId ?? null}
-              currentHintText={state.currentReading?.hintText ?? null}
-              isJudgeWaiting={state.isJudgeWaiting}
+        // 裁判视图：棋盘占满高度，播放控制按需从右侧展开。
+        <div className="relative flex min-h-0 flex-1 overflow-hidden">
+          <div aria-label="场上牌面" role="region" className="relative min-w-0 flex-1 overflow-y-auto">
+            <div className="absolute top-2 left-0 right-0 flex justify-center z-10 pointer-events-none">
+              <span className="text-white/20 text-tiny bg-black/40 px-2 py-0.5 rounded-full">
+                裁判视角 · 仅观察
+              </span>
+            </div>
+            <CardGrid cards={state.cards} cardRemaining={state.cardRemaining} discardPile={state.discardPile} />
+          </div>
+          <div className="hidden lg:flex shrink-0">
+            <ScoreBoard
+              players={state.players}
+              currentUserId={user?.id ?? 0}
+              hostId={room.host_id}
+              remainingCount={remainingCount}
+              totalCount={state.totalCardCount}
+              onKick={onKick}
             />
           </div>
-          <div className="flex flex-1 overflow-hidden">
-            <div className="flex-1 overflow-y-auto relative">
-              <div className="absolute top-2 left-0 right-0 flex justify-center z-10 pointer-events-none">
-                <span className="text-white/20 text-tiny bg-black/40 px-2 py-0.5 rounded-full">
-                  裁判视角 · 仅观察
-                </span>
-              </div>
-              <CardGrid cards={state.cards} cardRemaining={state.cardRemaining} discardPile={state.discardPile} />
-            </div>
-            <div className="hidden md:flex shrink-0">
-              <ScoreBoard
-                players={state.players}
-                currentUserId={user?.id ?? 0}
-                hostId={room.host_id}
-                remainingCount={remainingCount}
-                totalCount={state.totalCardCount}
-                onKick={onKick}
-              />
-            </div>
-          </div>
+          <JudgeSidebar
+            roomId={room.id}
+            cards={state.cards}
+            playedCardIds={new Set(Array.from(state.cardRemaining.entries()).filter(([, r]) => r <= 0).map(([id]) => id))}
+            currentCardId={state.currentReading?.cardId ?? null}
+            currentAudioId={state.currentReading?.cardAudioId ?? null}
+            currentHintText={state.currentReading?.hintText ?? null}
+            isJudgeWaiting={state.isJudgeWaiting}
+            queue={state.judgeQueue}
+            isPaused={state.isPaused}
+          />
         </div>
       ) : (
         // 玩家视图：棋布 + 计分板
@@ -229,7 +228,7 @@ export function RoomBattleView({
         isSpectator={state.isSpectator}
         onSend={onChatSend}
         onEgg={onEgg}
-        fabClassName={isDuelMode ? 'bottom-16 right-4' : 'bottom-16 right-4 md:bottom-4'}
+        fabClassName={isJudgeMode && isHost ? 'bottom-16 left-4 md:bottom-4' : isDuelMode ? 'bottom-16 right-4' : 'bottom-16 right-4 md:bottom-4'}
       />
 
       {/* 丢蛋动画 */}

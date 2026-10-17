@@ -45,10 +45,25 @@ auto（自动轮播抢牌）、judge（房主裁判选牌）、duel（1v1 编排
 
 | # | 能力点 | 行为说明 | 实现位置 |
 |---|---|---|---|
-| 17 | 裁判选牌 | `judge_waiting` → 房主 `POST /play-card`（waiting 分支 CAS 起局 + 100ms 等 session 就绪）→ 广播 card_start；首回合窗口内重复选牌被拒（并发保护） | `handler/room.go:PlayCard`；`game_session.go:runJudgeMode` |
+| 17 | 裁判选牌与待播队列 | 房主可在播放、冷却和暂停期间通过 `POST /play-card` 追加多首歌、修改起点、调整顺序、移除或清空待播；服务端在当前回合和冷却结束后按顺序消费，暂停时不出队 | `handler/room.go:PlayCard`；`ws/judge_queue.go`；`components/JudgePanel.tsx` |
 | 18 | 裁判禁抢 | judgeUserID 的 grab 一律 `grab_banned`；裁判不计入排名（broadcastGameOver 过滤 + 统计 CTE 剔除） | `game_session.go:HandleGrab/broadcastGameOver` |
-| 19 | 裁判掉线 | WS 断开触发 `judge_offline`（60s 等待重连，超时结束） | `ws/hub.go`（unregister 分支）；`game_session.go:OnJudgeDisconnected` |
+| 19 | 裁判掉线与队列恢复 | 已安排的歌曲继续播放；需要裁判操作时发送 `judge_offline`，裁判离线超过 60s 则结束。重连发送仅裁判可见的 `judge_queue`，恢复待播顺序、起点和已播音频；队列属于当前服务端会话，不跨服务器重启保存 | `ws/judge_queue.go`；`game_session.go:SendRoomStateToClient/OnJudgeDisconnected` |
 | 20 | 终局判定 | 每回合后检查：全部 playItem 有结果 **或** 剩余次数耗尽 → allPlayed → 结算 | `game_session.go:runJudgeMode` |
+
+裁判队列沿用 `POST /api/rooms/{id}/play-card`，仅房主可操作。`action` 支持
+`add`（省略时兼容旧客户端）、`remove`、`move`、`update` 和 `clear`；除 `clear`
+外使用 `card_id` + `card_audio_id` 定位歌曲，`move.position` 为从 0 开始的待播位置。
+`start_sec` 为播放起点秒数：省略或 null 遵循房间随机片段设置，显式 0 从头开始；
+必须非负且小于音频时长，时长未知时只接受 0 或默认设置。`card_start.start_sec`
+同步到全部玩家，并按剩余音频时长加冷却计算 `ends_at`。队列快照只发送给裁判，
+不会向玩家或旁观者泄露待播顺序。多音频 `once` 规则会移除已耗尽歌牌的待播项。
+
+裁判播放控制通过右侧「播放控制」侧栏展开，默认收起并显示待播数量，棋盘占满可用高度。
+桌面端仪表板与棋盘并排；移动端覆盖展开，可关闭、按 Esc 或点击侧栏外收起。
+仪表板通过「选歌 / 待播队列」切换搜索、起点和顺序编辑；收起不丢弃搜索或未提交的起点。
+选歌列表将已播放音频和耗尽歌牌的条目稳定置底，当前播放项仍保留在前组。
+侧栏通过双向过渡展开/收起，桌面棋盘宽度同步过渡；快速反向切换可续接动画，
+系统开启减少动态效果时直接切换。关闭后面板退出焦点导航，保留原有编辑状态。
 
 ### D. duel 模式（1v1 对阵）
 
